@@ -1,0 +1,10 @@
+{
+  "name": "ops-platform-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "运营管理平台后端 (Node.js + MySQL)",
+  "main": "app.js",
+  "dependencies": {
+    "mysql2": "^3.11.5"
+  }
+}

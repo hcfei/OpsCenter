@@ -1,0 +1,15 @@
+# 依赖与运行时
+node_modules/
+
+# 敏感配置（服务器生成，勿提交）
+db_config.json
+
+# 临时/诊断文件
+_fc_final.json
+_page_check2.html
+_verify_finance2.js
+
+# 系统与日志
+*.log
+.DS_Store
+Thumbs.db

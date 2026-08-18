@@ -1,0 +1,1931 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>运营管理平台</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0b0f19;--bg-card:#141824;--bg-card-hover:#1a2030;--bg-sidebar:#0d111c;--bg-header:#0d111c;
+  --border:#1e293b;--border-light:#334155;
+  --text:#e2e8f0;--text-secondary:#94a3b8;--text-muted:#64748b;
+  --primary:#3b82f6;--primary-glow:rgba(59,130,246,0.15);
+  --success:#10b981;--success-glow:rgba(16,185,129,0.15);
+  --warning:#f59e0b;--warning-glow:rgba(245,158,11,0.15);
+  --danger:#ef4444;--danger-glow:rgba(239,68,68,0.15);
+  --info:#06b6d4;--info-glow:rgba(6,182,212,0.15);
+  --purple:#8b5cf6;--purple-glow:rgba(139,92,246,0.15);
+  --radius:10px;--radius-sm:6px;
+  --shadow:0 4px 20px rgba(0,0,0,0.4);
+  --shadow-card:0 2px 8px rgba(0,0,0,0.3);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;overflow-x:hidden}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#475569}
+
+/* Layout */
+.app-container{display:flex;min-height:100vh}
+
+/* Sidebar */
+.sidebar{width:220px;background:var(--bg-sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:200;transition:width .3s}
+.sidebar.collapsed{width:60px}
+.sidebar-header{height:56px;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid var(--border);gap:10px}
+.sidebar-header .logo-icon{width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--primary),#6366f1);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sidebar-header .logo-text{font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;transition:opacity .3s}
+.sidebar.collapsed .logo-text{opacity:0;width:0}
+.sidebar-toggle{position:absolute;right:-12px;top:20px;width:24px;height:24px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-secondary);z-index:10;transition:all .2s}
+.sidebar-toggle:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+.sidebar-toggle svg{width:12px;height:12px}
+
+.sidebar-nav{flex:1;padding:12px 10px;overflow-y:auto}
+.nav-group{margin-bottom:16px}
+.nav-group-title{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;padding:0 10px;margin-bottom:6px;white-space:nowrap;transition:opacity .3s}
+.sidebar.collapsed .nav-group-title{opacity:0;height:0;margin:0;overflow:hidden}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-sm);cursor:pointer;color:var(--text-secondary);font-size:13px;transition:all .2s;margin-bottom:2px;white-space:nowrap;overflow:hidden;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:rgba(59,130,246,0.08);color:var(--text)}
+.nav-item.active{background:linear-gradient(90deg,rgba(59,130,246,0.15),transparent);color:var(--primary);border-left:3px solid var(--primary);margin-left:-3px;padding-left:15px}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+.nav-item .nav-text{white-space:nowrap;transition:opacity .3s}
+.sidebar.collapsed .nav-item{padding:9px 12px;justify-content:center}
+.sidebar.collapsed .nav-item.active{padding-left:12px;margin-left:0;border-left:none;border-radius:var(--radius-sm)}
+.sidebar.collapsed .nav-text{opacity:0;width:0;display:none}
+
+.sidebar-footer{padding:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);white-space:nowrap}
+.sidebar.collapsed .sidebar-footer{text-align:center}
+.sidebar.collapsed .sidebar-footer span{display:none}
+
+/* Main */
+.main-content{flex:1;margin-left:220px;transition:margin-left .3s}
+.sidebar.collapsed+.main-content{margin-left:60px}
+
+/* Header */
+.app-header{background:var(--bg-header);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:12px}
+.breadcrumb{font-size:13px;color:var(--text-muted)}
+.breadcrumb .sep{margin:0 6px;opacity:.5}
+.breadcrumb .current{color:var(--text);font-weight:500}
+.header-right{display:flex;align-items:center;gap:12px}
+.sync-indicator{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);background:var(--bg-card);padding:4px 10px;border-radius:20px;border:1px solid var(--border)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.btn-icon{background:none;border:none;cursor:pointer;padding:7px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);transition:all .2s}
+.btn-icon:hover{background:rgba(255,255,255,0.05);color:var(--text)}
+.btn-icon svg{width:18px;height:18px}
+
+/* Page content */
+.page-content{padding:20px 24px;max-width:1600px}
+.page-title{font-size:20px;font-weight:600;margin-bottom:4px}
+.page-subtitle{font-size:13px;color:var(--text-secondary);margin-bottom:20px}
+
+/* Tab content */
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* KPI Cards */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.kpi-card{background:var(--bg-card);border-radius:var(--radius);padding:18px 20px;border:1px solid var(--border);transition:all .2s;position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--primary);opacity:0;transition:opacity .2s}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-card);border-color:var(--border-light)}
+.kpi-card:hover::before{opacity:1}
+.kpi-card.success::before{background:var(--success)}
+.kpi-card.warning::before{background:var(--warning)}
+.kpi-card.danger::before{background:var(--danger)}
+.kpi-card.info::before{background:var(--info)}
+.kpi-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.kpi-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.kpi-icon.primary{background:var(--primary-glow);color:var(--primary)}
+.kpi-icon.success{background:var(--success-glow);color:var(--success)}
+.kpi-icon.warning{background:var(--warning-glow);color:var(--warning)}
+.kpi-icon.danger{background:var(--danger-glow);color:var(--danger)}
+.kpi-icon.info{background:var(--info-glow);color:var(--info)}
+.kpi-icon svg{width:20px;height:20px}
+.kpi-meta{flex:1}
+.kpi-label{font-size:12px;color:var(--text-secondary);margin-bottom:2px}
+.kpi-value{font-size:26px;font-weight:700;color:var(--text);line-height:1.2}
+.kpi-value.primary{color:var(--primary)}
+.kpi-value.success{color:var(--success)}
+.kpi-value.warning{color:var(--warning)}
+.kpi-value.danger{color:var(--danger)}
+.kpi-sub{font-size:12px;color:var(--text-muted);margin-top:6px}
+
+/* Chart Section */
+.chart-section-title{font-size:14px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.chart-section-title::before{content:'';width:4px;height:16px;background:var(--primary);border-radius:2px}
+
+/* Dashboard grid */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.dash-card{background:var(--bg-card);border-radius:var(--radius);padding:18px 20px;border:1px solid var(--border)}
+.dash-card.full{grid-column:1/-1}
+.dash-card h3{font-size:14px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px;color:var(--text-secondary)}
+
+/* Action items */
+.action-list{max-height:300px;overflow-y:auto}
+.action-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:8px;margin-bottom:8px;font-size:13px;background:rgba(255,255,255,0.02);border:1px solid var(--border);transition:all .2s}
+.action-item:hover{background:rgba(255,255,255,0.04);border-color:var(--border-light)}
+.action-item.overdue{border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.05)}
+.action-item.today{border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.05)}
+.action-item-info{flex:1;min-width:0}
+.action-item-tag{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;margin-right:8px}
+.action-item-tag.overdue{background:rgba(239,68,68,0.15);color:var(--danger)}
+.action-item-tag.today{background:rgba(245,158,11,0.15);color:var(--warning)}
+.action-item-title{font-weight:500;color:var(--text);margin-bottom:3px;display:flex;align-items:center}
+.action-item-desc{font-size:12px;color:var(--text-muted)}
+.action-item-date{font-size:12px;color:var(--danger);font-weight:500;white-space:nowrap;margin-right:12px}
+.action-item-btn{background:var(--primary);color:#fff;border:none;padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap;margin-left:8px;transition:all .2s}
+.action-item-btn:hover{background:#2563eb;box-shadow:0 0 10px rgba(59,130,246,0.3)}
+
+/* Charts */
+.chart-container{display:flex;align-items:flex-start;justify-content:center;min-height:200px}
+.chart-legend{display:flex;flex-direction:column;gap:8px;margin-left:24px}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary)}
+.legend-dot{width:10px;height:10px;border-radius:3px}
+.chart-bar-bg{fill:#1e293b}
+.chart-bar{transition:opacity .2s}
+.chart-bar:hover{opacity:.85}
+.chart-label{font-size:11px;fill:var(--text-muted)}
+.chart-axis{font-size:10px;fill:var(--text-muted)}
+.chart-grid{stroke:#1e293b;stroke-width:1}
+.chart-tooltip-bg{fill:var(--bg-card);stroke:var(--border);rx:6}
+.chart-tooltip-text{font-size:11px;fill:var(--text)}
+
+/* Table */
+.tab-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.tab-header h2{font-size:18px;font-weight:600}
+.tab-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.search-input,.filter-select{padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--bg-card);color:var(--text);height:36px;outline:none;transition:all .2s}
+.search-input:focus,.filter-select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+.search-input{min-width:180px}
+.filter-select{min-width:130px}
+.btn-primary{background:linear-gradient(135deg,var(--primary),#4f46e5);color:#fff;border:none;padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;height:36px;transition:all .2s;box-shadow:0 2px 8px rgba(59,130,246,0.2)}
+.btn-primary:hover{box-shadow:0 4px 16px rgba(59,130,246,0.35);transform:translateY(-1px)}
+.btn-primary svg{width:14px;height:14px}
+
+.table-container{background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);overflow-x:auto}
+.data-table{width:100%;border-collapse:collapse;font-size:13px}
+.data-table th{background:rgba(255,255,255,0.02);padding:12px 14px;text-align:left;font-weight:600;color:var(--text-secondary);border-bottom:1px solid var(--border);white-space:nowrap;font-size:12px;text-transform:uppercase;letter-spacing:0.3px}
+.data-table td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text)}
+.data-table tbody tr:hover{background:rgba(255,255,255,0.03)}
+.data-table tbody tr:last-child td{border-bottom:none}
+.row-actions{display:flex;gap:4px}
+.row-btn{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-muted);transition:all .2s}
+.row-btn:hover{background:rgba(255,255,255,0.05);color:var(--text);border-color:var(--border-light)}
+.row-btn.delete:hover{color:var(--danger);border-color:rgba(239,68,68,0.4);background:rgba(239,68,68,0.08)}
+.row-btn svg{width:14px;height:14px}
+
+/* Badges - dark theme */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500}
+.badge-gray{background:rgba(148,163,184,0.12);color:#94a3b8}
+.badge-blue{background:rgba(59,130,246,0.15);color:#60a5fa}
+.badge-green{background:rgba(16,185,129,0.15);color:#34d399}
+.badge-amber{background:rgba(245,158,11,0.15);color:#fbbf24}
+.badge-red{background:rgba(239,68,68,0.15);color:#f87171}
+.badge-purple{background:rgba(139,92,246,0.15);color:#a78bfa}
+
+/* Empty */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-muted)}
+.empty-state svg{width:48px;height:48px;margin-bottom:12px;opacity:.3}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:1000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg-card);border-radius:var(--radius);width:100%;max-width:720px;margin:20px 0;box-shadow:var(--shadow);border:1px solid var(--border)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+.modal-header h3{font-size:16px;font-weight:600}
+.modal-body{padding:20px;max-height:60vh;overflow-y:auto}
+.form-section{margin-bottom:20px}
+.form-section h4{font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-field{display:flex;flex-direction:column;gap:5px}
+.form-field.full{grid-column:1/-1}
+.form-field label{font-size:12px;color:var(--text-secondary);font-weight:500}
+.form-field label .req{color:var(--danger)}
+.form-field input,.form-field select,.form-field textarea{padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;color:var(--text);background:var(--bg);width:100%;outline:none;transition:all .2s}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+.form-field textarea{resize:vertical;min-height:70px;font-family:inherit}
+.form-actions{display:flex;justify-content:flex-end;gap:10px;padding:16px 20px;border-top:1px solid var(--border)}
+.btn-secondary{background:transparent;color:var(--text);border:1px solid var(--border);padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;height:36px;transition:all .2s}
+.btn-secondary:hover{background:rgba(255,255,255,0.05);border-color:var(--border-light)}
+
+/* Toast */
+.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-20px);background:var(--bg-card);color:var(--text);padding:12px 24px;border-radius:var(--radius-sm);font-size:13px;z-index:2000;opacity:0;transition:all .3s;pointer-events:none;border:1px solid var(--border);box-shadow:var(--shadow)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{border-color:rgba(16,185,129,0.3);color:#34d399}
+.toast.error{border-color:rgba(239,68,68,0.3);color:#f87171}
+
+/* Confirm */
+.confirm-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:1100;align-items:center;justify-content:center}
+.confirm-overlay.show{display:flex}
+.confirm-box{background:var(--bg-card);border-radius:var(--radius);padding:28px;max-width:380px;width:90%;text-align:center;border:1px solid var(--border);box-shadow:var(--shadow)}
+.confirm-box p{margin-bottom:20px;font-size:14px;color:var(--text-secondary)}
+.confirm-box .confirm-actions{display:flex;gap:10px;justify-content:center}
+.confirm-box .btn-danger{background:var(--danger);color:#fff;border:none;padding:8px 18px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;transition:all .2s}
+.confirm-box .btn-danger:hover{background:#dc2626;box-shadow:0 0 12px rgba(239,68,68,0.3)}
+
+/* Mobile */
+.mobile-nav{display:none}
+.mobile-sidebar-toggle{display:none}
+
+@media(max-width:1024px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .dash-grid{grid-template-columns:1fr}
+}
+
+@media(max-width:768px){
+  .sidebar{display:none}
+  .main-content{margin-left:0}
+  .mobile-sidebar-toggle{display:flex;position:fixed;top:12px;left:12px;z-index:300;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;align-items:center;justify-content:center;color:var(--text);cursor:pointer}
+  .mobile-sidebar-toggle svg{width:18px;height:18px}
+  .sidebar.mobile-open{display:flex;position:fixed;width:220px;box-shadow:var(--shadow)}
+  .app-header{padding-left:56px}
+  .nav-tabs{display:none}
+  .mobile-nav{display:flex;position:fixed;bottom:0;left:0;width:100%;background:var(--bg-header);border-top:1px solid var(--border);z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+  .mobile-tab{flex:1;padding:8px 4px;border:none;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--text-muted)}
+  .mobile-tab.active{color:var(--primary)}
+  .mobile-tab svg{width:20px;height:20px}
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .form-grid{grid-template-columns:1fr}
+  .tab-actions{width:100%}
+  .search-input{flex:1;min-width:0}
+  .page-content{padding:12px}
+  .header-left h1{font-size:16px}
+  .kpi-value{font-size:20px}
+  .data-table{font-size:12px}
+  .data-table th,.data-table td{padding:8px}
+  .modal{margin:0}
+  .modal-overlay{padding:0}
+  .modal-body{max-height:70vh}
+}
+
+/* Card list for mobile */
+.mobile-card-list{display:none}
+@media(max-width:768px){
+  .data-table{display:none}
+  .mobile-card-list{display:block}
+  .mc-item{background:var(--bg-card);border-radius:var(--radius);padding:14px;margin-bottom:10px;border:1px solid var(--border)}
+  .mc-item-header{display:flex;justify-content:space-between;align-items:start;margin-bottom:10px}
+  .mc-item-title{font-weight:600;font-size:14px;color:var(--text)}
+  .mc-item-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);margin:5px 0}
+  .mc-item-actions{display:flex;gap:10px;margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
+}
+
+/* Import input hidden */
+#importFile{display:none}
+
+/* Section title */
+.section-title{font-size:16px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.section-title::before{content:'';width:4px;height:18px;background:var(--primary);border-radius:2px}
+
+/* Tooltip for charts */
+.chart-tooltip{position:absolute;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:12px;pointer-events:none;opacity:0;transition:opacity .2s;z-index:50;box-shadow:var(--shadow-card)}
+.chart-tooltip.show{opacity:1}
+
+/* ====== 经营看板 ====== */
+.kpi-grid.five{grid-template-columns:repeat(5,1fr)}
+.kpi-icon.purple{background:var(--purple-glow);color:var(--purple)}
+.kpi-value.purple{color:var(--purple)}
+.kpi-card.purple::before{background:var(--purple)}
+.dim-switch{display:flex;gap:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:3px}
+.dim-btn{border:none;background:none;color:var(--text-muted);padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.dim-btn:hover{color:var(--text);background:rgba(255,255,255,0.04)}
+.dim-btn.active{background:linear-gradient(135deg,var(--primary),#4f46e5);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,0.3)}
+.fc-table-note{font-size:11px;color:var(--text-muted);margin-top:8px}
+.fc-ratio-neg{color:var(--danger)}
+.fc-ratio-pos{color:var(--success)}
+.legend-inline{display:flex;gap:16px;font-size:12px;color:var(--text-secondary);margin-bottom:8px;flex-wrap:wrap}
+.legend-inline .li{display:flex;align-items:center;gap:6px}
+.legend-inline .dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+.legend-inline .line{width:14px;height:3px;border-radius:2px;display:inline-block}
+/* 预测状态条 */
+.fc-status-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:linear-gradient(135deg,rgba(59,130,246,0.14),rgba(16,185,129,0.08));border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:14px}
+.fc-status-chip{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;white-space:nowrap}
+.fc-status-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 8px rgba(16,185,129,0.6);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.fc-status-chip .dim{color:var(--text-muted);font-weight:400}
+.fc-progress-track{display:flex;gap:3px;flex:1;min-width:220px;max-width:420px}
+.fc-progress-cell{height:10px;border-radius:3px;background:rgba(255,255,255,0.08);flex:1;position:relative;transition:background .3s}
+.fc-progress-cell.on{background:linear-gradient(180deg,#3b82f6,#1d4ed8)}
+.fc-progress-cell.today{outline:1px solid var(--warning)}
+/* 全年度达成总览 */
+.fc-ach-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.fc-ach-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden;transition:border-color .2s}
+.fc-ach-card:hover{border-color:rgba(59,130,246,0.5)}
+.fc-ach-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--primary)}
+.fc-ach-card.success::before{background:var(--success)}
+.fc-ach-card.purple::before{background:var(--purple)}
+.fc-ach-card.warning::before{background:var(--warning)}
+.fc-ach-label{font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center}
+.fc-ach-label .tag{font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text-secondary)}
+.fc-ach-value{font-size:20px;font-weight:700;margin:4px 0 2px;color:var(--text)}
+.fc-ach-rate{font-size:12px;color:var(--text-secondary)}
+.fc-ach-rate b{font-size:16px}
+.fc-ach-rate .up{color:var(--success)}
+.fc-ach-rate .down{color:var(--danger)}
+.fc-ach-rate .mid{color:var(--warning)}
+/* 预算目标拆分表 */
+.target-table td,.target-table th{white-space:nowrap;text-align:center}
+.target-table td:first-child,.target-table th:first-child{text-align:left}
+.target-table td:nth-child(2),.target-table th:nth-child(2){text-align:left}
+.rate-badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600}
+.rate-badge.up{color:var(--success);background:var(--success-glow)}
+.rate-badge.mid{color:var(--warning);background:var(--warning-glow)}
+.rate-badge.down{color:var(--danger);background:var(--danger-glow)}
+.fc-ach-bar{height:6px;background:rgba(255,255,255,0.08);border-radius:3px;margin-top:8px;overflow:hidden}
+.fc-ach-bar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,#3b82f6,#60a5fa);transition:width .6s ease}
+.fc-ach-card.success .fc-ach-bar i{background:linear-gradient(90deg,#10b981,#34d399)}
+.fc-ach-card.purple .fc-ach-bar i{background:linear-gradient(90deg,#8b5cf6,#a78bfa)}
+.fc-ach-card.warning .fc-ach-bar i{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.fc-ach-card.info .fc-ach-bar i{background:linear-gradient(90deg,#06b6d4,#22d3ee)}
+.fc-ach-target{font-size:11px;color:var(--text-muted);margin-top:6px;display:flex;justify-content:space-between}
+/* 表格达成率列 */
+.fc-rate-cell{display:flex;align-items:center;gap:6px;min-width:120px}
+.fc-rate-cell .bar{flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;min-width:50px}
+.fc-rate-cell .bar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,#3b82f6,#60a5fa);transition:width .5s}
+.fc-rate-cell.ok .bar i{background:linear-gradient(90deg,#10b981,#34d399)}
+.fc-rate-cell.warn .bar i{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.fc-rate-cell.bad .bar i{background:linear-gradient(90deg,#ef4444,#f87171)}
+.fc-rate-cell .num{font-size:12px;font-weight:600;white-space:nowrap}
+/* 月度预算设置弹窗 */
+.budget-split-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;background:rgba(59,130,246,0.06);border:1px dashed var(--border);border-radius:8px}
+.budget-table input.bd-input{width:100%;min-width:90px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text);font-size:12px;box-sizing:border-box}
+.budget-table input.bd-input:focus{outline:none;border-color:var(--primary)}
+.budget-table tfoot td{font-weight:600;color:var(--primary)}
+@media(max-width:1200px){.fc-ach-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){.fc-ach-grid{grid-template-columns:1fr 1fr}.fc-rate-cell{min-width:90px}.budget-table input.bd-input{min-width:64px}}
+@media(max-width:1200px){.kpi-grid.five{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:768px){.kpi-grid.five{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app-container">
+<!-- Mobile sidebar toggle -->
+<button class="mobile-sidebar-toggle" onclick="toggleMobileSidebar()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+    <span class="logo-text">运营管理平台</span>
+  </div>
+  <button class="sidebar-toggle" onclick="toggleSidebar()" title="收起/展开"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></button>
+
+  <nav class="sidebar-nav">
+    <div class="nav-group">
+      <div class="nav-group-title">核心模块</div>
+      <button class="nav-item active" data-tab="finance" onclick="switchTab('finance')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/><circle cx="19" cy="8" r="1.6"/></svg>
+        <span class="nav-text">经营看板</span>
+      </button>
+      <button class="nav-item" data-tab="dashboard" onclick="switchTab('dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span class="nav-text">运营看板</span>
+      </button>
+      <button class="nav-item" data-tab="target" onclick="switchTab('target')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        <span class="nav-text">预算目标拆分</span>
+      </button>
+      <button class="nav-item" data-tab="contract" onclick="switchTab('contract')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="nav-text">合同管理</span>
+      </button>
+      <button class="nav-item" data-tab="project" onclick="switchTab('project')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+        <span class="nav-text">项目管理</span>
+      </button>
+      <button class="nav-item" data-tab="acceptance" onclick="switchTab('acceptance')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span class="nav-text">验收管理</span>
+      </button>
+      <button class="nav-item" data-tab="payment" onclick="switchTab('payment')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        <span class="nav-text">回款管理</span>
+      </button>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-title">数据工具</div>
+      <button class="nav-item" onclick="exportJSON()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span class="nav-text">导出数据</span>
+      </button>
+      <button class="nav-item" onclick="importJSON()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span class="nav-text">导入数据</span>
+      </button>
+    </div>
+  </nav>
+  <div class="sidebar-footer"><span>v1.0 · MySQL版</span></div>
+</aside>
+
+<!-- Main Content -->
+<main class="main-content">
+<!-- Header -->
+<div class="app-header">
+  <div class="header-left">
+    <div class="breadcrumb" id="breadcrumb"><span class="current">经营看板</span></div>
+  </div>
+  <div class="header-right">
+    <div class="sync-indicator"><span class="sync-dot"></span><span id="syncText">数据库连接中...</span></div>
+    <button class="btn-icon" onclick="exportJSON()" title="导出备份"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
+    <input type="file" id="importFile" accept=".json" onchange="handleImport(event)">
+    <button class="btn-icon" onclick="importJSON()" title="导入备份"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg></button>
+  </div>
+</div>
+
+<div class="page-content">
+<!-- Dashboard -->
+<section id="tab-dashboard" class="tab-content">
+  <div class="page-title">运营看板</div>
+  <div class="page-subtitle">合同 · 项目 · 验收 · 回款 全流程数据概览</div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <div class="kpi-icon primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+        <div class="kpi-meta"><div class="kpi-label">合同总额</div><div class="kpi-value primary" id="kpiTotalAmount">¥0</div></div>
+      </div>
+      <div class="kpi-sub" id="kpiTotalCount">共 0 个合同</div>
+    </div>
+    <div class="kpi-card success">
+      <div class="kpi-header">
+        <div class="kpi-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></div>
+        <div class="kpi-meta"><div class="kpi-label">执行中项目</div><div class="kpi-value success" id="kpiActiveProjects">0</div></div>
+      </div>
+      <div class="kpi-sub" id="kpiActiveSub">进行中项目</div>
+    </div>
+    <div class="kpi-card warning">
+      <div class="kpi-header">
+        <div class="kpi-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <div class="kpi-meta"><div class="kpi-label">待验收</div><div class="kpi-value warning" id="kpiPendingAcceptance">0</div></div>
+      </div>
+      <div class="kpi-sub" id="kpiAcceptanceSub">待验收/验收中</div>
+    </div>
+    <div class="kpi-card danger">
+      <div class="kpi-header">
+        <div class="kpi-icon danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+        <div class="kpi-meta"><div class="kpi-label">待回款金额</div><div class="kpi-value danger" id="kpiPendingPayment">¥0</div></div>
+      </div>
+      <div class="kpi-sub" id="kpiPaymentSub">未回清金额</div>
+    </div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="dash-card full">
+      <div class="chart-section-title">待处理预警</div>
+      <div class="action-list" id="actionItems"><div class="empty-state">加载中...</div></div>
+    </div>
+
+    <div class="dash-card full">
+      <div class="chart-section-title">合同月度金额趋势</div>
+      <div id="trendBarChart" style="min-height:260px"></div>
+    </div>
+
+    <div class="dash-card">
+      <div class="chart-section-title">合同状态分布</div>
+      <div id="contractPieChart" style="min-height:220px"></div>
+    </div>
+
+    <div class="dash-card">
+      <div class="chart-section-title">回款进度 TOP6</div>
+      <div id="paymentBarChart" style="min-height:220px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Finance -->
+<section id="tab-finance" class="tab-content active">
+  <div class="page-title">经营看板</div>
+  <div class="page-subtitle">年度收入 · 贡献利润 · 贡献利润率 · 现金流 预测达成分析；各月 / 各季度 / 半年度 分时段收入与贡献利润达成</div>
+
+  <!-- 预测月份状态条 -->
+  <div class="fc-status-bar">
+    <span class="fc-status-chip"><span class="dot"></span>预测至 <b id="fcForecastTo" style="margin-left:2px">—</b></span>
+    <span class="fc-status-chip dim">已录入 <b id="fcEnteredCnt" style="margin:0 2px">0</b>/12 月</span>
+    <div class="fc-progress-track" id="fcMonthTrack"></div>
+    <div class="tab-actions" style="margin-left:auto">
+      <select class="filter-select" id="forecastYear" onchange="switchForecastYear()" style="min-width:90px"></select>
+      <button class="btn-secondary" onclick="openBudgetModal()" title="按月设置预算，季度/半年度自动聚合，用于计算达成率"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>预算</button>
+      <button class="btn-primary" onclick="openForecastModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增月度预测</button>
+    </div>
+  </div>
+
+  <!-- 年度预测达成总览 (全年口径) -->
+  <div class="fc-ach-grid" id="fcAchGrid"></div>
+
+  <!-- 分时段标签: 各月 / 各季度 / 半年度 -->
+  <div class="tab-header">
+    <div class="tab-actions" style="width:100%;justify-content:space-between">
+      <div class="dim-switch">
+        <button class="dim-btn active" data-dim="month" onclick="setForecastDim('month')">各月</button>
+        <button class="dim-btn" data-dim="quarter" onclick="setForecastDim('quarter')">各季度</button>
+        <button class="dim-btn" data-dim="half" onclick="setForecastDim('half')">半年度</button>
+      </div>
+      <span style="font-size:11px;color:var(--text-muted)">达成率 = 预测值 ÷ 预算值（预算逐月设置，季度/半年度自动聚合，点「预算」可调）</span>
+    </div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="dash-card full">
+      <div class="chart-section-title" id="fcAchChartTitle">各月 收入 · 贡献利润达成率</div>
+      <div id="forecastAchChart" style="min-height:280px"></div>
+    </div>
+    <div class="dash-card full">
+      <div class="chart-section-title" id="fcTableTitle">各月达成明细</div>
+      <div class="table-container">
+        <table class="data-table"><thead><tr><th>期间</th><th>预测收入</th><th>预算收入</th><th>收入达成率</th><th>预测贡献利润</th><th>预算贡献利润</th><th>利润达成率</th><th>贡献利润率</th><th>操作</th></tr></thead><tbody id="forecastBody"></tbody></table>
+        <div class="mobile-card-list" id="forecastCards"></div>
+      </div>
+      <div class="fc-table-note">* 达成率 = 该周期预测值 ÷ 该周期预算（月度=当月预算，季度=当季预算合计，半年度=该半年预算合计）；仅月度行支持编辑与删除</div>
+    </div>
+  </div>
+</section>
+
+<!-- 预算目标拆分 (预测结果模板: 实际值7月 / 2026年目标-V1 / 偏差 / 达成率) -->
+<section id="tab-target" class="tab-content">
+  <div class="page-title">预算目标拆分</div>
+  <div class="page-subtitle">收入 · 贡献利润 · 现金流 × 软工 / 硬工 / 云 / 智能汽车 / 汇总 — 实际值(7月) vs 2026年目标-V1</div>
+
+  <div class="fc-status-bar" style="margin-bottom:14px">
+    <span class="fc-status-chip"><span class="dot"></span>口径：实际值(7月) / 2026年目标-V1</span>
+    <span class="fc-status-chip dim">偏差 = 实际 − 目标 · 达成率 = 实际 ÷ 目标</span>
+    <div class="tab-actions" style="margin-left:auto">
+      <button class="btn-primary" onclick="openTargetModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增记录</button>
+    </div>
+  </div>
+
+  <div class="dash-card full">
+    <div class="chart-section-title">预算目标拆分明细（单位：万元）</div>
+    <div class="table-container" style="overflow-x:auto">
+      <table class="data-table target-table">
+        <thead>
+          <tr>
+            <th rowspan="2">指标</th><th rowspan="2">BU</th>
+            <th colspan="7">实际值（7月）</th>
+            <th colspan="7">2026年目标-V1</th>
+            <th colspan="7">偏差（实际-目标）</th>
+            <th colspan="8">目标达成率</th>
+            <th rowspan="2">操作</th>
+          </tr>
+          <tr>
+            <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>H1</th><th>H2</th><th>YTD</th>
+            <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>H1</th><th>H2</th><th>YTD</th>
+            <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>H1</th><th>H2</th><th>YTD</th>
+            <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>H1</th><th>H1+Q3</th><th>H2</th><th>YTD</th>
+          </tr>
+        </thead>
+        <tbody id="targetBody"></tbody>
+      </table>
+      <div class="mobile-card-list" id="targetCards"></div>
+    </div>
+    <div class="fc-table-note">* 数据来源：《预测结果模板.xlsx》预算目标拆分 Sheet；达成率 H1+Q3 = (H1实际+Q3实际) ÷ (H1目标+Q3目标)；达成率 ≥95% 绿 / 70-95% 黄 / &lt;70% 红；偏差为正表示超额、为负表示缺口（现金流/费用类负偏差视指标含义解读）</div>
+  </div>
+</section>
+
+<!-- Contract -->
+<section id="tab-contract" class="tab-content">
+  <div class="page-title">合同管理</div>
+  <div class="page-subtitle">合同编号 · 项目名称 · 客户 · 金额 · 状态 · 签订日期</div>
+  <div class="tab-header">
+    <div class="tab-actions" style="width:100%;justify-content:flex-end">
+      <input type="search" class="search-input" placeholder="搜索合同/项目/客户..." oninput="applyFilter('contract')">
+      <select class="filter-select" id="filter-contract" onchange="applyFilter('contract')"><option value="">全部状态</option></select>
+      <button class="btn-primary" onclick="openModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增</button>
+    </div>
+  </div>
+  <div class="table-container">
+    <table class="data-table"><thead><tr><th>合同编号</th><th>项目名称</th><th>客户名称</th><th>合同金额</th><th>合同状态</th><th>签订日期</th><th>操作</th></tr></thead><tbody id="contractBody"></tbody></table>
+    <div class="mobile-card-list" id="contractCards"></div>
+  </div>
+</section>
+
+<!-- Project -->
+<section id="tab-project" class="tab-content">
+  <div class="page-title">项目管理</div>
+  <div class="page-subtitle">项目状态 · 负责人 · 起止日期</div>
+  <div class="tab-header">
+    <div class="tab-actions" style="width:100%;justify-content:flex-end">
+      <input type="search" class="search-input" placeholder="搜索项目/客户..." oninput="applyFilter('project')">
+      <select class="filter-select" id="filter-project" onchange="applyFilter('project')"><option value="">全部状态</option></select>
+      <button class="btn-primary" onclick="openModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增</button>
+    </div>
+  </div>
+  <div class="table-container">
+    <table class="data-table"><thead><tr><th>项目名称</th><th>客户名称</th><th>项目状态</th><th>负责人</th><th>开始日期</th><th>截止日期</th><th>操作</th></tr></thead><tbody id="projectBody"></tbody></table>
+    <div class="mobile-card-list" id="projectCards"></div>
+  </div>
+</section>
+
+<!-- Acceptance -->
+<section id="tab-acceptance" class="tab-content">
+  <div class="page-title">验收管理</div>
+  <div class="page-subtitle">验收状态 · 计划/实际验收日期</div>
+  <div class="tab-header">
+    <div class="tab-actions" style="width:100%;justify-content:flex-end">
+      <input type="search" class="search-input" placeholder="搜索项目/客户..." oninput="applyFilter('acceptance')">
+      <select class="filter-select" id="filter-acceptance" onchange="applyFilter('acceptance')"><option value="">全部状态</option></select>
+      <button class="btn-primary" onclick="openModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增</button>
+    </div>
+  </div>
+  <div class="table-container">
+    <table class="data-table"><thead><tr><th>项目名称</th><th>客户名称</th><th>验收状态</th><th>计划验收日期</th><th>实际验收日期</th><th>项目状态</th><th>操作</th></tr></thead><tbody id="acceptanceBody"></tbody></table>
+    <div class="mobile-card-list" id="acceptanceCards"></div>
+  </div>
+</section>
+
+<!-- Payment -->
+<section id="tab-payment" class="tab-content">
+  <div class="page-title">回款管理</div>
+  <div class="page-subtitle">合同金额 · 已回款 · 待回款 · 回款状态 · 计划日期</div>
+  <div class="tab-header">
+    <div class="tab-actions" style="width:100%;justify-content:flex-end">
+      <input type="search" class="search-input" placeholder="搜索项目/客户..." oninput="applyFilter('payment')">
+      <select class="filter-select" id="filter-payment" onchange="applyFilter('payment')"><option value="">全部状态</option></select>
+      <button class="btn-primary" onclick="openModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增</button>
+    </div>
+  </div>
+  <div class="table-container">
+    <table class="data-table"><thead><tr><th>项目名称</th><th>客户名称</th><th>合同金额</th><th>已回款</th><th>待回款</th><th>回款状态</th><th>计划回款日期</th><th>操作</th></tr></thead><tbody id="paymentBody"></tbody></table>
+    <div class="mobile-card-list" id="paymentCards"></div>
+  </div>
+</section>
+</div>
+</main>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modalTitle">新增记录</h3><button class="btn-icon" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <form id="recordForm" onsubmit="submitForm(event)">
+      <div class="modal-body">
+        <div class="form-section"><h4>合同信息</h4><div class="form-grid">
+          <div class="form-field"><label>合同编号 <span class="req">*</span></label><input type="text" data-field="合同编号" data-type="text" required></div>
+          <div class="form-field"><label>项目名称 <span class="req">*</span></label><input type="text" data-field="项目名称" data-type="text" required></div>
+          <div class="form-field"><label>客户名称 <span class="req">*</span></label><input type="text" data-field="客户名称" data-type="text" required></div>
+          <div class="form-field"><label>合同金额 <span class="req">*</span></label><input type="number" step="0.01" data-field="合同金额" data-type="currency" required></div>
+          <div class="form-field"><label>合同状态 <span class="req">*</span></label><select data-field="合同状态" data-type="select" required><option value="">请选择</option></select></div>
+          <div class="form-field"><label>签订日期</label><input type="date" data-field="签订日期" data-type="date"></div>
+        </div></div>
+        <div class="form-section"><h4>项目信息</h4><div class="form-grid">
+          <div class="form-field"><label>项目状态</label><select data-field="项目状态" data-type="select"><option value="">请选择</option></select></div>
+          <div class="form-field"><label>项目负责人</label><input type="text" data-field="项目负责人" data-type="text"></div>
+          <div class="form-field"><label>项目开始日期</label><input type="date" data-field="项目开始日期" data-type="date"></div>
+          <div class="form-field"><label>项目截止日期</label><input type="date" data-field="项目截止日期" data-type="date"></div>
+        </div></div>
+        <div class="form-section"><h4>验收信息</h4><div class="form-grid">
+          <div class="form-field"><label>验收状态</label><select data-field="验收状态" data-type="select"><option value="">请选择</option></select></div>
+          <div class="form-field"><label>计划验收日期</label><input type="date" data-field="计划验收日期" data-type="date"></div>
+          <div class="form-field"><label>实际验收日期</label><input type="date" data-field="实际验收日期" data-type="date"></div>
+        </div></div>
+        <div class="form-section"><h4>回款信息</h4><div class="form-grid">
+          <div class="form-field"><label>回款金额</label><input type="number" step="0.01" data-field="回款金额" data-type="currency"></div>
+          <div class="form-field"><label>回款状态</label><select data-field="回款状态" data-type="select"><option value="">请选择</option></select></div>
+          <div class="form-field"><label>计划回款日期</label><input type="date" data-field="计划回款日期" data-type="date"></div>
+        </div></div>
+        <div class="form-section"><h4>其他</h4><div class="form-grid">
+          <div class="form-field full"><label>备注</label><textarea data-field="备注" data-type="text"></textarea></div>
+        </div></div>
+      </div>
+      <div class="form-actions"><button type="button" class="btn-secondary" onclick="closeModal()">取消</button><button type="submit" class="btn-primary" id="submitBtn">保存</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Forecast Modal -->
+<div class="modal-overlay" id="forecastModalOverlay">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header"><h3 id="forecastModalTitle">新增月度预测</h3><button class="btn-icon" onclick="closeForecastModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <form id="forecastForm" onsubmit="submitForecastForm(event)">
+      <div class="modal-body">
+        <div class="form-section"><h4>预测期间</h4><div class="form-grid">
+          <div class="form-field"><label>年度 <span class="req">*</span></label><select id="fcYear" required></select></div>
+          <div class="form-field"><label>月份 <span class="req">*</span></label><select id="fcMonth" required></select></div>
+        </div></div>
+        <div class="form-section"><h4>经营指标（元）</h4><div class="form-grid">
+          <div class="form-field"><label>预测收入 <span class="req">*</span></label><input type="number" step="0.01" min="0" id="fcRevenue" required placeholder="0.00"></div>
+          <div class="form-field"><label>贡献利润</label><input type="number" step="0.01" id="fcProfit" placeholder="0.00"></div>
+          <div class="form-field"><label>现金流</label><input type="number" step="0.01" id="fcCash" placeholder="可填负数"></div>
+          <div class="form-field"><label>费用</label><input type="number" step="0.01" min="0" id="fcExpense" placeholder="0.00"></div>
+        </div></div>
+        <div class="form-section"><h4>其他</h4><div class="form-grid">
+          <div class="form-field full"><label>备注</label><textarea id="fcRemark" placeholder="选填"></textarea></div>
+        </div></div>
+      </div>
+      <div class="form-actions"><button type="button" class="btn-secondary" onclick="closeForecastModal()">取消</button><button type="submit" class="btn-primary" id="forecastSubmitBtn">保存</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Budget Modal (月度预算) -->
+<div class="modal-overlay" id="budgetModalOverlay">
+  <div class="modal" style="max-width:880px">
+    <div class="modal-header"><h3 id="budgetModalTitle">月度预算设置</h3><button class="btn-icon" onclick="closeBudgetModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <form id="budgetForm" onsubmit="submitBudgetForm(event)">
+      <div class="modal-body">
+        <div class="form-section">
+          <h4><span id="budgetYearLabel">2026</span> 年月度预算（元）· 季度 / 半年度 / 全年自动聚合</h4>
+          <div class="form-grid">
+            <div class="form-field"><label>全年预算收入</label><input type="number" step="0.01" min="0" id="bdSplitRev" placeholder="0.00"></div>
+            <div class="form-field"><label>全年预算贡献利润</label><input type="number" step="0.01" min="0" id="bdSplitProfit" placeholder="0.00"></div>
+            <div class="form-field"><label>全年预算现金流</label><input type="number" step="0.01" id="bdSplitCash" placeholder="0.00"></div>
+            <div class="form-field"><label>全年预算费用</label><input type="number" step="0.01" min="0" id="bdSplitExp" placeholder="0.00"></div>
+          </div>
+          <div class="budget-split-bar">
+            <span style="font-size:12px;color:var(--text-muted)">快速分摊到 12 个月：</span>
+            <select id="bdSplitMode" class="filter-select" style="min-width:130px">
+              <option value="even">均摊 12 个月</option>
+              <option value="grow">递增分摊（年初低年末高）</option>
+              <option value="ratio">按预测收入比例分摊</option>
+            </select>
+            <button type="button" class="btn-secondary" onclick="applyBudgetSplit()">应用到 12 个月</button>
+            <span style="font-size:11px;color:var(--text-muted)">填左侧全年总额 → 选模式 → 应用，然后可在下方逐月微调</span>
+          </div>
+        </div>
+        <div class="table-container" style="max-height:300px;overflow:auto">
+          <table class="data-table budget-table">
+            <thead><tr><th>月份</th><th>预算收入</th><th>预算贡献利润</th><th>预算现金流</th><th>预算费用</th></tr></thead>
+            <tbody id="budgetTableBody"></tbody>
+            <tfoot><tr id="budgetTableFoot"></tr></tfoot>
+          </table>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);line-height:1.6;margin-top:8px">* 达成率 = 预测值 ÷ 对应周期预算（月度=当月预算，季度/半年度/全年=该周期预算合计）；预算费用达成率超 100% 表示超支预警</div>
+      </div>
+      <div class="form-actions"><button type="button" class="btn-secondary" onclick="closeBudgetModal()">取消</button><button type="submit" class="btn-primary" id="budgetSubmitBtn">保存预算</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Target Modal (预算目标拆分) -->
+<div class="modal-overlay" id="targetModalOverlay">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-header"><h3 id="targetModalTitle">预算目标拆分</h3><button class="btn-icon" onclick="closeTargetModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <form id="targetForm" onsubmit="submitTargetForm(event)">
+      <div class="modal-body">
+        <div class="form-section"><h4>维度（保存后不可改，如需调整请删除重建）</h4><div class="form-grid">
+          <div class="form-field"><label>指标 <span class="req">*</span></label><select id="tgMetric" required><option value="收入">收入</option><option value="贡献利润">贡献利润</option><option value="现金流">现金流</option></select></div>
+          <div class="form-field"><label>BU <span class="req">*</span></label><select id="tgBu" required><option value="软工">软工</option><option value="硬工">硬工</option><option value="云">云</option><option value="智能汽车">智能汽车</option><option value="汇总">汇总</option></select></div>
+        </div></div>
+        <div class="form-section"><h4>实际值（7月）</h4><div class="form-grid">
+          <div class="form-field"><label>Q1实际</label><input type="number" step="0.000001" id="tgQ1Act" placeholder="0"></div>
+          <div class="form-field"><label>Q2实际</label><input type="number" step="0.000001" id="tgQ2Act" placeholder="0"></div>
+          <div class="form-field"><label>Q3实际</label><input type="number" step="0.000001" id="tgQ3Act" placeholder="0"></div>
+          <div class="form-field"><label>Q4实际</label><input type="number" step="0.000001" id="tgQ4Act" placeholder="0"></div>
+          <div class="form-field"><label>H1实际</label><input type="number" step="0.000001" id="tgH1Act" placeholder="0"></div>
+          <div class="form-field"><label>H2实际</label><input type="number" step="0.000001" id="tgH2Act" placeholder="0"></div>
+          <div class="form-field"><label>YTD实际</label><input type="number" step="0.000001" id="tgYtdAct" placeholder="0"></div>
+        </div></div>
+        <div class="form-section"><h4>2026年目标-V1</h4><div class="form-grid">
+          <div class="form-field"><label>Q1目标</label><input type="number" step="0.000001" id="tgQ1Tgt" placeholder="0"></div>
+          <div class="form-field"><label>Q2目标</label><input type="number" step="0.000001" id="tgQ2Tgt" placeholder="0"></div>
+          <div class="form-field"><label>Q3目标</label><input type="number" step="0.000001" id="tgQ3Tgt" placeholder="0"></div>
+          <div class="form-field"><label>Q4目标</label><input type="number" step="0.000001" id="tgQ4Tgt" placeholder="0"></div>
+          <div class="form-field"><label>H1目标</label><input type="number" step="0.000001" id="tgH1Tgt" placeholder="0"></div>
+          <div class="form-field"><label>H2目标</label><input type="number" step="0.000001" id="tgH2Tgt" placeholder="0"></div>
+          <div class="form-field"><label>YTD目标</label><input type="number" step="0.000001" id="tgYtdTgt" placeholder="0"></div>
+        </div></div>
+      </div>
+      <div class="form-actions"><button type="button" class="btn-secondary" onclick="closeTargetModal()">取消</button><button type="submit" class="btn-primary" id="targetSubmitBtn">保存</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Confirm -->
+<div class="confirm-overlay" id="confirmOverlay"><div class="confirm-box"><p id="confirmMsg">确认操作？</p><div class="confirm-actions"><button class="btn-secondary" onclick="hideConfirm()">取消</button><button class="btn-danger" id="confirmBtn">确认</button></div></div></div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Mobile Nav -->
+<nav class="mobile-nav">
+  <button class="mobile-tab active" data-tab="finance" onclick="switchTab('finance')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg><span>经营</span></button>
+  <button class="mobile-tab" data-tab="dashboard" onclick="switchTab('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span>看板</span></button>
+  <button class="mobile-tab" data-tab="target" onclick="switchTab('target')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>目标</span></button>
+  <button class="mobile-tab" data-tab="contract" onclick="switchTab('contract')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>合同</span></button>
+  <button class="mobile-tab" data-tab="project" onclick="switchTab('project')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg><span>项目</span></button>
+  <button class="mobile-tab" data-tab="acceptance" onclick="switchTab('acceptance')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span>验收</span></button>
+  <button class="mobile-tab" data-tab="payment" onclick="switchTab('payment')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><span>回款</span></button>
+</nav>
+
+<script>
+(function(){
+  'use strict';
+  var CACHE_PREFIX='wb_ops_mgmt_';
+  var ALL_DATA=[];
+  var SCHEMA_OPTIONS={};
+  var EDITING_ID=null;
+  var CONFIRM_CALLBACK=null;
+  var CURRENT_TAB='finance';
+
+  // 经营看板状态
+  var FC_DATA=[];          // 当前年份的全部月度记录 {_id,年度,月份,预测收入,贡献利润,现金流,费用,备注}
+  var FC_BUDGETS=[];       // 当前年份全部月度预算 [{_id,年度,月份,预算收入,预算贡献利润,预算现金流,预算费用}]
+  var FC_BUDGET=null;      // 全年预算聚合 (由 FC_BUDGETS 求和, 供 KPI/趋势图使用)
+  var FC_YEAR=2026;        // 当前选中年份
+  var FC_DIM='month';      // month | quarter | h1 | h2 | year
+  var FC_EDIT_ID=null;     // 经营预测编辑中的记录 _id
+
+  // 预算目标拆分状态
+  var TG_DATA=[];          // 全部目标拆分记录 [{_id,指标,BU,Q1实际,...,YTD目标}]
+  var TG_EDIT_ID=null;     // 编辑中的记录 _id
+
+  // Tab titles for breadcrumb
+  var TAB_TITLES={dashboard:'运营看板',finance:'经营看板',target:'预算目标拆分',contract:'合同管理',project:'项目管理',acceptance:'验收管理',payment:'回款管理'};
+
+  SCHEMA_OPTIONS['合同状态']=[
+    {id:'s1',text:'待签订'},{id:'s2',text:'已签订'},{id:'s3',text:'执行中'},{id:'s4',text:'已完成'},{id:'s5',text:'已终止'}
+  ];
+  SCHEMA_OPTIONS['项目状态']=[
+    {id:'p1',text:'未启动'},{id:'p2',text:'进行中'},{id:'p3',text:'待验收'},{id:'p4',text:'已验收'},{id:'p5',text:'已交付'}
+  ];
+  SCHEMA_OPTIONS['验收状态']=[
+    {id:'a1',text:'待验收'},{id:'a2',text:'验收中'},{id:'a3',text:'已验收'},{id:'a4',text:'不通过'}
+  ];
+  SCHEMA_OPTIONS['回款状态']=[
+    {id:'r1',text:'未回款'},{id:'r2',text:'部分回款'},{id:'r3',text:'已回清'}
+  ];
+
+  window.toast=function(msg,type){
+    var t=document.getElementById('toast');
+    t.textContent=msg;t.className='toast show'+(type?' '+type:'');
+    setTimeout(function(){t.className='toast';},2500);
+  };
+
+  window.showConfirm=function(msg,cb){
+    document.getElementById('confirmMsg').textContent=msg;
+    document.getElementById('confirmOverlay').classList.add('show');
+    CONFIRM_CALLBACK=cb;
+  };
+  window.hideConfirm=function(){
+    document.getElementById('confirmOverlay').classList.remove('show');
+    CONFIRM_CALLBACK=null;
+  };
+  document.getElementById('confirmBtn').onclick=function(){
+    window.hideConfirm();
+    if(CONFIRM_CALLBACK)CONFIRM_CALLBACK();
+  };
+
+  function pad(n){return n<10?'0'+n:''+n;}
+  function formatDate(v){if(!v)return '-';var d=new Date(v);if(isNaN(d.getTime()))return '-';return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+  function formatCurrency(v){if(v===null||v===undefined||v==='')return '¥0.00';var n=Number(v);if(isNaN(n))return '¥0.00';var p=n.toFixed(2).split('.');p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,',');return '¥'+p.join('.');}
+  function isOverdue(v){if(!v)return false;var d=new Date(v);if(isNaN(d.getTime()))return false;var t=new Date();t.setHours(0,0,0,0);return d<t;}
+  function isToday(v){if(!v)return false;var d=new Date(v);if(isNaN(d.getTime()))return false;var t=new Date();return d.getFullYear()===t.getFullYear()&&d.getMonth()===t.getMonth()&&d.getDate()===t.getDate();}
+
+  var BADGE_MAP={
+    '待签订':'badge-gray','已签订':'badge-blue','执行中':'badge-blue','已完成':'badge-green','已终止':'badge-red',
+    '未启动':'badge-gray','进行中':'badge-blue','待验收':'badge-amber','已验收':'badge-green','已交付':'badge-green',
+    '验收中':'badge-blue','不通过':'badge-red',
+    '未回款':'badge-red','部分回款':'badge-amber','已回清':'badge-green'
+  };
+  function badge(text){if(!text)return '<span class="badge badge-gray">-</span>';var cls=BADGE_MAP[text]||'badge-gray';return '<span class="badge '+cls+'">'+text+'</span>';}
+
+  var ICO_EDIT='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+  var ICO_DEL='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>';
+
+  window.toggleSidebar=function(){
+    document.getElementById('sidebar').classList.toggle('collapsed');
+  };
+  window.toggleMobileSidebar=function(){
+    document.getElementById('sidebar').classList.toggle('mobile-open');
+  };
+
+  window.switchTab=function(tab){
+    CURRENT_TAB=tab;
+    var tabs=document.querySelectorAll('.tab-content');
+    for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
+    document.getElementById('tab-'+tab).classList.add('active');
+    var navBtns=document.querySelectorAll('.nav-item');
+    for(var j=0;j<navBtns.length;j++)navBtns[j].classList.toggle('active',navBtns[j].getAttribute('data-tab')===tab);
+    var mobBtns=document.querySelectorAll('.mobile-tab');
+    for(var k=0;k<mobBtns.length;k++)mobBtns[k].classList.toggle('active',mobBtns[k].getAttribute('data-tab')===tab);
+    document.getElementById('breadcrumb').innerHTML='<span class="current">'+TAB_TITLES[tab]+'</span>';
+    document.getElementById('sidebar').classList.remove('mobile-open');
+  };
+
+  function populateSelects(){
+    Object.keys(SCHEMA_OPTIONS).forEach(function(fieldName){
+      var els=document.querySelectorAll('[data-field="'+fieldName+'"]');
+      for(var i=0;i<els.length;i++){
+        var el=els[i];
+        if(el.tagName==='SELECT'){
+          for(var j=0;j<SCHEMA_OPTIONS[fieldName].length;j++){
+            var opt=SCHEMA_OPTIONS[fieldName][j];
+            var o=document.createElement('option');
+            o.value=opt.text;o.textContent=opt.text;
+            el.appendChild(o);
+          }
+        }
+      }
+    });
+    populateFilter('合同状态','filter-contract');
+    populateFilter('项目状态','filter-project');
+    populateFilter('验收状态','filter-acceptance');
+    populateFilter('回款状态','filter-payment');
+  }
+  function populateFilter(fieldName,selectId){
+    var sel=document.getElementById(selectId);
+    if(!sel||!SCHEMA_OPTIONS[fieldName])return;
+    SCHEMA_OPTIONS[fieldName].forEach(function(opt){
+      var o=document.createElement('option');
+      o.value=opt.text;o.textContent=opt.text;
+      sel.appendChild(o);
+    });
+  }
+
+  function applyData(list){
+    ALL_DATA=list.sort(function(a,b){
+      var da=a['签订日期']||'',db=b['签订日期']||'';
+      return db<da?-1:db>da?1:0;
+    });
+    renderAll();
+  }
+  function loadData(){
+    fetch('/api/records',{method:'GET'})
+      .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+      .then(function(list){
+        document.getElementById('syncText').textContent='MySQL 数据库';
+        applyData(list);
+      })
+      .catch(function(err){
+        console.error('loadData error',err);
+        document.getElementById('syncText').textContent='数据库连接失败';
+        toast('数据库连接失败: '+err.message,'error');
+        applyData([]);
+      });
+  }
+
+  function renderAll(){
+    renderDashboard();
+    renderTable('contract');
+    renderTable('project');
+    renderTable('acceptance');
+    renderTable('payment');
+  }
+
+  function renderDashboard(){
+    var totalAmount=0,activeProjects=0,pendingAcceptance=0,pendingPayment=0;
+    var contractStatusCount={};
+    ALL_DATA.forEach(function(r){
+      var amt=Number(r['合同金额']||0);
+      totalAmount+=amt;
+      var cs=r['合同状态']||'未知';
+      contractStatusCount[cs]=(contractStatusCount[cs]||0)+1;
+      if(r['项目状态']==='进行中')activeProjects++;
+      if(r['验收状态']==='待验收'||r['验收状态']==='验收中')pendingAcceptance++;
+      if(r['回款状态']!=='已回清'){
+        var paid=Number(r['回款金额']||0);
+        pendingPayment+=(amt-paid);
+      }
+    });
+    document.getElementById('kpiTotalAmount').textContent=formatCurrency(totalAmount);
+    document.getElementById('kpiTotalCount').textContent='共 '+ALL_DATA.length+' 个合同';
+    document.getElementById('kpiActiveProjects').textContent=activeProjects;
+    document.getElementById('kpiActiveSub').textContent='进行中项目';
+    document.getElementById('kpiPendingAcceptance').textContent=pendingAcceptance;
+    document.getElementById('kpiAcceptanceSub').textContent='待验收/验收中';
+    document.getElementById('kpiPendingPayment').textContent=formatCurrency(pendingPayment);
+    document.getElementById('kpiPaymentSub').textContent='未回清金额';
+    renderActionItems();
+    renderTrendChart();
+    renderPieChart(contractStatusCount);
+    renderBarChart();
+  }
+
+  function renderActionItems(){
+    var items=[];
+    ALL_DATA.forEach(function(r){
+      var name=r['项目名称']||'-',client=r['客户名称']||'-';
+      if(r['验收状态']!=='已验收'&&r['验收状态']!=='不通过'){
+        var ad=r['计划验收日期'];
+        if(isOverdue(ad)){
+          items.push({type:'overdue',label:'验收逾期',name:name,client:client,date:formatDate(ad),recordId:r._id});
+        }else if(isToday(ad)){
+          items.push({type:'today',label:'今日验收到期',name:name,client:client,date:formatDate(ad),recordId:r._id});
+        }
+      }
+      if(r['回款状态']!=='已回清'){
+        var pd=r['计划回款日期'];
+        var amt=Number(r['合同金额']||0)-Number(r['回款金额']||0);
+        if(isOverdue(pd)){
+          items.push({type:'overdue',label:'回款逾期',name:name,client:client,date:formatDate(pd),extra:formatCurrency(amt),recordId:r._id});
+        }else if(isToday(pd)){
+          items.push({type:'today',label:'今日回款到期',name:name,client:client,date:formatDate(pd),extra:formatCurrency(amt),recordId:r._id});
+        }
+      }
+    });
+    var html='';
+    if(items.length===0){
+      html='<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><p>暂无待处理事项</p></div>';
+    }else{
+      items.forEach(function(it){
+        html+='<div class="action-item '+it.type+'">'+
+          '<div class="action-item-info">'+
+            '<div class="action-item-title"><span class="action-item-tag '+it.type+'">'+it.label+'</span>'+it.name+'</div>'+
+            '<div class="action-item-desc">'+it.client+(it.extra?' · 待回款 '+it.extra:'')+' · 计划日期 '+it.date+'</div>'+
+          '</div>'+
+          '<button class="action-item-btn" onclick="openModal(\''+it.recordId+'\')">处理</button>'+
+        '</div>';
+      });
+    }
+    document.getElementById('actionItems').innerHTML=html;
+  }
+
+  // Monthly trend chart (bar chart by sign_date month)
+  function renderTrendChart(){
+    var monthMap={};
+    ALL_DATA.forEach(function(r){
+      var sd=r['签订日期'];
+      if(!sd)return;
+      var m=sd.substring(0,7);
+      if(!monthMap[m])monthMap[m]={total:0,count:0};
+      monthMap[m].total+=Number(r['合同金额']||0);
+      monthMap[m].count++;
+    });
+    var months=Object.keys(monthMap).sort();
+    if(months.length===0){document.getElementById('trendBarChart').innerHTML='<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:40px">暂无数据</div>';return;}
+    if(months.length>12)months=months.slice(-12);
+    var maxVal=Math.max.apply(null,months.map(function(m){return monthMap[m].total;}));
+    if(maxVal===0)maxVal=1;
+    var W=600,H=220,padL=50,padB=30,padR=20,padT=20;
+    var cw=W-padL-padR,bh=H-padB-padT;
+    var bw=(cw/months.length)*0.6,gap=(cw/months.length)*0.4;
+    var svg='<svg width="100%" height="'+H+'" viewBox="0 0 '+W+' '+H+'">';
+    // grid lines
+    for(var g=0;g<=4;g++){
+      var y=padT+bh*(g/4);
+      svg+='<line x1="'+padL+'" y1="'+y+'" x2="'+(W-padR)+'" y2="'+y+'" class="chart-grid" stroke-dasharray="3,3"/>';
+      svg+='<text x="'+(padL-8)+'" y="'+(y+3)+'" text-anchor="end" class="chart-axis">'+formatK(maxVal*(1-g/4))+'</text>';
+    }
+    months.forEach(function(m,i){
+      var x=padL+i*(bw+gap)+gap/2;
+      var h=(monthMap[m].total/maxVal)*bh;
+      var y=padT+bh-h;
+      // bar
+      svg+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="3" fill="url(#barGrad)" class="chart-bar"/>';
+      // label
+      var lbl=m.substring(5);
+      svg+='<text x="'+(x+bw/2)+'" y="'+(H-10)+'" text-anchor="middle" class="chart-label">'+lbl+'</text>';
+      // value on top
+      if(h>20){
+        svg+='<text x="'+(x+bw/2)+'" y="'+(y-6)+'" text-anchor="middle" class="chart-label" style="fill:var(--text-secondary);font-size:10px">'+formatK(monthMap[m].total)+'</text>';
+      }
+    });
+    svg+='<defs><linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient></defs>';
+    svg+='</svg>';
+    document.getElementById('trendBarChart').innerHTML=svg;
+  }
+  function formatK(v){var n=Number(v);if(n>=10000)return (n/10000).toFixed(1)+'万';if(n>=1000)return (n/1000).toFixed(1)+'k';return n.toFixed(0);}
+
+  function renderPieChart(data){
+    var colors={'待签订':'#64748b','已签订':'#3b82f6','执行中':'#6366f1','已完成':'#10b981','已终止':'#ef4444','未知':'#475569'};
+    var entries=Object.keys(data).map(function(k){return{label:k,value:data[k],color:colors[k]||'#475569'};});
+    var total=entries.reduce(function(s,e){return s+e.value;},0);
+    if(total===0){document.getElementById('contractPieChart').innerHTML='<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:40px">暂无数据</div>';return;}
+    var r=50,cx=80,cy=80,circ=2*Math.PI*r,offset=0,svg='';
+    svg+='<svg width="260" height="160" viewBox="0 0 260 160">';
+    entries.forEach(function(e){
+      var len=(e.value/total)*circ;
+      if(len>0){
+        svg+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+e.color+'" stroke-width="14" stroke-dasharray="'+len+' '+(circ-len)+'" stroke-dashoffset="'+(-offset)+'" transform="rotate(-90 '+cx+' '+cy+')"/>';
+      }
+      offset+=len;
+    });
+    svg+='<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" font-size="22" font-weight="700" fill="var(--text)">'+total+'</text>';
+    svg+='<text x="'+cx+'" y="'+(cy+14)+'" text-anchor="middle" font-size="11" fill="var(--text-muted)">总合同</text>';
+    svg+='</svg>';
+    var legend='<div class="chart-legend">';
+    entries.forEach(function(e){
+      legend+='<div class="legend-item"><span class="legend-dot" style="background:'+e.color+'"></span>'+e.label+' <span style="color:var(--text-muted)">('+e.value+')</span></div>';
+    });
+    legend+='</div>';
+    document.getElementById('contractPieChart').innerHTML='<div style="display:flex;align-items:center;justify-content:center">'+svg+legend+'</div>';
+  }
+
+  function renderBarChart(){
+    var items=ALL_DATA.filter(function(r){return r['合同金额']>0;}).slice(0,6).map(function(r){
+      return{name:(r['项目名称']||'-').substring(0,8),total:Number(r['合同金额']||0),collected:Number(r['回款金额']||0)};
+    });
+    if(items.length===0){document.getElementById('paymentBarChart').innerHTML='<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:40px">暂无数据</div>';return;}
+    var maxVal=Math.max.apply(null,items.map(function(i){return i.total;}));
+    if(maxVal===0)maxVal=1;
+    var barH=22,gap=8,labelW=80,chartW=160,svgH=items.length*(barH+gap)+10;
+    var svg='<svg width="100%" height="'+svgH+'" viewBox="0 0 300 '+svgH+'">';
+    items.forEach(function(it,i){
+      var y=i*(barH+gap);
+      var tw=(it.total/maxVal)*chartW;
+      var cw=(it.collected/maxVal)*chartW;
+      svg+='<text x="0" y="'+(y+barH/2+4)+'" font-size="10" fill="var(--text-muted)">'+it.name+'</text>';
+      svg+='<rect x="'+labelW+'" y="'+y+'" width="'+tw+'" height="'+barH+'" fill="#1e293b" rx="4"/>';
+      svg+='<rect x="'+labelW+'" y="'+y+'" width="'+cw+'" height="'+barH+'" fill="url(#payGrad)" rx="4"/>';
+      svg+='<text x="'+(labelW+tw+6)+'" y="'+(y+barH/2+4)+'" font-size="9" fill="var(--text-muted)">'+Math.round(it.collected/it.total*100)+'%</text>';
+    });
+    svg+='<defs><linearGradient id="payGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#059669"/></linearGradient></defs>';
+    svg+='</svg>';
+    document.getElementById('paymentBarChart').innerHTML='<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">绿色=已回款 / 深色=合同总额</div>'+svg;
+  }
+
+  window.applyFilter=function(tab){renderTable(tab);};
+
+  /* ================= 经营看板 ================= */
+  var FC_DIM_TITLE={
+    month:{chart:'各月 收入 · 贡献利润达成率',table:'各月达成明细'},
+    quarter:{chart:'各季度 收入 · 贡献利润达成率',table:'各季度达成明细'},
+    half:{chart:'半年度 收入 · 贡献利润达成率',table:'半年度达成明细'}
+  };
+
+  function initForecast(){
+    var ySel=document.getElementById('forecastYear');
+    var cur=new Date().getFullYear();
+    var years=[];
+    for(var y=cur-2;y<=cur+4;y++)years.push(y);
+    if(years.indexOf(FC_YEAR)<0)years.push(FC_YEAR);
+    years.sort(function(a,b){return a-b;});
+    var fillYear=function(sel){
+      years.forEach(function(yv){
+        var o=document.createElement('option');
+        o.value=String(yv);o.textContent=yv+' 年';
+        sel.appendChild(o);
+        if(yv===FC_YEAR)o.selected=true;
+      });
+    };
+    fillYear(ySel);
+    fillYear(document.getElementById('fcYear'));
+    var mSel=document.getElementById('fcMonth');
+    for(var m=1;m<=12;m++){
+      var o=document.createElement('option');
+      o.value=String(m);o.textContent=m+' 月';
+      mSel.appendChild(o);
+    }
+    loadForecast();
+  }
+  window.switchForecastYear=function(){
+    var y=parseInt(document.getElementById('forecastYear').value,10);
+    if(!y||y===FC_YEAR)return;
+    FC_YEAR=y;
+    loadForecast();
+  };
+  window.setForecastDim=function(dim){
+    FC_DIM=dim;
+    var btns=document.querySelectorAll('.dim-btn');
+    for(var i=0;i<btns.length;i++)btns[i].classList.toggle('active',btns[i].getAttribute('data-dim')===dim);
+    renderForecastAll();
+  };
+
+  function loadForecast(){
+    Promise.all([
+      fetch('/api/forecast?year='+FC_YEAR,{method:'GET'}),
+      fetch('/api/budget?year='+FC_YEAR,{method:'GET'})
+    ])
+      .then(function(responses){
+        return Promise.all(responses.map(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();}));
+      })
+      .then(function(results){
+        FC_DATA=results[0].sort(function(a,b){return (Number(a['月份'])||0)-(Number(b['月份'])||0);});
+        FC_BUDGETS=results[1]||[];
+        // 聚合全年预算
+        var agg={年度:FC_YEAR,预算收入:0,预算贡献利润:0,预算现金流:0,预算费用:0};
+        FC_BUDGETS.forEach(function(b){
+          agg['预算收入']+=Number(b['预算收入']||0);
+          agg['预算贡献利润']+=Number(b['预算贡献利润']||0);
+          agg['预算现金流']+=Number(b['预算现金流']||0);
+          agg['预算费用']+=Number(b['预算费用']||0);
+        });
+        FC_BUDGET=(FC_BUDGETS.length>0)?agg:null;
+        renderForecastAll();
+      })
+      .catch(function(err){
+        console.error('loadForecast error',err);
+        FC_DATA=[];FC_BUDGETS=[];FC_BUDGET=null;
+        renderForecastAll();
+        toast('经营看板数据加载失败: '+err.message,'error');
+      });
+  }
+  function renderForecastAll(){
+    renderForecastStatus();
+    renderForecastAch();
+    renderForecastAchChart();
+    renderForecastTable();
+  }
+
+  // 预测月份状态条: 预测至 X 月 + 1-12 月进度轨道
+  function renderForecastStatus(){
+    var entered=FC_DATA.length;
+    var maxMonth=0;
+    FC_DATA.forEach(function(r){var m=Number(r['月份'])||0;if(m>maxMonth)maxMonth=m;});
+    var toEl=document.getElementById('fcForecastTo');
+    if(entered>0&&maxMonth>0){
+      toEl.textContent=FC_YEAR+'年'+maxMonth+'月';
+    }else{
+      toEl.textContent=FC_YEAR+'年 未录入';
+    }
+    document.getElementById('fcEnteredCnt').textContent=String(entered);
+    var track=document.getElementById('fcMonthTrack');
+    var now=new Date();
+    var nowMonth=(now.getFullYear()===FC_YEAR)?now.getMonth()+1:0;
+    var html='';
+    for(var m=1;m<=12;m++){
+      var on=(FC_DATA.some(function(r){return Number(r['月份'])===m;}))?'on':'';
+      var today=(m===nowMonth)?'today':'';
+      html+='<div class="fc-progress-cell '+on+' '+today+'" title="'+(on?(m+'月 已录入'):(m+'月 未录入'))+'"></div>';
+    }
+    track.innerHTML=html;
+  }
+
+  // 预算工具: 月度预算映射 + 指定月份集合的预算合计
+  function fcBudgetMap(){
+    var m={};
+    FC_BUDGETS.forEach(function(b){m[Number(b['月份'])]=b;});
+    return m;
+  }
+  function fcBudgetSum(months,key){
+    var map=fcBudgetMap(),sum=0;
+    months.forEach(function(mn){var b=map[mn];if(b)sum+=Number(b[key]||0);});
+    return sum;
+  }
+
+  // 年度预测达成总览: 全年预测 vs 全年预算 (收入/贡献利润/贡献利润率/现金流)
+  function renderForecastAch(){
+    var box=document.getElementById('fcAchGrid');
+    var rev=0,profit=0,cash=0;
+    FC_DATA.forEach(function(r){
+      rev+=Number(r['预测收入']||0);profit+=Number(r['贡献利润']||0);cash+=Number(r['现金流']||0);
+    });
+    var bRev=0,bProfit=0,bCash=0;
+    FC_BUDGETS.forEach(function(b){
+      bRev+=Number(b['预算收入']||0);bProfit+=Number(b['预算贡献利润']||0);bCash+=Number(b['预算现金流']||0);
+    });
+    // 贡献利润率: 预测口径 vs 预算目标口径
+    var margin=fcRate(profit,rev), bMargin=fcRate(bProfit,bRev);
+    var marginRate=fcRate(margin,bMargin);
+    function card(cls,icon,label,achVal,rate,budget,extraLine,barPct,budgetTxt){
+      var isPct=(typeof achVal==='string'&&achVal.slice(-1)==='%');
+      var rTxt=(budget>0||rate>0)?rate.toFixed(1)+'%':'—';
+      var rCls=rate>=95?'up':(rate>=70?'mid':'down');
+      var pct=Math.min(barPct||rate,100);
+      var barCls=rate>=95?'ok':(rate>=70?'warn':'bad');
+      var budTxt=budgetTxt!==undefined?budgetTxt:(budget>0?formatK(budget):'');
+      return '<div class="fc-ach-card '+cls+'"><div class="fc-ach-label"><span>'+icon+' '+label+'</span><span class="tag">年度</span></div>'+
+        '<div class="fc-ach-value">'+(isPct?achVal:formatCurrency(achVal))+'</div>'+
+        '<div class="fc-ach-rate">达成率 <b class="'+rCls+'">'+rTxt+'</b>'+(budTxt?' <span style="color:var(--text-muted)">预算目标 '+budTxt+'</span>':'')+'</div>'+
+        (extraLine?'<div class="fc-ach-rate" style="margin-top:2px">'+extraLine+'</div>':'')+
+        '<div class="fc-ach-bar"><i style="width:'+pct+'%"></i></div>'+
+        '<div class="fc-ach-target"><span>预测达成</span><span>目标 '+(budTxt||'未设预算')+'</span></div></div>';
+    }
+    if(FC_BUDGETS.length>0){
+      box.innerHTML=
+        card('','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:-2px;margin-right:2px"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>','年度收入',rev,fcRate(rev,bRev),bRev)+
+        card('success','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:-2px;margin-right:2px"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>','年度贡献利润',profit,fcRate(profit,bProfit),bProfit)+
+        card('purple','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:-2px;margin-right:2px"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>','年度贡献利润率',margin.toFixed(2)+'%',marginRate,0,'目标利润率 '+bMargin.toFixed(1)+'% · 预测口径 '+margin.toFixed(1)+'%',marginRate,bMargin.toFixed(1)+'%')+
+        card('info','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:-2px;margin-right:2px"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>','年度现金流',cash,fcRate(cash,bCash),bCash,'现金流为负时达成率仅供参考');
+    }else{
+      box.innerHTML='<div class="fc-ach-card" style="grid-column:1/-1;display:flex;align-items:center;gap:10px"><span>⚠️ 尚未设置 '+FC_YEAR+' 年预算，无法计算达成率</span><button class="btn-secondary" onclick="openBudgetModal()" style="padding:5px 12px;font-size:12px">立即设置预算</button></div>';
+    }
+  }
+
+  // 预算 Modal (月度预算, 季度/半年度/全年自动聚合)
+  window.openBudgetModal=function(){
+    var bmap=fcBudgetMap();
+    document.getElementById('budgetYearLabel').textContent=String(FC_YEAR);
+    // 预填全年总额输入框
+    document.getElementById('bdSplitRev').value=FC_BUDGET?String(FC_BUDGET['预算收入']||''):'';
+    document.getElementById('bdSplitProfit').value=FC_BUDGET?String(FC_BUDGET['预算贡献利润']||''):'';
+    document.getElementById('bdSplitCash').value=FC_BUDGET?String(FC_BUDGET['预算现金流']||''):'';
+    document.getElementById('bdSplitExp').value=FC_BUDGET?String(FC_BUDGET['预算费用']||''):'';
+    // 渲染 12 行月度表格
+    var html='';
+    for(var m=1;m<=12;m++){
+      var b=bmap[m];
+      var rev=b?(Number(b['预算收入']||0)||''):'';
+      var pf=b?(Number(b['预算贡献利润']||0)||''):'';
+      var cf=b?(Number(b['预算现金流']||0)||''):'';
+      var ex=b?(Number(b['预算费用']||0)||''):'';
+      html+='<tr><td style="font-weight:600">'+m+'月</td>'+
+        '<td><input type="number" step="0.01" min="0" class="bd-input" data-month="'+m+'" data-key="预算收入" value="'+rev+'" oninput="renderBudgetFoot()" placeholder="0"></td>'+
+        '<td><input type="number" step="0.01" min="0" class="bd-input" data-month="'+m+'" data-key="预算贡献利润" value="'+pf+'" oninput="renderBudgetFoot()" placeholder="0"></td>'+
+        '<td><input type="number" step="0.01" class="bd-input" data-month="'+m+'" data-key="预算现金流" value="'+cf+'" oninput="renderBudgetFoot()" placeholder="0"></td>'+
+        '<td><input type="number" step="0.01" min="0" class="bd-input" data-month="'+m+'" data-key="预算费用" value="'+ex+'" oninput="renderBudgetFoot()" placeholder="0"></td></tr>';
+    }
+    document.getElementById('budgetTableBody').innerHTML=html;
+    renderBudgetFoot();
+    document.getElementById('budgetModalOverlay').classList.add('show');
+  };
+  // 读取表格输入为 {月份,预算收入,预算贡献利润,预算现金流,预算费用} 数组
+  function readBudgetInputs(){
+    var rows=[];
+    var inputs=document.querySelectorAll('#budgetTableBody .bd-input');
+    for(var i=0;i<inputs.length;i++){
+      var inp=inputs[i];
+      var m=Number(inp.getAttribute('data-month'));
+      var key=inp.getAttribute('data-key');
+      var row=null;
+      for(var j=0;j<rows.length;j++){if(rows[j].月份===m){row=rows[j];break;}}
+      if(!row){row={月份:m,预算收入:0,预算贡献利润:0,预算现金流:0,预算费用:0};rows.push(row);}
+      row[key]=parseFloat(inp.value)||0;
+    }
+    return rows.sort(function(a,b){return a.月份-b.月份;});
+  }
+  // 底部合计行
+  window.renderBudgetFoot=function(){
+    var rows=readBudgetInputs();
+    var rev=0,pf=0,cf=0,ex=0;
+    rows.forEach(function(r){rev+=r['预算收入'];pf+=r['预算贡献利润'];cf+=r['预算现金流'];ex+=r['预算费用'];});
+    var foot=document.getElementById('budgetTableFoot');
+    if(foot)foot.innerHTML='<td style="font-weight:600">合计</td><td>'+formatCurrency(rev)+'</td><td>'+formatCurrency(pf)+'</td><td>'+formatCurrency(cf)+'</td><td>'+formatCurrency(ex)+'</td>';
+  };
+  // 快速分摊: 全年总额 → 12 个月 (均摊/递增/按预测比例)
+  window.applyBudgetSplit=function(){
+    var mode=document.getElementById('bdSplitMode').value;
+    var keys=['预算收入','预算贡献利润','预算现金流','预算费用'];
+    var inputIds=['bdSplitRev','bdSplitProfit','bdSplitCash','bdSplitExp'];
+    var predMap={},predSum=0;
+    FC_DATA.forEach(function(r){var mn=Number(r['月份']);predMap[mn]=Number(r['预测收入']||0);predSum+=predMap[mn];});
+    keys.forEach(function(key,ki){
+      var total=parseFloat(document.getElementById(inputIds[ki]).value)||0;
+      var vals=[];
+      if(mode==='grow'){
+        for(var m=1;m<=12;m++){
+          var t=(m-6.5)/5.5; // -1..1
+          vals.push(Math.round(total/12*(1+0.3*t)));
+        }
+      }else if(mode==='ratio'&&predSum>0){
+        for(var m=1;m<=12;m++)vals.push(Math.round(total*((predMap[m]||0)/predSum)));
+      }else{
+        for(var m=1;m<=12;m++)vals.push(Math.round(total/12));
+      }
+      // 修正合计误差到 12 月
+      var diff=total;
+      vals.forEach(function(v){diff-=v;});
+      vals[11]+=diff;
+      for(var m=1;m<=12;m++){
+        var inp=document.querySelector('#budgetTableBody .bd-input[data-month="'+m+'"][data-key="'+key+'"]');
+        if(inp)inp.value=vals[m-1];
+      }
+    });
+    renderBudgetFoot();
+    toast('已按所选模式分摊到 12 个月，可继续逐月微调','success');
+  };
+  window.closeBudgetModal=function(){
+    document.getElementById('budgetModalOverlay').classList.remove('show');
+  };
+  window.submitBudgetForm=function(e){
+    e.preventDefault();
+    var btn=document.getElementById('budgetSubmitBtn');
+    btn.disabled=true;btn.textContent='保存中...';
+    var rows=readBudgetInputs();
+    rows.forEach(function(r){r['年度']=FC_YEAR;});
+    fetch('/api/budget/batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rows)})
+      .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+      .then(function(d){toast('预算已保存 ('+(d.count||0)+' 个月)','success');closeBudgetModal();loadForecast();})
+      .catch(function(err){toast('保存失败: '+err.message,'error');})
+      .finally(function(){btn.disabled=false;btn.textContent='保存预算';});
+  };
+
+  // ==================== 预算目标拆分 (预测结果模板: 实际7月 vs 2026目标-V1) ====================
+  var TG_PERIODS=['Q1','Q2','Q3','Q4','H1','H2','YTD'];
+  var TG_ACT_IDS={Q1:'tgQ1Act',Q2:'tgQ2Act',Q3:'tgQ3Act',Q4:'tgQ4Act',H1:'tgH1Act',H2:'tgH2Act',YTD:'tgYtdAct'};
+  var TG_TGT_IDS={Q1:'tgQ1Tgt',Q2:'tgQ2Tgt',Q3:'tgQ3Tgt',Q4:'tgQ4Tgt',H1:'tgH1Tgt',H2:'tgH2Tgt',YTD:'tgYtdTgt'};
+  var TG_RATE_COLORS={up:'var(--success)',mid:'var(--warning)',down:'var(--danger)'};
+  function tgNum(r,key){return Number(r[key]||0);}
+  function tgRate(a,t){return t>0?(a/t*100):0;}
+  function tgRateCls(rate){return rate>=95?'up':(rate>=70?'mid':'down');}
+  function tgRateTxt(rate){return (rate===0)?'-':rate.toFixed(1)+'%';}
+  function tgMoney(v){
+    var n=Number(v)||0;
+    if(Math.abs(n)<0.000001)n=0;
+    var s=n.toFixed(2),neg=s.charAt(0)==='-';
+    if(neg)s=s.slice(1);
+    var p=s.split('.');
+    p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,',');
+    return (neg?'-':'')+p.join('.');
+  }
+  function tgRateCell(rt){var cls=tgRateCls(rt);return '<td style="color:'+TG_RATE_COLORS[cls]+';font-weight:600">'+tgRateTxt(rt)+'</td>';}
+  function tgDevCell(v){return '<td '+(v>0?'style="color:var(--success)"':(v<0?'style="color:var(--danger)"':''))+'>'+tgMoney(v)+'</td>';}
+  function tgOps(id){return '<div class="row-actions"><button class="row-btn" title="编辑" onclick="editTarget(\''+id+'\')">'+ICO_EDIT+'</button><button class="row-btn delete" title="删除" onclick="deleteTarget(\''+id+'\')">'+ICO_DEL+'</button></div>';}
+  function tgFind(id){for(var i=0;i<TG_DATA.length;i++)if(String(TG_DATA[i]._id)===String(id))return TG_DATA[i];return null;}
+
+  function loadTarget(){
+    fetch('/api/target-split',{method:'GET'})
+      .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+      .then(function(list){TG_DATA=Array.isArray(list)?list:[];renderTarget();})
+      .catch(function(err){
+        console.error('loadTarget error',err);
+        TG_DATA=[];renderTarget();
+        toast('预算目标拆分加载失败: '+err.message,'error');
+      });
+  }
+
+  function renderTarget(){
+    var tbody=document.getElementById('targetBody');
+    var cards=document.getElementById('targetCards');
+    if(!tbody)return;
+    if(TG_DATA.length===0){
+      tbody.innerHTML='<tr><td colspan="32" style="text-align:center;color:var(--text-muted);padding:24px">暂无数据，点击右上角「新增记录」按《预测结果模板.xlsx》录入</td></tr>';
+      if(cards)cards.innerHTML='';
+      return;
+    }
+    var html='',mhtml='';
+    TG_DATA.forEach(function(r){
+      var act={},tgt={},dev={},rate={};
+      TG_PERIODS.forEach(function(p){
+        act[p]=tgNum(r,p+'实际');tgt[p]=tgNum(r,p+'目标');
+        dev[p]=act[p]-tgt[p];rate[p]=tgRate(act[p],tgt[p]);
+      });
+      var rateH13=tgRate(act.H1+act.Q3,tgt.H1+tgt.Q3);
+      var devCells='',rateCells='';
+      TG_PERIODS.forEach(function(p){devCells+=tgDevCell(dev[p]);rateCells+=tgRateCell(rate[p]);});
+      rateCells+=tgRateCell(rateH13); // H1+Q3 组合达成率
+      var ops=tgOps(r._id);
+      html+='<tr><td style="font-weight:600">'+r['指标']+'</td><td>'+badge(r['BU'])+'</td>';
+      TG_PERIODS.forEach(function(p){html+='<td>'+tgMoney(act[p])+'</td>';});
+      TG_PERIODS.forEach(function(p){html+='<td>'+tgMoney(tgt[p])+'</td>';});
+      html+=devCells+rateCells+'<td>'+ops+'</td></tr>';
+      // 移动端卡片
+      mhtml+='<div class="mc-item"><div class="mc-item-header"><span class="mc-item-title">'+r['指标']+' · '+r['BU']+'</span><span class="rate-badge '+tgRateCls(rate.YTD)+'">YTD '+tgRateTxt(rate.YTD)+'</span></div>'
+        +'<div class="mc-item-row"><span>YTD实际</span><span>'+tgMoney(act.YTD)+'</span></div>'
+        +'<div class="mc-item-row"><span>YTD目标</span><span>'+tgMoney(tgt.YTD)+'</span></div>'
+        +'<div class="mc-item-row"><span>H1+Q3达成</span><span style="color:'+TG_RATE_COLORS[tgRateCls(rateH13)]+';font-weight:600">'+tgRateTxt(rateH13)+'</span></div>'
+        +'<div class="mc-item-row"><span>YTD偏差</span><span '+(dev.YTD>0?'style="color:var(--success)"':(dev.YTD<0?'style="color:var(--danger)"':''))+'>'+tgMoney(dev.YTD)+'</span></div>'
+        +'<div class="mc-item-actions">'+ops+'</div></div>';
+    });
+    tbody.innerHTML=html;
+    if(cards)cards.innerHTML=mhtml;
+  }
+
+  window.openTargetModal=function(id){
+    TG_EDIT_ID=id||null;
+    var r=TG_EDIT_ID?tgFind(TG_EDIT_ID):null;
+    document.getElementById('targetModalTitle').textContent=r?'编辑预算目标拆分':'新增预算目标拆分';
+    document.getElementById('tgMetric').value=r?r['指标']:'收入';
+    document.getElementById('tgBu').value=r?r['BU']:'软工';
+    // 编辑时维度锁定
+    document.getElementById('tgMetric').disabled=!!r;
+    document.getElementById('tgBu').disabled=!!r;
+    TG_PERIODS.forEach(function(p){
+      document.getElementById(TG_ACT_IDS[p]).value=r?(String(tgNum(r,p+'实际'))||''):'';
+      document.getElementById(TG_TGT_IDS[p]).value=r?(String(tgNum(r,p+'目标'))||''):'';
+    });
+    document.getElementById('targetModalOverlay').classList.add('show');
+  };
+  window.closeTargetModal=function(){
+    document.getElementById('targetModalOverlay').classList.remove('show');
+    document.getElementById('tgMetric').disabled=false;
+    document.getElementById('tgBu').disabled=false;
+    TG_EDIT_ID=null;
+  };
+  window.editTarget=function(id){openTargetModal(id);};
+  window.deleteTarget=function(id){
+    var r=tgFind(id);
+    var label=r?(r['指标']+' / '+r['BU']):'该记录';
+    showConfirm('确认删除「'+label+'」的目标拆分记录？（维度不可改，需删除后重建）',function(){
+      fetch('/api/target-split/'+encodeURIComponent(id),{method:'DELETE'})
+        .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+        .then(function(){toast('删除成功','success');loadTarget();})
+        .catch(function(err){toast('删除失败: '+err.message,'error');});
+    });
+  };
+  window.submitTargetForm=function(e){
+    e.preventDefault();
+    var btn=document.getElementById('targetSubmitBtn');
+    btn.disabled=true;btn.textContent='保存中...';
+    var metric=document.getElementById('tgMetric').value;
+    var bu=document.getElementById('tgBu').value;
+    if(TG_EDIT_ID){
+      var cur=tgFind(TG_EDIT_ID);
+      if(cur){metric=cur['指标'];bu=cur['BU'];}// 维度不可改
+    }
+    var payload={指标:metric,BU:bu};
+    TG_PERIODS.forEach(function(p){
+      payload[p+'实际']=parseFloat(document.getElementById(TG_ACT_IDS[p]).value)||0;
+      payload[p+'目标']=parseFloat(document.getElementById(TG_TGT_IDS[p]).value)||0;
+    });
+    var url=TG_EDIT_ID?'/api/target-split/'+encodeURIComponent(TG_EDIT_ID):'/api/target-split';
+    var method=TG_EDIT_ID?'PUT':'POST';
+    fetch(url,{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+      .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+      .then(function(){toast(TG_EDIT_ID?'更新成功':'添加成功','success');closeTargetModal();loadTarget();})
+      .catch(function(err){toast('保存失败: '+err.message,'error');})
+      .finally(function(){btn.disabled=false;btn.textContent='保存';});
+  };
+
+  // 按当前维度分组聚合
+  function fcGroups(){
+    var map={};
+    FC_DATA.forEach(function(r){map[r['月份']]=r;});
+    var defs=[];
+    if(FC_DIM==='month'){for(var m=1;m<=12;m++)defs.push({label:m+'月',months:[m]});}
+    else if(FC_DIM==='quarter'){defs.push({label:'Q1',months:[1,2,3]},{label:'Q2',months:[4,5,6]},{label:'Q3',months:[7,8,9]},{label:'Q4',months:[10,11,12]});}
+    else{defs.push({label:'上半年 H1',months:[1,2,3,4,5,6]},{label:'下半年 H2',months:[7,8,9,10,11,12]});}
+    var groups=defs.map(function(d){
+      var rev=0,profit=0,cash=0,exp=0,recs=[];
+      d.months.forEach(function(mn){
+        var r=map[mn];
+        if(r){rev+=Number(r['预测收入']||0);profit+=Number(r['贡献利润']||0);cash+=Number(r['现金流']||0);exp+=Number(r['费用']||0);recs.push(r);}
+      });
+      return {label:d.label,months:d.months,revenue:rev,profit:profit,cash:cash,expense:exp,recs:recs};
+    });
+    return groups;
+  }
+  function fcRate(v,total){return total>0?(v/total*100):0;}
+
+  // 分时段达成率图: 收入达成率 + 贡献利润达成率 (相对对应周期预算), 100% 目标线
+  function renderForecastAchChart(){
+    var groups=fcGroups();
+    var box=document.getElementById('forecastAchChart');
+    var title=document.getElementById('fcAchChartTitle');
+    title.textContent=FC_DIM_TITLE[FC_DIM].chart;
+    if(groups.length===0){box.innerHTML='<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:40px">暂无数据</div>';return;}
+    var data=groups.map(function(g){
+      var bRevP=fcBudgetSum(g.months,'预算收入');
+      var bProfitP=fcBudgetSum(g.months,'预算贡献利润');
+      return {label:g.label,revRate:fcRate(g.revenue,bRevP),profitRate:fcRate(g.profit,bProfitP)};
+    });
+    var hasAny=false;
+    data.forEach(function(d){if(d.revRate>0||d.profitRate>0)hasAny=true;});
+    if(!hasAny){box.innerHTML='<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:40px">暂无数据</div>';return;}
+    var yMax=100;
+    data.forEach(function(d){yMax=Math.max(yMax,d.revRate,d.profitRate);});
+    yMax=Math.ceil(yMax*1.15);
+    var W=680,H=250,padL=48,padB=34,padR=20,padT=26;
+    var cw=W-padL-padR,bh=H-padB-padT;
+    function yOf(v){return padT+bh*(1-v/yMax);}
+    var slot=cw/data.length;
+    var svg='<svg width="100%" height="'+H+'" viewBox="0 0 '+W+' '+H+'">';
+    for(var g=0;g<=4;g++){
+      var val=yMax*g/4;
+      var yy=padT+bh*(1-g/4);
+      svg+='<line x1="'+padL+'" y1="'+yy+'" x2="'+(W-padR)+'" y2="'+yy+'" class="chart-grid" stroke-dasharray="3,3"/>';
+      svg+='<text x="'+(padL-8)+'" y="'+(yy+3)+'" text-anchor="end" class="chart-axis">'+val.toFixed(0)+'%</text>';
+    }
+    var y100=yOf(100);
+    svg+='<line x1="'+padL+'" y1="'+y100+'" x2="'+(W-padR)+'" y2="'+y100+'" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="6,4"/>';
+    svg+='<text x="'+(W-padR)+'" y="'+(y100-4)+'" text-anchor="end" class="chart-axis" style="font-size:10px;fill:#f59e0b">目标 100%</text>';
+    function linePath(key,color){
+      var pts=data.map(function(d,i){return{x:padL+i*slot+slot/2,y:yOf(d[key])};});
+      var d='M'+pts[0].x+' '+pts[0].y;
+      for(var i=1;i<pts.length;i++)d+=' L'+pts[i].x+' '+pts[i].y;
+      var extra='';
+      pts.forEach(function(p,idx){
+        var rate=data[idx][key];
+        extra+='<circle cx="'+p.x+'" cy="'+p.y+'" r="3.5" fill="'+color+'"><title>'+data[idx].label+' '+(key==='revRate'?'收入':'贡献利润')+'达成率 '+rate.toFixed(1)+'%</title></circle>';
+        var rTxt=rate>0?rate.toFixed(1)+'%':'—';
+        extra+='<text x="'+p.x+'" y="'+(p.y-7)+'" text-anchor="middle" class="chart-label" style="fill:'+color+';font-size:10px">'+rTxt+'</text>';
+      });
+      return '<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linejoin="round"/>'+extra;
+    }
+    svg+=linePath('revRate','#3b82f6');
+    svg+=linePath('profitRate','#10b981');
+    data.forEach(function(d,i){
+      var lbl=d.label.replace('月','').replace('上半年 H1','H1').replace('下半年 H2','H2');
+      svg+='<text x="'+(padL+i*slot+slot/2)+'" y="'+(H-12)+'" text-anchor="middle" class="chart-label">'+lbl+'</text>';
+    });
+    svg+='</svg>';
+    box.innerHTML='<div class="legend-inline"><span class="li"><span class="line" style="background:#3b82f6"></span>收入达成率</span><span class="li"><span class="line" style="background:#10b981"></span>贡献利润达成率</span><span class="li"><span class="line" style="background:#f59e0b"></span>目标线 100%</span></div>'+svg;
+  }
+
+  function renderForecastTable(){
+    var groups=fcGroups();
+    var tbody=document.getElementById('forecastBody');
+    var cardList=document.getElementById('forecastCards');
+    document.getElementById('fcTableTitle').textContent=FC_DIM_TITLE[FC_DIM].table;
+    var editable=(FC_DIM==='month');
+    var html='',mhtml='';
+    var ICO_ADD='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+    var hasBudget=FC_BUDGETS.length>0;
+    function rateCell(v,b){
+      var rate=b>0?fcRate(v,b):0;
+      var cls=rate>=95?'ok':(rate>=70?'warn':'bad');
+      var txt=b>0?(rate.toFixed(1)+'%'):'—';
+      return '<div class="fc-rate-cell '+cls+'"><span class="bar"><i style="width:'+Math.min(rate,100)+'%"></i></span><span class="num">'+txt+'</span></div>';
+    }
+    function mRateCls(v,b){
+      var rate=b>0?fcRate(v,b):0;
+      return b>0?(rate>=95?'#10b981':(rate>=70?'#f59e0b':'#ef4444')):'var(--text-muted)';
+    }
+    groups.forEach(function(g){
+      var margin=fcRate(g.profit,g.revenue);
+      var bRevP=fcBudgetSum(g.months,'预算收入');
+      var bProfitP=fcBudgetSum(g.months,'预算贡献利润');
+      var op;
+      if(editable){
+        if(g.recs.length>0){
+          var rid=g.recs[0]._id;
+          op='<div class="row-actions"><button class="row-btn" onclick="editForecastRecord(\''+rid+'\')" title="编辑">'+ICO_EDIT+'</button><button class="row-btn delete" onclick="deleteForecastRecord(\''+rid+'\')" title="删除">'+ICO_DEL+'</button></div>';
+        }else{
+          op='<div class="row-actions"><button class="row-btn" onclick="openForecastModal('+g.months[0]+')" title="新增该月数据">'+ICO_ADD+'</button></div>';
+        }
+      }else{
+        op='<span style="color:var(--text-muted);font-size:11px">聚合</span>';
+      }
+      html+='<tr><td style="font-weight:600">'+g.label+'</td>'+
+        '<td>'+formatCurrency(g.revenue)+'</td><td style="color:var(--text-muted)">'+(bRevP>0?formatCurrency(bRevP):'—')+'</td><td>'+rateCell(g.revenue,bRevP)+'</td>'+
+        '<td>'+formatCurrency(g.profit)+'</td><td style="color:var(--text-muted)">'+(bProfitP>0?formatCurrency(bProfitP):'—')+'</td><td>'+rateCell(g.profit,bProfitP)+'</td>'+
+        '<td style="color:var(--purple);font-weight:500">'+margin.toFixed(1)+'%</td><td>'+op+'</td></tr>';
+      mhtml+='<div class="mc-item"><div class="mc-item-header"><span class="mc-item-title">'+g.label+'</span><span style="color:var(--purple);font-size:12px">利润率 '+margin.toFixed(1)+'%</span></div>'+
+        '<div class="mc-item-row"><span>预测收入</span><span>'+formatCurrency(g.revenue)+'</span></div>'+
+        (hasBudget?'<div class="mc-item-row"><span>预算收入</span><span>'+formatCurrency(bRevP)+'</span></div><div class="mc-item-row"><span>收入达成率</span><span style="color:'+mRateCls(g.revenue,bRevP)+';font-weight:600">'+(bRevP>0?fcRate(g.revenue,bRevP).toFixed(1)+'%':'—')+'</span></div>':'')+
+        '<div class="mc-item-row"><span>预测贡献利润</span><span>'+formatCurrency(g.profit)+'</span></div>'+
+        (hasBudget?'<div class="mc-item-row"><span>预算贡献利润</span><span>'+formatCurrency(bProfitP)+'</span></div><div class="mc-item-row"><span>利润达成率</span><span style="color:'+mRateCls(g.profit,bProfitP)+';font-weight:600">'+(bProfitP>0?fcRate(g.profit,bProfitP).toFixed(1)+'%':'—')+'</span></div>':'')+
+        '<div class="mc-item-actions">'+op+'</div></div>';
+    });
+    tbody.innerHTML=html;
+    if(cardList)cardList.innerHTML=mhtml;
+  }
+
+  // 经营预测 Modal
+  window.openForecastModal=function(month){
+    FC_EDIT_ID=null;
+    document.getElementById('forecastModalTitle').textContent='新增月度预测';
+    document.getElementById('fcYear').value=String(FC_YEAR);
+    document.getElementById('fcMonth').value=month?String(month):'';
+    ['fcRevenue','fcProfit','fcCash','fcExpense','fcRemark'].forEach(function(id){document.getElementById(id).value='';});
+    document.getElementById('forecastModalOverlay').classList.add('show');
+  };
+  window.editForecastRecord=function(id){
+    var rec=null;
+    for(var i=0;i<FC_DATA.length;i++){if(FC_DATA[i]._id===id){rec=FC_DATA[i];break;}}
+    if(!rec)return;
+    FC_EDIT_ID=id;
+    document.getElementById('forecastModalTitle').textContent='编辑月度预测 ('+rec['年度']+'年'+rec['月份']+'月)';
+    document.getElementById('fcYear').value=String(rec['年度']);
+    document.getElementById('fcMonth').value=String(rec['月份']);
+    document.getElementById('fcRevenue').value=rec['预测收入'];
+    document.getElementById('fcProfit').value=rec['贡献利润'];
+    document.getElementById('fcCash').value=rec['现金流'];
+    document.getElementById('fcExpense').value=rec['费用'];
+    document.getElementById('fcRemark').value=rec['备注']||'';
+    document.getElementById('forecastModalOverlay').classList.add('show');
+  };
+  window.closeForecastModal=function(){
+    document.getElementById('forecastModalOverlay').classList.remove('show');
+    FC_EDIT_ID=null;
+  };
+  window.submitForecastForm=function(e){
+    e.preventDefault();
+    var btn=document.getElementById('forecastSubmitBtn');
+    btn.disabled=true;btn.textContent='保存中...';
+    var rec={
+      年度:parseInt(document.getElementById('fcYear').value,10),
+      月份:parseInt(document.getElementById('fcMonth').value,10),
+      预测收入:parseFloat(document.getElementById('fcRevenue').value)||0,
+      贡献利润:parseFloat(document.getElementById('fcProfit').value)||0,
+      现金流:parseFloat(document.getElementById('fcCash').value)||0,
+      费用:parseFloat(document.getElementById('fcExpense').value)||0,
+      备注:document.getElementById('fcRemark').value.trim()
+    };
+    var url=FC_EDIT_ID?'/api/forecast/'+encodeURIComponent(FC_EDIT_ID):'/api/forecast';
+    var method=FC_EDIT_ID?'PUT':'POST';
+    fetch(url,{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)})
+      .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+      .then(function(){toast(FC_EDIT_ID?'更新成功':'添加成功','success');closeForecastModal();loadForecast();})
+      .catch(function(err){toast('保存失败: '+err.message,'error');})
+      .finally(function(){btn.disabled=false;btn.textContent='保存';});
+  };
+  window.deleteForecastRecord=function(id){
+    window.showConfirm('确认删除该月预测数据？删除后不可恢复。',function(){
+      fetch('/api/forecast/'+encodeURIComponent(id),{method:'DELETE'})
+        .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+        .then(function(){toast('删除成功','success');loadForecast();})
+        .catch(function(err){toast('删除失败: '+err.message,'error');});
+    });
+  };
+
+  function getFilteredData(tab){
+    var searchEl=document.querySelector('#tab-'+tab+' .search-input');
+    var filterEl=document.getElementById('filter-'+tab);
+    var search=(searchEl?searchEl.value:'').toLowerCase();
+    var filter=filterEl?filterEl.value:'';
+    return ALL_DATA.filter(function(r){
+      var matchSearch=true;
+      if(search){
+        matchSearch=(r['项目名称']||'').toLowerCase().indexOf(search)>=0||
+          (r['客户名称']||'').toLowerCase().indexOf(search)>=0||
+          (r['合同编号']||'').toLowerCase().indexOf(search)>=0;
+      }
+      var matchFilter=true;
+      if(filter){
+        if(tab==='contract')matchFilter=r['合同状态']===filter;
+        else if(tab==='project')matchFilter=r['项目状态']===filter;
+        else if(tab==='acceptance')matchFilter=r['验收状态']===filter;
+        else if(tab==='payment')matchFilter=r['回款状态']===filter;
+      }
+      return matchSearch&&matchFilter;
+    });
+  }
+
+  function renderTable(tab){
+    var data=getFilteredData(tab);
+    var tbody=document.getElementById(tab+'Body');
+    var cardList=document.getElementById(tab+'Cards');
+    if(!tbody)return;
+    if(data.length===0){
+      tbody.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:24px">暂无数据</td></tr>';
+      if(cardList)cardList.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:24px">暂无数据</div>';
+      return;
+    }
+    var actions=function(id){return '<div class="row-actions"><button class="row-btn" onclick="openModal(\''+id+'\')">'+ICO_EDIT+'</button><button class="row-btn delete" onclick="deleteRecord(\''+id+'\')">'+ICO_DEL+'</button></div>';};
+    var html='',mhtml='';
+    if(tab==='contract'){
+      data.forEach(function(r){
+        html+='<tr><td>'+(r['合同编号']||'-')+'</td><td>'+(r['项目名称']||'-')+'</td><td>'+(r['客户名称']||'-')+'</td><td>'+formatCurrency(r['合同金额'])+'</td><td>'+badge(r['合同状态'])+'</td><td>'+formatDate(r['签订日期'])+'</td><td>'+actions(r._id)+'</td></tr>';
+        mhtml+='<div class="mc-item"><div class="mc-item-header"><span class="mc-item-title">'+(r['合同编号']||'-')+'</span>'+badge(r['合同状态'])+'</div><div class="mc-item-row"><span>项目</span><span>'+(r['项目名称']||'-')+'</span></div><div class="mc-item-row"><span>客户</span><span>'+(r['客户名称']||'-')+'</span></div><div class="mc-item-row"><span>金额</span><span>'+formatCurrency(r['合同金额'])+'</span></div><div class="mc-item-row"><span>签订日期</span><span>'+formatDate(r['签订日期'])+'</span></div><div class="mc-item-actions">'+actions(r._id)+'</div></div>';
+      });
+    }else if(tab==='project'){
+      data.forEach(function(r){
+        html+='<tr><td>'+(r['项目名称']||'-')+'</td><td>'+(r['客户名称']||'-')+'</td><td>'+badge(r['项目状态'])+'</td><td>'+(r['项目负责人']||'-')+'</td><td>'+formatDate(r['项目开始日期'])+'</td><td>'+formatDate(r['项目截止日期'])+'</td><td>'+actions(r._id)+'</td></tr>';
+        mhtml+='<div class="mc-item"><div class="mc-item-header"><span class="mc-item-title">'+(r['项目名称']||'-')+'</span>'+badge(r['项目状态'])+'</div><div class="mc-item-row"><span>客户</span><span>'+(r['客户名称']||'-')+'</span></div><div class="mc-item-row"><span>负责人</span><span>'+(r['项目负责人']||'-')+'</span></div><div class="mc-item-row"><span>开始</span><span>'+formatDate(r['项目开始日期'])+'</span></div><div class="mc-item-row"><span>截止</span><span>'+formatDate(r['项目截止日期'])+'</span></div><div class="mc-item-actions">'+actions(r._id)+'</div></div>';
+      });
+    }else if(tab==='acceptance'){
+      data.forEach(function(r){
+        var overdueClass=isOverdue(r['计划验收日期'])&&r['验收状态']!=='已验收'&&r['验收状态']!=='不通过'?'style="color:var(--danger);font-weight:500"':'';
+        html+='<tr><td>'+(r['项目名称']||'-')+'</td><td>'+(r['客户名称']||'-')+'</td><td>'+badge(r['验收状态'])+'</td><td '+overdueClass+'>'+formatDate(r['计划验收日期'])+'</td><td>'+formatDate(r['实际验收日期'])+'</td><td>'+badge(r['项目状态'])+'</td><td>'+actions(r._id)+'</td></tr>';
+        mhtml+='<div class="mc-item"><div class="mc-item-header"><span class="mc-item-title">'+(r['项目名称']||'-')+'</span>'+badge(r['验收状态'])+'</div><div class="mc-item-row"><span>客户</span><span>'+(r['客户名称']||'-')+'</span></div><div class="mc-item-row"><span>计划验收</span><span '+overdueClass+'>'+formatDate(r['计划验收日期'])+'</span></div><div class="mc-item-row"><span>实际验收</span><span>'+formatDate(r['实际验收日期'])+'</span></div><div class="mc-item-actions">'+actions(r._id)+'</div></div>';
+      });
+    }else if(tab==='payment'){
+      data.forEach(function(r){
+        var total=Number(r['合同金额']||0),paid=Number(r['回款金额']||0),pending=total-paid;
+        var overdueClass=isOverdue(r['计划回款日期'])&&r['回款状态']!=='已回清'?'style="color:var(--danger);font-weight:500"':'';
+        html+='<tr><td>'+(r['项目名称']||'-')+'</td><td>'+(r['客户名称']||'-')+'</td><td>'+formatCurrency(total)+'</td><td>'+formatCurrency(paid)+'</td><td style="color:'+(pending>0?'var(--danger)':'var(--success)')+'">'+formatCurrency(pending)+'</td><td>'+badge(r['回款状态'])+'</td><td '+overdueClass+'>'+formatDate(r['计划回款日期'])+'</td><td>'+actions(r._id)+'</td></tr>';
+        mhtml+='<div class="mc-item"><div class="mc-item-header"><span class="mc-item-title">'+(r['项目名称']||'-')+'</span>'+badge(r['回款状态'])+'</div><div class="mc-item-row"><span>合同金额</span><span>'+formatCurrency(total)+'</span></div><div class="mc-item-row"><span>已回款</span><span>'+formatCurrency(paid)+'</span></div><div class="mc-item-row"><span>待回款</span><span style="color:'+(pending>0?'var(--danger)':'var(--success)')+'">'+formatCurrency(pending)+'</span></div><div class="mc-item-row"><span>计划回款</span><span '+overdueClass+'>'+formatDate(r['计划回款日期'])+'</span></div><div class="mc-item-actions">'+actions(r._id)+'</div></div>';
+      });
+    }
+    tbody.innerHTML=html;
+    if(cardList)cardList.innerHTML=mhtml;
+  }
+
+  window.openModal=function(recordId){
+    var form=document.getElementById('recordForm');
+    form.reset();
+    EDITING_ID=recordId||null;
+    document.getElementById('modalTitle').textContent=recordId?'编辑记录':'新增记录';
+    if(recordId){
+      var record=null;
+      for(var i=0;i<ALL_DATA.length;i++){if(ALL_DATA[i]._id===recordId){record=ALL_DATA[i];break;}}
+      if(record){
+        var fields=form.querySelectorAll('[data-field]');
+        for(var j=0;j<fields.length;j++){
+          var f=fields[j],fn=f.getAttribute('data-field'),ft=f.getAttribute('data-type');
+          var val=record[fn];
+          if(val===null||val===undefined)continue;
+          if(ft==='select'){
+            for(var k=0;k<f.options.length;k++){if(f.options[k].textContent===String(val)){f.selectedIndex=k;break;}}
+          }else if(ft==='date'){
+            f.value=val?String(val).split('T')[0]:'';
+          }else{
+            f.value=val;
+          }
+        }
+      }
+    }else{
+      restoreFormCache();
+    }
+    document.getElementById('modalOverlay').classList.add('show');
+  };
+  window.closeModal=function(){
+    document.getElementById('modalOverlay').classList.remove('show');
+    EDITING_ID=null;
+  };
+
+  window.submitForm=function(e){
+    e.preventDefault();
+    var form=document.getElementById('recordForm');
+    var btn=document.getElementById('submitBtn');
+    btn.disabled=true;btn.textContent='保存中...';
+    var fields=form.querySelectorAll('[data-field]');
+    var record={};
+    for(var i=0;i<fields.length;i++){
+      var f=fields[i],fn=f.getAttribute('data-field'),ft=f.getAttribute('data-type');
+      var val=f.value;
+      if(!val&&ft!=='checkbox')continue;
+      if(ft==='currency'){
+        record[fn]=parseFloat(val)||0;
+      }else{
+        record[fn]=val;
+      }
+    }
+    var url=EDITING_ID?'/api/records/'+encodeURIComponent(EDITING_ID):'/api/records';
+    var method=EDITING_ID?'PUT':'POST';
+    fetch(url,{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(record)})
+      .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+      .then(function(){
+        toast(EDITING_ID?'更新成功':'添加成功','success');
+        clearFormCache();
+        closeModal();
+        loadData();
+      })
+      .catch(function(err){toast('保存失败: '+err.message,'error');})
+      .finally(function(){btn.disabled=false;btn.textContent='保存';});
+  };
+
+  window.deleteRecord=function(recordId){
+    window.showConfirm('确认删除这条记录？删除后不可恢复。',function(){
+      fetch('/api/records/'+encodeURIComponent(recordId),{method:'DELETE'})
+        .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+        .then(function(){toast('删除成功','success');loadData();})
+        .catch(function(err){toast('删除失败: '+err.message,'error');});
+    });
+  };
+
+  window.exportJSON=function(){
+    if(ALL_DATA.length===0){toast('暂无数据可导出','error');return;}
+    var data=JSON.stringify(ALL_DATA,null,2);
+    var blob=new Blob([data],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    var d=new Date();
+    a.download='运营管理数据备份_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'.json';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('已导出 '+ALL_DATA.length+' 条数据','success');
+  };
+
+  window.importJSON=function(){
+    document.getElementById('importFile').click();
+  };
+  window.handleImport=function(event){
+    var file=event.target.files[0];
+    if(!file)return;
+    var reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        var imported=JSON.parse(e.target.result);
+        if(!Array.isArray(imported)){toast('文件格式错误: 需要数组格式','error');return;}
+        window.showConfirm('导入将覆盖当前所有数据，确认继续？',function(){
+          fetch('/api/records/batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(imported)})
+            .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+            .then(function(r){toast('成功导入 '+r.count+' 条数据','success');loadData();})
+            .catch(function(err){toast('导入失败: '+err.message,'error');});
+        });
+      }catch(err){
+        toast('文件解析失败: '+err.message,'error');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value='';
+  };
+
+  var cacheTimer=null;
+  function setupFormCache(){
+    var form=document.getElementById('recordForm');
+    var fields=form.querySelectorAll('[data-field]');
+    for(var i=0;i<fields.length;i++){
+      var f=fields[i],fn=f.getAttribute('data-field');
+      if(f.hasAttribute('data-no-cache'))continue;
+      if(f.type==='file'||f.type==='password')continue;
+      (function(name,el){
+        var handler=function(){
+          clearTimeout(cacheTimer);
+          cacheTimer=setTimeout(function(){setCached(name,el.value);},300);
+        };
+        el.addEventListener('input',handler);
+        el.addEventListener('change',handler);
+      })(fn,f);
+    }
+  }
+  function getCached(name){try{return localStorage.getItem(CACHE_PREFIX+name);}catch(e){return null;}}
+  function setCached(name,val){try{localStorage.setItem(CACHE_PREFIX+name,val);}catch(e){}}
+  function clearFormCache(){
+    try{
+      var keys=[];
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i);
+        if(k&&k.indexOf(CACHE_PREFIX)===0)keys.push(k);
+      }
+      keys.forEach(function(k){localStorage.removeItem(k);});
+    }catch(e){}
+  }
+  function restoreFormCache(){
+    var form=document.getElementById('recordForm');
+    var fields=form.querySelectorAll('[data-field]');
+    for(var i=0;i<fields.length;i++){
+      var f=fields[i],fn=f.getAttribute('data-field');
+      if(f.type==='file'||f.type==='password')continue;
+      var cached=getCached(fn);
+      if(cached!==null){f.value=cached;}
+    }
+  }
+
+  document.getElementById('modalOverlay').addEventListener('click',function(e){
+    if(e.target===this)closeModal();
+  });
+  document.getElementById('forecastModalOverlay').addEventListener('click',function(e){
+    if(e.target===this)closeForecastModal();
+  });
+  document.getElementById('budgetModalOverlay').addEventListener('click',function(e){
+    if(e.target===this)closeBudgetModal();
+  });
+  document.getElementById('targetModalOverlay').addEventListener('click',function(e){
+    if(e.target===this)closeTargetModal();
+  });
+
+  populateSelects();
+  setupFormCache();
+  loadData();
+  initForecast();
+  loadTarget();
+})();
+</script>
+</body>
+</html>
