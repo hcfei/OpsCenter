@@ -109,10 +109,14 @@ CREATE TABLE IF NOT EXISTS ops_records (
   KEY idx_contract_status (contract_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
-/* 经营预测表: 按月存储预测数据, year+month 唯一 */
+/* 经营预测表: 按月存储预测数据
+ * 滚动预测模型: fc_month=预测批次月份(如 202608=2026年8月做的预测), version=批次内版本(V1/V2/...)
+ * 每次预测覆盖全年 (year+month 12 条), 同一批次可多个版本; (fc_month, version, year, month) 唯一 */
 const CREATE_FC_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS ops_forecast (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  fc_month INT NULL COMMENT '预测批次月份 YYYYMM',
+  version VARCHAR(10) NULL COMMENT '批次内版本 V1/V2/...',
   year INT NOT NULL,
   month INT NOT NULL,
   forecast_revenue DECIMAL(14,2) DEFAULT 0,
@@ -122,8 +126,36 @@ CREATE TABLE IF NOT EXISTS ops_forecast (
   remark VARCHAR(500),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_year_month (year, month)
+  UNIQUE KEY uk_fc_ver_ym (fc_month, version, year, month)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+/* 经营预测表结构迁移 (旧版: year+month 唯一 -> 新版: 批次+版本+年月唯一):
+ * 1. 补 fc_month / version 列, 存量数据归入"当前月份批次 V1"
+ * 2. 唯一键从 uk_year_month 升级为 uk_fc_ver_ym */
+async function migrateForecastTable() {
+  const [cols] = await pool.query("SHOW COLUMNS FROM ops_forecast LIKE 'fc_month'");
+  if (cols.length === 0) {
+    await pool.query('ALTER TABLE ops_forecast ADD COLUMN fc_month INT NULL AFTER id, ADD COLUMN version VARCHAR(10) NULL AFTER fc_month');
+    const now = new Date();
+    const ym = now.getFullYear() * 100 + (now.getMonth() + 1);
+    await pool.query("UPDATE ops_forecast SET fc_month=?, version='V1' WHERE fc_month IS NULL", [ym]);
+    console.log('[migrate] ops_forecast 已升级: 新增 fc_month(预测批次)/version(版本), 存量数据归入 ' + ym + ' 批次 V1');
+  }
+  const [idx] = await pool.query("SHOW INDEX FROM ops_forecast WHERE Key_name='uk_fc_ver_ym'");
+  if (idx.length === 0) {
+    try { await pool.query('ALTER TABLE ops_forecast DROP INDEX uk_year_month'); } catch (e) { /* 旧索引不存在则跳过 */ }
+    await pool.query('ALTER TABLE ops_forecast ADD UNIQUE KEY uk_fc_ver_ym (fc_month, version, year, month)');
+    console.log('[migrate] ops_forecast 唯一键升级: (fc_month, version, year, month)');
+  }
+}
+
+/* 默认预测批次: 取最新批次, 无数据时取当前月份 */
+async function defaultFcBatch() {
+  const [rows] = await pool.query('SELECT fc_month FROM ops_forecast WHERE fc_month IS NOT NULL ORDER BY fc_month DESC LIMIT 1');
+  if (rows.length > 0) return rows[0].fc_month;
+  const now = new Date();
+  return now.getFullYear() * 100 + (now.getMonth() + 1);
+}
 
 /* 月度预算表: 每年 12 条 (year+month 唯一), 季度/半年度/全年由月度聚合 */
 const CREATE_BUDGET_TABLE_SQL = `
@@ -247,6 +279,8 @@ function fcRowToApi(row) {
     if (FC_MONEY_COLS.has(col)) api[cn] = (v === null || v === undefined) ? 0 : Number(v);
     else api[cn] = (v === null || v === undefined) ? '' : String(v);
   });
+  api['预测批次'] = row.fc_month ? Number(row.fc_month) : 0;
+  api['版本'] = row.version || '';
   return api;
 }
 function fcApiToDb(record) {
@@ -258,6 +292,8 @@ function fcApiToDb(record) {
     else if (col === 'year' || col === 'month') db[col] = parseInt(v, 10) || 0;
     else db[col] = (v === '' || v === null || v === undefined) ? null : String(v);
   });
+  if ('预测批次' in record) db.fc_month = parseInt(record['预测批次'], 10) || 0;
+  if ('版本' in record) db.version = String(record['版本'] || 'V1');
   return db;
 }
 function budgetRowToApi(row) {
@@ -348,13 +384,100 @@ async function handleApi(req, res, pathname, method) {
       return send(res, 201, { _id: String(r.insertId) });
     }
   }
+  if (pathname === '/api/forecast/versions' && method === 'GET') {
+    // 版本索引: 批次(fc_month) × 版本 × 年份
+    const [rows] = await pool.query(
+      'SELECT fc_month, version, year, COUNT(*) AS cnt, MAX(updated_at) AS updated_at FROM ops_forecast WHERE fc_month IS NOT NULL GROUP BY fc_month, version, year ORDER BY fc_month DESC, version ASC, year ASC'
+    );
+    return send(res, 200, rows.map(r => ({ fcMonth: r.fc_month, version: r.version, year: r.year, count: r.cnt, updatedAt: r.updated_at })));
+  }
+  if (pathname === '/api/forecast/batch' && method === 'POST') {
+    // 整批导入/覆盖: {fcMonth, version, year, records:[{年度,月份,预测收入,...}...]}
+    const body = await readBody(req);
+    const list = Array.isArray(body) ? body : (body && body.records) || [];
+    const fcMonth = parseInt((body && body.fcMonth) || (list[0] && list[0]['预测批次']) || 0, 10) || await defaultFcBatch();
+    const version = String((body && body.version) || (list[0] && list[0]['版本']) || 'V1');
+    const year = parseInt((body && body.year) || (list[0] && list[0]['年度']) || 0, 10);
+    if (!year) return send(res, 400, { error: 'year required' });
+    if (list.length === 0) return send(res, 400, { error: 'expected non-empty records' });
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      await conn.query('DELETE FROM ops_forecast WHERE fc_month=? AND version=? AND year=?', [fcMonth, version, year]);
+      let count = 0;
+      for (const rec of list) {
+        const db = fcApiToDb(Object.assign({}, rec, { '预测批次': fcMonth, '版本': version, '年度': year }));
+        const cols = Object.keys(db);
+        if (cols.length === 0 || !db.year || !db.month) continue;
+        await conn.query(
+          `INSERT INTO ops_forecast (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`,
+          cols.map(c => db[c])
+        );
+        count++;
+      }
+      await conn.commit();
+      return send(res, 200, { count, fcMonth, version, year });
+    } catch (e) {
+      await conn.rollback();
+      throw e;
+    } finally {
+      conn.release();
+    }
+  }
+  if (pathname === '/api/forecast/clone' && method === 'POST') {
+    // 复制版本: {fromFcMonth, fromVersion, toFcMonth, toVersion} (同批次新版本 / 滚动到下月新批次)
+    const body = await readBody(req);
+    const fromFcMonth = parseInt(body.fromFcMonth, 10) || 0;
+    const fromVersion = String(body.fromVersion || 'V1');
+    const toFcMonth = parseInt(body.toFcMonth, 10) || 0;
+    const toVersion = String(body.toVersion || 'V1');
+    if (!fromFcMonth || !toFcMonth) return send(res, 400, { error: 'fromFcMonth and toFcMonth required' });
+    const [src] = await pool.query('SELECT * FROM ops_forecast WHERE fc_month=? AND version=?', [fromFcMonth, fromVersion]);
+    if (src.length === 0) return send(res, 404, { error: 'source version empty' });
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      await conn.query('DELETE FROM ops_forecast WHERE fc_month=? AND version=?', [toFcMonth, toVersion]);
+      for (const r of src) {
+        await conn.query(
+          'INSERT INTO ops_forecast (fc_month, version, year, month, forecast_revenue, contribution_profit, cash_flow, expense, remark) VALUES (?,?,?,?,?,?,?,?,?)',
+          [toFcMonth, toVersion, r.year, r.month, r.forecast_revenue, r.contribution_profit, r.cash_flow, r.expense, r.remark]
+        );
+      }
+      await conn.commit();
+      return send(res, 200, { count: src.length, fcMonth: toFcMonth, version: toVersion });
+    } catch (e) {
+      await conn.rollback();
+      throw e;
+    } finally {
+      conn.release();
+    }
+  }
+  if (pathname === '/api/forecast/version' && method === 'DELETE') {
+    // 删除整个版本: ?fcMonth=202608&version=V1
+    const q = new URL(req.url, 'http://x');
+    const fcMonth = parseInt(q.searchParams.get('fcMonth'), 10);
+    const version = q.searchParams.get('version');
+    if (!fcMonth || !version) return send(res, 400, { error: 'fcMonth and version required' });
+    const [r] = await pool.query('DELETE FROM ops_forecast WHERE fc_month=? AND version=?', [fcMonth, version]);
+    return send(res, 200, { ok: true, deleted: r.affectedRows });
+  }
   if (pathname === '/api/forecast') {
     if (method === 'GET') {
       const q = new URL(req.url, 'http://x');
+      const fcMonth = parseInt(q.searchParams.get('fcMonth') || q.searchParams.get('fc_month') || '', 10) || 0;
+      const version = q.searchParams.get('version');
       const year = q.searchParams.get('year');
-      let sql = 'SELECT * FROM ops_forecast ORDER BY year DESC, month ASC';
+      let sql = 'SELECT * FROM ops_forecast WHERE 1=1';
       const params = [];
-      if (year) { sql = 'SELECT * FROM ops_forecast WHERE year=? ORDER BY month ASC'; params.push(parseInt(year, 10)); }
+      if (fcMonth) { sql += ' AND fc_month=?'; params.push(fcMonth); }
+      if (version) { sql += ' AND version=?'; params.push(String(version)); }
+      if (year) { sql += ' AND year=?'; params.push(parseInt(year, 10)); }
+      if (!fcMonth) {
+        // 兼容旧调用(仅按年): 自动取最新批次
+        sql += ' AND fc_month=?'; params.push(await defaultFcBatch());
+      }
+      sql += ' ORDER BY year ASC, month ASC';
       const [rows] = await pool.query(sql, params);
       return send(res, 200, rows.map(fcRowToApi));
     }
@@ -363,8 +486,10 @@ async function handleApi(req, res, pathname, method) {
       const db = fcApiToDb(body);
       const cols = Object.keys(db);
       if (cols.length === 0) return send(res, 400, { error: 'no valid fields' });
-      // year+month 唯一: 已存在则按同一年月更新
-      const updCols = cols.filter(c => c !== 'year' && c !== 'month');
+      if (!db.fc_month) db.fc_month = await defaultFcBatch();
+      if (!db.version) db.version = 'V1';
+      // 唯一键 (fc_month, version, year, month): 已存在则按同一键更新
+      const updCols = cols.filter(c => c !== 'year' && c !== 'month' && c !== 'fc_month' && c !== 'version');
       let sql;
       if (updCols.length > 0) {
         sql = `INSERT INTO ops_forecast (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})
@@ -373,7 +498,7 @@ async function handleApi(req, res, pathname, method) {
         sql = `INSERT IGNORE INTO ops_forecast (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`;
       }
       const [r] = await pool.query(sql, cols.map(c => db[c]));
-      const id = r.insertId || (await pool.query('SELECT id FROM ops_forecast WHERE year=? AND month=?', [db.year, db.month]))[0][0].id;
+      const id = r.insertId || (await pool.query('SELECT id FROM ops_forecast WHERE fc_month=? AND version=? AND year=? AND month=?', [db.fc_month, db.version, db.year, db.month]))[0][0].id;
       return send(res, 201, { _id: String(id) });
     }
   }
@@ -608,6 +733,9 @@ function serveStatic(req, res) {
 async function init() {
   await pool.query(CREATE_TABLE_SQL);
   await pool.query(CREATE_FC_TABLE_SQL);
+  await migrateForecastTable();
+  const now = new Date();
+  const CUR_BATCH = now.getFullYear() * 100 + (now.getMonth() + 1);   // 种子预测批次 = 当前月份
   const [[cnt]] = await pool.query('SELECT COUNT(*) AS c FROM ops_records');
   if (cnt.c === 0) {
     for (const rec of SEED) {
@@ -624,7 +752,7 @@ async function init() {
   const [[fccnt]] = await pool.query('SELECT COUNT(*) AS c FROM ops_forecast');
   if (fccnt.c === 0) {
     for (const rec of SEED_FC) {
-      const db = fcApiToDb(rec);
+      const db = fcApiToDb(Object.assign({}, rec, { '预测批次': CUR_BATCH, '版本': 'V1' }));
       const cols = Object.keys(db);
       await pool.query(
         `INSERT INTO ops_forecast (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`,
@@ -632,7 +760,7 @@ async function init() {
       );
     }
     const [[fcafter]] = await pool.query('SELECT COUNT(*) AS c FROM ops_forecast');
-    console.log('[init] 已写入 ' + fcafter.c + ' 条经营预测数据(模板汇总行实际值)');
+    console.log('[init] 已写入 ' + fcafter.c + ' 条经营预测数据(' + CUR_BATCH + ' 批次 V1, 模板汇总行实际值)');
   }
   // 预算表: 旧版为每年一条(year唯一), 新版按月 (year+month唯一), 结构不匹配时自动重建
   const [bcols] = await pool.query("SHOW COLUMNS FROM ops_budget LIKE 'month'");

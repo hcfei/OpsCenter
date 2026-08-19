@@ -310,6 +310,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 .fc-progress-cell{height:10px;border-radius:3px;background:rgba(255,255,255,0.08);flex:1;position:relative;transition:background .3s}
 .fc-progress-cell.on{background:linear-gradient(180deg,#3b82f6,#1d4ed8)}
 .fc-progress-cell.today{outline:1px solid var(--warning)}
+/* 预测批次/版本管理条 */
+.fc-ver-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px}
+.fc-ver-label{font-size:12px;color:var(--text-muted);font-weight:600}
+.fc-ver-bar .btn-secondary{padding:6px 12px;height:34px;font-size:12px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.fc-ver-bar .btn-secondary svg{width:14px;height:14px}
+.fc-ver-info{font-size:12px;color:var(--text-secondary);margin-left:auto;white-space:nowrap;background:rgba(255,255,255,0.05);border:1px solid var(--border);padding:4px 10px;border-radius:8px}
 /* 全年度达成总览 */
 .fc-ach-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
 .fc-ach-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden;transition:border-color .2s}
@@ -511,6 +517,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       <button class="btn-primary" onclick="openForecastModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增月度预测</button>
     </div>
   </div>
+
+  <!-- 预测批次/版本管理条: 每月滚动预测(每次预测全年), 每批多版本, 可导入导出 -->
+  <div class="fc-ver-bar">
+    <span class="fc-ver-label">预测批次</span>
+    <select class="filter-select" id="fcBatchSel" onchange="onFcBatchChange()" style="min-width:112px" title="预测批次 = 做预测的月份，每月滚动新建一批"></select>
+    <select class="filter-select" id="fcVerSel" onchange="onFcVersionChange()" style="min-width:72px" title="同批次内可存在多个版本 V1/V2/..."></select>
+    <button class="btn-secondary" onclick="cloneForecastVersion()" title="以当前版本为底稿，在当前批次下新建下一版本（如 V2）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>新建版本</button>
+    <button class="btn-secondary" onclick="rollForecastMonth()" title="以当前版本为底稿，滚动到下月新建批次 V1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 16 16 12 12 8"/><line x1="8" y1="12" x2="16" y2="12"/></svg>下月滚动</button>
+    <button class="btn-secondary" onclick="exportForecast()" title="导出当前批次版本全年预测为 JSON 文件"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>导出</button>
+    <button class="btn-secondary" onclick="importForecast()" title="导入预测 JSON 文件（新建或覆盖批次版本）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>导入</button>
+    <span class="fc-ver-info" id="fcVerInfo">当前：—</span>
+  </div>
+  <input type="file" id="fcImportFile" accept=".json,application/json" style="display:none">
 
   <!-- 年度预测达成总览 (全年口径) -->
   <div class="fc-ach-grid" id="fcAchGrid"></div>
@@ -820,12 +839,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   var CURRENT_TAB='finance';
 
   // 经营看板状态
-  var FC_DATA=[];          // 当前年份的全部月度记录 {_id,年度,月份,预测收入,贡献利润,现金流,费用,备注}
+  var FC_DATA=[];          // 当前批次版本年份的全部月度记录 {_id,年度,月份,预测收入,贡献利润,现金流,费用,备注,预测批次,版本}
   var FC_BUDGETS=[];       // 当前年份全部月度预算 [{_id,年度,月份,预算收入,预算贡献利润,预算现金流,预算费用}]
   var FC_BUDGET=null;      // 全年预算聚合 (由 FC_BUDGETS 求和, 供 KPI/趋势图使用)
   var FC_YEAR=2026;        // 当前选中年份
   var FC_DIM='month';      // month | quarter | h1 | h2 | year
   var FC_EDIT_ID=null;     // 经营预测编辑中的记录 _id
+  var FC_BATCH=0;          // 当前预测批次 YYYYMM (如 202608 = 2026年8月做的预测)
+  var FC_VERSION='V1';     // 当前批次内版本 (V1/V2/...)
+  var FC_VERSIONS=[];      // 预测版本索引 [{fcMonth,version,year,count,updatedAt}]
 
   // 预算目标拆分状态
   var TG_DATA=[];          // 全部目标拆分记录 [{_id,指标,BU,Q1实际,...,YTD目标}]
@@ -1136,35 +1158,217 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   };
 
   function initForecast(){
-    var ySel=document.getElementById('forecastYear');
-    var cur=new Date().getFullYear();
-    var years=[];
-    for(var y=cur-2;y<=cur+4;y++)years.push(y);
-    if(years.indexOf(FC_YEAR)<0)years.push(FC_YEAR);
-    years.sort(function(a,b){return a-b;});
-    var fillYear=function(sel){
-      years.forEach(function(yv){
-        var o=document.createElement('option');
-        o.value=String(yv);o.textContent=yv+' 年';
-        sel.appendChild(o);
-        if(yv===FC_YEAR)o.selected=true;
-      });
-    };
-    fillYear(ySel);
-    fillYear(document.getElementById('fcYear'));
+    // fcMonth 下拉固定 1-12 月; fcYear 下拉由 fillFcYearSel 随批次动态填充
     var mSel=document.getElementById('fcMonth');
     for(var m=1;m<=12;m++){
       var o=document.createElement('option');
       o.value=String(m);o.textContent=m+' 月';
       mSel.appendChild(o);
     }
-    loadForecast();
+    loadForecastVersions();
   }
   window.switchForecastYear=function(){
     var y=parseInt(document.getElementById('forecastYear').value,10);
     if(!y||y===FC_YEAR)return;
     FC_YEAR=y;
+    updateFcVerInfo();
     loadForecast();
+  };
+
+  // ===== 预测批次/版本管理 (每月滚动预测, 每批多版本, 可导入导出) =====
+  function fcMonthLabel(fm){
+    if(!fm)return '—';
+    var y=Math.floor(fm/100),m=fm%100;
+    return y+'-'+(m<10?'0'+m:m);
+  }
+  function fcNextBatch(fm){
+    var y=Math.floor(fm/100),m=fm%100;
+    m++;if(m>12){m=1;y++;}
+    return y*100+m;
+  }
+  function fcNextVersion(){
+    var vers=fcBatchVersions(),max=0;
+    vers.forEach(function(v){var n=parseInt(String(v).replace(/\D/g,''),10)||0;if(n>max)max=n;});
+    return 'V'+(max+1);
+  }
+  function fcBatchVersions(){
+    var vers=[];
+    FC_VERSIONS.forEach(function(v){if(v.fcMonth===FC_BATCH&&vers.indexOf(v.version)<0)vers.push(v.version);});
+    vers.sort(function(a,b){return (parseInt(String(a).replace(/\D/g,''),10)||0)-(parseInt(String(b).replace(/\D/g,''),10)||0);});
+    return vers;
+  }
+  function loadForecastVersions(){
+    fetch('/api/forecast/versions',{method:'GET'})
+      .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+      .then(function(list){
+        FC_VERSIONS=Array.isArray(list)?list:[];
+        fillFcBatchSel();fillFcYearSel();loadForecast();
+      })
+      .catch(function(err){
+        console.error('loadForecastVersions error',err);
+        FC_VERSIONS=[];fillFcBatchSel();fillFcYearSel();loadForecast();
+        toast('预测批次加载失败: '+err.message,'error');
+      });
+  }
+  function fillFcBatchSel(){
+    var sel=document.getElementById('fcBatchSel');
+    var batches=[];
+    FC_VERSIONS.forEach(function(v){if(batches.indexOf(v.fcMonth)<0)batches.push(v.fcMonth);});
+    batches.sort(function(a,b){return b-a;});
+    if(batches.length===0){
+      var now=new Date();
+      FC_BATCH=now.getFullYear()*100+(now.getMonth()+1);
+    }else if(batches.indexOf(FC_BATCH)<0){
+      FC_BATCH=batches[0];
+    }
+    sel.innerHTML='';
+    batches.forEach(function(b){
+      var o=document.createElement('option');
+      o.value=String(b);o.textContent=fcMonthLabel(b)+' 预测';
+      sel.appendChild(o);
+      if(b===FC_BATCH)o.selected=true;
+    });
+    fillFcVersionSel();
+  }
+  function fillFcVersionSel(){
+    var sel=document.getElementById('fcVerSel');
+    var vers=fcBatchVersions();
+    if(vers.length>0&&vers.indexOf(FC_VERSION)<0)FC_VERSION=vers[0];
+    if(vers.length===0)FC_VERSION='V1';
+    sel.innerHTML='';
+    vers.forEach(function(v){
+      var o=document.createElement('option');
+      o.value=v;o.textContent=v;
+      sel.appendChild(o);
+      if(v===FC_VERSION)o.selected=true;
+    });
+    updateFcVerInfo();
+  }
+  function fillFcYearSel(){
+    var sel=document.getElementById('forecastYear');
+    var years=[];
+    FC_VERSIONS.forEach(function(v){if(v.fcMonth===FC_BATCH&&years.indexOf(v.year)<0)years.push(v.year);});
+    years.sort(function(a,b){return a-b;});
+    if(years.length===0){
+      var cur=new Date().getFullYear();
+      for(var y=cur-2;y<=cur+4;y++)years.push(y);
+    }
+    if(years.indexOf(FC_YEAR)<0)FC_YEAR=years[years.length-1]||new Date().getFullYear();
+    sel.innerHTML='';
+    years.forEach(function(yv){
+      var o=document.createElement('option');
+      o.value=String(yv);o.textContent=yv+' 年';
+      sel.appendChild(o);
+      if(yv===FC_YEAR)o.selected=true;
+    });
+    // 预测弹窗内年度下拉同步
+    var mSel=document.getElementById('fcYear');
+    if(mSel){
+      var curSel=mSel.value;
+      mSel.innerHTML='';
+      years.forEach(function(yv){
+        var o=document.createElement('option');
+        o.value=String(yv);o.textContent=yv+' 年';
+        mSel.appendChild(o);
+        if(String(yv)===curSel||yv===FC_YEAR)o.selected=true;
+      });
+    }
+    updateFcVerInfo();
+  }
+  function updateFcVerInfo(){
+    var el=document.getElementById('fcVerInfo');
+    if(el)el.textContent='当前：'+fcMonthLabel(FC_BATCH)+' 预测 · '+FC_VERSION+' · '+FC_YEAR+' 年';
+  }
+  window.onFcBatchChange=function(){
+    FC_BATCH=parseInt(document.getElementById('fcBatchSel').value,10)||0;
+    fillFcVersionSel();fillFcYearSel();loadForecast();
+  };
+  window.onFcVersionChange=function(){
+    FC_VERSION=document.getElementById('fcVerSel').value||'V1';
+    fillFcYearSel();loadForecast();
+  };
+  window.cloneForecastVersion=function(){
+    var nv=fcNextVersion();
+    showConfirm('在当前批次（'+fcMonthLabel(FC_BATCH)+'）下，以 '+FC_VERSION+' 为底稿新建版本 '+nv+'？\n新版本将复制当前全部数据，可继续编辑修订。',function(){
+      fetch('/api/forecast/clone',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fromFcMonth:FC_BATCH,fromVersion:FC_VERSION,toFcMonth:FC_BATCH,toVersion:nv})})
+        .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+        .then(function(d){toast('已创建 '+fcMonthLabel(FC_BATCH)+' '+nv+'（复制 '+d.count+' 条）','success');FC_VERSION=nv;loadForecastVersions();})
+        .catch(function(err){toast('新建版本失败: '+err.message,'error');});
+    });
+  };
+  window.rollForecastMonth=function(){
+    var nb=fcNextBatch(FC_BATCH);
+    var lbl=fcMonthLabel(nb);
+    showConfirm('以当前版本（'+fcMonthLabel(FC_BATCH)+' '+FC_VERSION+'）为底稿，滚动到下月 '+lbl+' 新建批次 V1？\n新批次将复制当前全部数据，实现每月滚动预测。',function(){
+      fetch('/api/forecast/clone',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fromFcMonth:FC_BATCH,fromVersion:FC_VERSION,toFcMonth:nb,toVersion:'V1'})})
+        .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+        .then(function(d){toast('已创建 '+lbl+' 批次 V1（复制 '+d.count+' 条）','success');FC_BATCH=nb;FC_VERSION='V1';loadForecastVersions();})
+        .catch(function(err){toast('下月滚动失败: '+err.message,'error');});
+    });
+  };
+  function downloadBlob(blob,name){
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=name;
+    document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);if(a.parentNode)a.parentNode.removeChild(a);},100);
+  }
+  window.exportForecast=function(){
+    if(FC_DATA.length===0){toast('当前批次版本无数据，无可导出','error');return;}
+    var payload={
+      type:'ops_forecast',
+      fcMonth:FC_BATCH,
+      version:FC_VERSION,
+      year:FC_YEAR,
+      exportedAt:new Date().toISOString(),
+      records:FC_DATA.map(function(r){
+        return {月份:Number(r['月份']),预测收入:Number(r['预测收入']||0),贡献利润:Number(r['贡献利润']||0),现金流:Number(r['现金流']||0),费用:Number(r['费用']||0),备注:r['备注']||''};
+      })
+    };
+    var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'});
+    downloadBlob(blob,'运营预测_'+fcMonthLabel(FC_BATCH)+'_'+FC_VERSION+'_'+FC_YEAR+'年.json');
+    toast('已导出 '+FC_DATA.length+' 条预测数据','success');
+  };
+  window.importForecast=function(){
+    var input=document.getElementById('fcImportFile');
+    input.value='';
+    input.click();
+  };
+  window.onFcImportFile=function(input){
+    var file=input&&input.files&&input.files[0];
+    if(!file)return;
+    var reader=new FileReader();
+    reader.onload=function(){
+      try{
+        var obj=JSON.parse(String(reader.result));
+        if(!obj||obj.type!=='ops_forecast')throw new Error('不是有效的预测文件（缺少 type: ops_forecast）');
+        var im=parseInt(obj.fcMonth,10)||0;
+        var iv=String(obj.version||'V1');
+        var iy=parseInt(obj.year,10)||0;
+        var recs=Array.isArray(obj.records)?obj.records:[];
+        if(!im||im<200000||im>210000)throw new Error('预测批次月份无效');
+        if(!iy||iy<2000||iy>2100)throw new Error('预测年份无效');
+        if(recs.length===0)throw new Error('文件内无预测记录');
+        var exists=FC_VERSIONS.some(function(v){return v.fcMonth===im&&v.version===iv;});
+        var label=fcMonthLabel(im)+' '+iv+'（'+iy+' 年，'+recs.length+' 条记录）';
+        var msg=exists
+          ? '文件将【覆盖】已有版本：'+label+'。\n继续？'
+          : '文件将【新建】批次版本：'+label+'。\n继续？';
+        showConfirm(msg,function(){
+          fetch('/api/forecast/batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fcMonth:im,version:iv,year:iy,records:recs})})
+            .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+            .then(function(d){
+              toast('导入成功：'+label+'（'+d.count+' 条）','success');
+              FC_BATCH=im;FC_VERSION=iv;FC_YEAR=iy;
+              loadForecastVersions();
+            })
+            .catch(function(err){toast('导入失败: '+err.message,'error');});
+        });
+      }catch(err){toast('文件解析失败: '+err.message,'error');}
+      input.value='';
+    };
+    reader.onerror=function(){toast('文件读取失败','error');};
+    reader.readAsText(file,'utf-8');
   };
   window.setForecastDim=function(dim){
     FC_DIM=dim;
@@ -1175,7 +1379,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 
   function loadForecast(){
     Promise.all([
-      fetch('/api/forecast?year='+FC_YEAR,{method:'GET'}),
+      fetch('/api/forecast?fcMonth='+FC_BATCH+'&version='+encodeURIComponent(FC_VERSION)+'&year='+FC_YEAR,{method:'GET'}),
       fetch('/api/budget?year='+FC_YEAR,{method:'GET'})
     ])
       .then(function(responses){
@@ -1666,6 +1870,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     var btn=document.getElementById('forecastSubmitBtn');
     btn.disabled=true;btn.textContent='保存中...';
     var rec={
+      预测批次:FC_BATCH,
+      版本:FC_VERSION,
       年度:parseInt(document.getElementById('fcYear').value,10),
       月份:parseInt(document.getElementById('fcMonth').value,10),
       预测收入:parseFloat(document.getElementById('fcRevenue').value)||0,
