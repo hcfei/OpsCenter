@@ -13,6 +13,11 @@ _verify_bu.js
 _verify_bu_all.js
 _verify_share.js
 _fill_budget_bu.py
+_shot_fc.png
+
+# 浏览器临时 profile
+_chr_prof/
+_edge_prof/
 
 # 系统与日志
 *.log
