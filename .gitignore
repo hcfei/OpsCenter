@@ -1,5 +1,6 @@
 # 依赖与运行时
 node_modules/
+__pycache__/
 
 # 敏感配置（服务器生成，勿提交）
 db_config.json
@@ -8,6 +9,7 @@ db_config.json
 _fc_final.json
 _page_check2.html
 _verify_finance2.js
+_verify_bu.js
 
 # 系统与日志
 *.log

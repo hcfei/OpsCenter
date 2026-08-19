@@ -43,9 +43,12 @@ FIELD_PAIRS.forEach(p => { CN2COL[p[0]] = p[1]; COL2CN[p[1]] = p[0]; });
 const MONEY_COLS = new Set(['contract_amount', 'payment_amount']);
 const DATE_COLS = new Set(['sign_date', 'project_start', 'project_end', 'plan_accept_date', 'actual_accept_date', 'plan_payment_date']);
 
+/* ---------- BU 维度常量: 汇总 + 4 个 BU (与 ops_target_split 口径一致) ---------- */
+const BU_LIST = ['汇总', '软工', '硬工', '云', '智能汽车'];
+
 /* ---------- 经营预测字段映射 (前端中文 key <-> 数据库英文列) ---------- */
 const FC_FIELD_PAIRS = [
-  ['年度', 'year'], ['月份', 'month'], ['预测收入', 'forecast_revenue'],
+  ['年度', 'year'], ['月份', 'month'], ['BU', 'bu'], ['预测收入', 'forecast_revenue'],
   ['贡献利润', 'contribution_profit'], ['现金流', 'cash_flow'], ['费用', 'expense'], ['备注', 'remark']
 ];
 const FC_CN2COL = {};
@@ -55,13 +58,24 @@ const FC_MONEY_COLS = new Set(['forecast_revenue', 'contribution_profit', 'cash_
 
 /* ---------- 月度预算字段映射 (前端中文 key <-> 数据库英文列) ---------- */
 const BUDGET_FIELD_PAIRS = [
-  ['年度', 'year'], ['月份', 'month'], ['预算收入', 'budget_revenue'], ['预算贡献利润', 'budget_profit'],
+  ['年度', 'year'], ['月份', 'month'], ['BU', 'bu'], ['预算收入', 'budget_revenue'], ['预算贡献利润', 'budget_profit'],
   ['预算现金流', 'budget_cash'], ['预算费用', 'budget_expense']
 ];
 const BUDGET_CN2COL = {};
 const BUDGET_COL2CN = {};
 BUDGET_FIELD_PAIRS.forEach(p => { BUDGET_CN2COL[p[0]] = p[1]; BUDGET_COL2CN[p[1]] = p[0]; });
 const BUDGET_MONEY_COLS = new Set(['budget_revenue', 'budget_profit', 'budget_cash', 'budget_expense']);
+
+/* ---------- 月度实际数据字段映射 (经营看板"实际达成", 按月+BU 录入) ----------
+ * 汇总口径 = 各 BU 之和 (查询时自动 SUM), 本表不存「汇总」行 */
+const ACTUAL_FIELD_PAIRS = [
+  ['年度', 'year'], ['月份', 'month'], ['BU', 'bu'], ['实际收入', 'actual_revenue'],
+  ['实际贡献利润', 'actual_profit'], ['实际现金流', 'actual_cash'], ['实际费用', 'actual_expense'], ['备注', 'remark']
+];
+const ACTUAL_CN2COL = {};
+const ACTUAL_COL2CN = {};
+ACTUAL_FIELD_PAIRS.forEach(p => { ACTUAL_CN2COL[p[0]] = p[1]; ACTUAL_COL2CN[p[1]] = p[0]; });
+const ACTUAL_MONEY_COLS = new Set(['actual_revenue', 'actual_profit', 'actual_cash', 'actual_expense']);
 
 /* ---------- 预算目标拆分字段映射 (前端中文 key <-> 数据库英文列) ----------
  * 对应《预测结果模板.xlsx》「预算目标拆分」Sheet:
@@ -111,12 +125,14 @@ CREATE TABLE IF NOT EXISTS ops_records (
 
 /* 经营预测表: 按月存储预测数据
  * 滚动预测模型: fc_month=预测批次月份(如 202608=2026年8月做的预测), version=批次内版本(V1/V2/...)
- * 每次预测覆盖全年 (year+month 12 条), 同一批次可多个版本; (fc_month, version, year, month) 唯一 */
+ * BU 维度: bu=汇总/软工/硬工/云/智能汽车, 每次预测覆盖全年 (year+month 12 条), 同批次可多版本;
+ * (fc_month, version, bu, year, month) 唯一 */
 const CREATE_FC_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS ops_forecast (
   id INT AUTO_INCREMENT PRIMARY KEY,
   fc_month INT NULL COMMENT '预测批次月份 YYYYMM',
   version VARCHAR(10) NULL COMMENT '批次内版本 V1/V2/...',
+  bu VARCHAR(20) NOT NULL DEFAULT '汇总' COMMENT 'BU 维度: 汇总/软工/硬工/云/智能汽车',
   year INT NOT NULL,
   month INT NOT NULL,
   forecast_revenue DECIMAL(14,2) DEFAULT 0,
@@ -126,12 +142,13 @@ CREATE TABLE IF NOT EXISTS ops_forecast (
   remark VARCHAR(500),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_fc_ver_ym (fc_month, version, year, month)
+  UNIQUE KEY uk_fc_ver_ym_bu (fc_month, version, bu, year, month)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
-/* 经营预测表结构迁移 (旧版: year+month 唯一 -> 新版: 批次+版本+年月唯一):
- * 1. 补 fc_month / version 列, 存量数据归入"当前月份批次 V1"
- * 2. 唯一键从 uk_year_month 升级为 uk_fc_ver_ym */
+/* 经营预测表结构迁移 (旧版: 批次+版本+年月唯一 -> 新版: 批次+版本+BU+年月唯一):
+ * 1. 补 fc_month / version 列 (存量归入当前月份批次 V1) [旧迁移]
+ * 2. 补 bu 列, 存量数据归入「汇总」
+ * 3. 唯一键升级为 uk_fc_ver_ym_bu */
 async function migrateForecastTable() {
   const [cols] = await pool.query("SHOW COLUMNS FROM ops_forecast LIKE 'fc_month'");
   if (cols.length === 0) {
@@ -141,11 +158,17 @@ async function migrateForecastTable() {
     await pool.query("UPDATE ops_forecast SET fc_month=?, version='V1' WHERE fc_month IS NULL", [ym]);
     console.log('[migrate] ops_forecast 已升级: 新增 fc_month(预测批次)/version(版本), 存量数据归入 ' + ym + ' 批次 V1');
   }
-  const [idx] = await pool.query("SHOW INDEX FROM ops_forecast WHERE Key_name='uk_fc_ver_ym'");
+  const [bucols] = await pool.query("SHOW COLUMNS FROM ops_forecast LIKE 'bu'");
+  if (bucols.length === 0) {
+    await pool.query("ALTER TABLE ops_forecast ADD COLUMN bu VARCHAR(20) NOT NULL DEFAULT '汇总' AFTER version");
+    console.log('[migrate] ops_forecast 已升级: 新增 bu(BU维度), 存量数据归入「汇总」');
+  }
+  const [idx] = await pool.query("SHOW INDEX FROM ops_forecast WHERE Key_name='uk_fc_ver_ym_bu'");
   if (idx.length === 0) {
+    try { await pool.query('ALTER TABLE ops_forecast DROP INDEX uk_fc_ver_ym'); } catch (e) { /* 旧索引不存在则跳过 */ }
     try { await pool.query('ALTER TABLE ops_forecast DROP INDEX uk_year_month'); } catch (e) { /* 旧索引不存在则跳过 */ }
-    await pool.query('ALTER TABLE ops_forecast ADD UNIQUE KEY uk_fc_ver_ym (fc_month, version, year, month)');
-    console.log('[migrate] ops_forecast 唯一键升级: (fc_month, version, year, month)');
+    await pool.query('ALTER TABLE ops_forecast ADD UNIQUE KEY uk_fc_ver_ym_bu (fc_month, version, bu, year, month)');
+    console.log('[migrate] ops_forecast 唯一键升级: (fc_month, version, bu, year, month)');
   }
 }
 
@@ -157,19 +180,53 @@ async function defaultFcBatch() {
   return now.getFullYear() * 100 + (now.getMonth() + 1);
 }
 
-/* 月度预算表: 每年 12 条 (year+month 唯一), 季度/半年度/全年由月度聚合 */
+/* 月度预算表: 每年每 BU 12 条 (year+month+bu 唯一), 季度/半年度/全年由月度聚合 */
 const CREATE_BUDGET_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS ops_budget (
   id INT AUTO_INCREMENT PRIMARY KEY,
   year INT NOT NULL,
   month INT NOT NULL DEFAULT 1,
+  bu VARCHAR(20) NOT NULL DEFAULT '汇总' COMMENT 'BU 维度: 汇总/软工/硬工/云/智能汽车',
   budget_revenue DECIMAL(14,2) DEFAULT 0,
   budget_profit DECIMAL(14,2) DEFAULT 0,
   budget_cash DECIMAL(14,2) DEFAULT 0,
   budget_expense DECIMAL(14,2) DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_year_month (year, month)
+  UNIQUE KEY uk_year_month_bu (year, month, bu)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+/* 月度预算表结构迁移: 补 bu 列(存量归入「汇总」), 唯一键升级为 (year, month, bu) */
+async function migrateBudgetTable() {
+  const [bucols] = await pool.query("SHOW COLUMNS FROM ops_budget LIKE 'bu'");
+  if (bucols.length === 0) {
+    await pool.query("ALTER TABLE ops_budget ADD COLUMN bu VARCHAR(20) NOT NULL DEFAULT '汇总' AFTER month");
+    console.log('[migrate] ops_budget 已升级: 新增 bu(BU维度), 存量数据归入「汇总」');
+  }
+  const [idx] = await pool.query("SHOW INDEX FROM ops_budget WHERE Key_name='uk_year_month_bu'");
+  if (idx.length === 0) {
+    try { await pool.query('ALTER TABLE ops_budget DROP INDEX uk_year_month'); } catch (e) { /* 旧索引不存在则跳过 */ }
+    await pool.query('ALTER TABLE ops_budget ADD UNIQUE KEY uk_year_month_bu (year, month, bu)');
+    console.log('[migrate] ops_budget 唯一键升级: (year, month, bu)');
+  }
+}
+
+/* 月度实际数据表: 按月+BU 存储"实际达成" (收入/贡献利润/现金流/费用)
+ * 汇总口径 = 各 BU 之和 (查询时 SUM), 本表不存「汇总」行 */
+const CREATE_ACTUAL_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS ops_actual (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  bu VARCHAR(20) NOT NULL DEFAULT '软工' COMMENT 'BU 维度: 软工/硬工/云/智能汽车',
+  year INT NOT NULL,
+  month INT NOT NULL DEFAULT 1,
+  actual_revenue DECIMAL(14,2) DEFAULT 0,
+  actual_profit DECIMAL(14,2) DEFAULT 0,
+  actual_cash DECIMAL(14,2) DEFAULT 0,
+  actual_expense DECIMAL(14,2) DEFAULT 0,
+  remark VARCHAR(500),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_actual_bu_ym (bu, year, month)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
 /* 预算目标拆分表: 指标(收入/贡献利润/现金流) × BU(软工/硬工/云/智能汽车/汇总) 唯一,
@@ -281,6 +338,7 @@ function fcRowToApi(row) {
   });
   api['预测批次'] = row.fc_month ? Number(row.fc_month) : 0;
   api['版本'] = row.version || '';
+  if (!api['BU']) api['BU'] = '汇总';
   return api;
 }
 function fcApiToDb(record) {
@@ -290,6 +348,7 @@ function fcApiToDb(record) {
     const col = FC_CN2COL[cn], v = record[cn];
     if (FC_MONEY_COLS.has(col)) db[col] = parseFloat(v) || 0;
     else if (col === 'year' || col === 'month') db[col] = parseInt(v, 10) || 0;
+    else if (col === 'bu') db[col] = (v === '' || v === null || v === undefined) ? '汇总' : String(v);
     else db[col] = (v === '' || v === null || v === undefined) ? null : String(v);
   });
   if ('预测批次' in record) db.fc_month = parseInt(record['预测批次'], 10) || 0;
@@ -297,10 +356,10 @@ function fcApiToDb(record) {
   return db;
 }
 function budgetRowToApi(row) {
-  const api = { _id: String(row.id), 年度: row.year, 月份: row.month };
+  const api = { _id: String(row.id), 年度: row.year, 月份: row.month, BU: row.bu || '汇总' };
   BUDGET_FIELD_PAIRS.forEach(p => {
     const cn = p[0], col = p[1];
-    if (cn === '年度' || cn === '月份') return;
+    if (cn === '年度' || cn === '月份' || cn === 'BU') return;
     const v = row[col];
     if (BUDGET_MONEY_COLS.has(col)) api[cn] = (v === null || v === undefined) ? 0 : Number(v);
     else api[cn] = (v === null || v === undefined) ? '' : String(v);
@@ -314,6 +373,29 @@ function budgetApiToDb(record) {
     const col = BUDGET_CN2COL[cn], v = record[cn];
     if (BUDGET_MONEY_COLS.has(col)) db[col] = parseFloat(v) || 0;
     else if (col === 'year' || col === 'month') db[col] = parseInt(v, 10) || 0;
+    else if (col === 'bu') db[col] = (v === '' || v === null || v === undefined) ? '汇总' : String(v);
+    else db[col] = (v === '' || v === null || v === undefined) ? null : String(v);
+  });
+  return db;
+}
+function actualRowToApi(row) {
+  const api = { _id: String(row.id), 年度: row.year, 月份: row.month, BU: row.bu || '软工' };
+  ACTUAL_FIELD_PAIRS.forEach(p => {
+    const cn = p[0], col = p[1], v = row[col];
+    if (cn === '年度' || cn === '月份' || cn === 'BU') return;
+    if (ACTUAL_MONEY_COLS.has(col)) api[cn] = (v === null || v === undefined) ? 0 : Number(v);
+    else api[cn] = (v === null || v === undefined) ? '' : String(v);
+  });
+  return api;
+}
+function actualApiToDb(record) {
+  const db = {};
+  Object.keys(ACTUAL_CN2COL).forEach(cn => {
+    if (!(cn in record)) return;
+    const col = ACTUAL_CN2COL[cn], v = record[cn];
+    if (ACTUAL_MONEY_COLS.has(col)) db[col] = parseFloat(v) || 0;
+    else if (col === 'year' || col === 'month') db[col] = parseInt(v, 10) || 0;
+    else if (col === 'bu') db[col] = (v === '' || v === null || v === undefined) ? '软工' : String(v);
     else db[col] = (v === '' || v === null || v === undefined) ? null : String(v);
   });
   return db;
@@ -392,21 +474,27 @@ async function handleApi(req, res, pathname, method) {
     return send(res, 200, rows.map(r => ({ fcMonth: r.fc_month, version: r.version, year: r.year, count: r.cnt, updatedAt: r.updated_at })));
   }
   if (pathname === '/api/forecast/batch' && method === 'POST') {
-    // 整批导入/覆盖: {fcMonth, version, year, records:[{年度,月份,预测收入,...}...]}
+    // 整批导入/覆盖: {fcMonth, version, year, bu?, records:[{年度,月份,BU?,预测收入,...}...]}
+    // bu 为文件级 BU: 传入则只覆盖该 BU; 不传则整批覆盖(含所有 BU)
     const body = await readBody(req);
     const list = Array.isArray(body) ? body : (body && body.records) || [];
     const fcMonth = parseInt((body && body.fcMonth) || (list[0] && list[0]['预测批次']) || 0, 10) || await defaultFcBatch();
     const version = String((body && body.version) || (list[0] && list[0]['版本']) || 'V1');
     const year = parseInt((body && body.year) || (list[0] && list[0]['年度']) || 0, 10);
+    const bu = String((body && body.bu) || (list[0] && list[0]['BU']) || '');
     if (!year) return send(res, 400, { error: 'year required' });
     if (list.length === 0) return send(res, 400, { error: 'expected non-empty records' });
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
-      await conn.query('DELETE FROM ops_forecast WHERE fc_month=? AND version=? AND year=?', [fcMonth, version, year]);
+      let delSql = 'DELETE FROM ops_forecast WHERE fc_month=? AND version=? AND year=?';
+      const delParams = [fcMonth, version, year];
+      if (bu) { delSql += ' AND bu=?'; delParams.push(bu); }
+      await conn.query(delSql, delParams);
       let count = 0;
       for (const rec of list) {
-        const db = fcApiToDb(Object.assign({}, rec, { '预测批次': fcMonth, '版本': version, '年度': year }));
+        const recBu = bu || (rec && rec['BU']) || '汇总';
+        const db = fcApiToDb(Object.assign({}, rec, { '预测批次': fcMonth, '版本': version, '年度': year, 'BU': recBu }));
         const cols = Object.keys(db);
         if (cols.length === 0 || !db.year || !db.month) continue;
         await conn.query(
@@ -416,7 +504,7 @@ async function handleApi(req, res, pathname, method) {
         count++;
       }
       await conn.commit();
-      return send(res, 200, { count, fcMonth, version, year });
+      return send(res, 200, { count, fcMonth, version, year, bu: bu || null });
     } catch (e) {
       await conn.rollback();
       throw e;
@@ -426,6 +514,7 @@ async function handleApi(req, res, pathname, method) {
   }
   if (pathname === '/api/forecast/clone' && method === 'POST') {
     // 复制版本: {fromFcMonth, fromVersion, toFcMonth, toVersion} (同批次新版本 / 滚动到下月新批次)
+    // 复制全部 BU 行
     const body = await readBody(req);
     const fromFcMonth = parseInt(body.fromFcMonth, 10) || 0;
     const fromVersion = String(body.fromVersion || 'V1');
@@ -440,8 +529,8 @@ async function handleApi(req, res, pathname, method) {
       await conn.query('DELETE FROM ops_forecast WHERE fc_month=? AND version=?', [toFcMonth, toVersion]);
       for (const r of src) {
         await conn.query(
-          'INSERT INTO ops_forecast (fc_month, version, year, month, forecast_revenue, contribution_profit, cash_flow, expense, remark) VALUES (?,?,?,?,?,?,?,?,?)',
-          [toFcMonth, toVersion, r.year, r.month, r.forecast_revenue, r.contribution_profit, r.cash_flow, r.expense, r.remark]
+          'INSERT INTO ops_forecast (fc_month, version, bu, year, month, forecast_revenue, contribution_profit, cash_flow, expense, remark) VALUES (?,?,?,?,?,?,?,?,?,?)',
+          [toFcMonth, toVersion, r.bu || '汇总', r.year, r.month, r.forecast_revenue, r.contribution_profit, r.cash_flow, r.expense, r.remark]
         );
       }
       await conn.commit();
@@ -468,11 +557,13 @@ async function handleApi(req, res, pathname, method) {
       const fcMonth = parseInt(q.searchParams.get('fcMonth') || q.searchParams.get('fc_month') || '', 10) || 0;
       const version = q.searchParams.get('version');
       const year = q.searchParams.get('year');
+      const bu = q.searchParams.get('bu');
       let sql = 'SELECT * FROM ops_forecast WHERE 1=1';
       const params = [];
       if (fcMonth) { sql += ' AND fc_month=?'; params.push(fcMonth); }
       if (version) { sql += ' AND version=?'; params.push(String(version)); }
       if (year) { sql += ' AND year=?'; params.push(parseInt(year, 10)); }
+      if (bu) { sql += ' AND bu=?'; params.push(String(bu)); }
       if (!fcMonth) {
         // 兼容旧调用(仅按年): 自动取最新批次
         sql += ' AND fc_month=?'; params.push(await defaultFcBatch());
@@ -488,8 +579,9 @@ async function handleApi(req, res, pathname, method) {
       if (cols.length === 0) return send(res, 400, { error: 'no valid fields' });
       if (!db.fc_month) db.fc_month = await defaultFcBatch();
       if (!db.version) db.version = 'V1';
-      // 唯一键 (fc_month, version, year, month): 已存在则按同一键更新
-      const updCols = cols.filter(c => c !== 'year' && c !== 'month' && c !== 'fc_month' && c !== 'version');
+      if (!db.bu) db.bu = '汇总';
+      // 唯一键 (fc_month, version, bu, year, month): 已存在则按同一键更新
+      const updCols = cols.filter(c => c !== 'year' && c !== 'month' && c !== 'fc_month' && c !== 'version' && c !== 'bu');
       let sql;
       if (updCols.length > 0) {
         sql = `INSERT INTO ops_forecast (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})
@@ -498,7 +590,7 @@ async function handleApi(req, res, pathname, method) {
         sql = `INSERT IGNORE INTO ops_forecast (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`;
       }
       const [r] = await pool.query(sql, cols.map(c => db[c]));
-      const id = r.insertId || (await pool.query('SELECT id FROM ops_forecast WHERE fc_month=? AND version=? AND year=? AND month=?', [db.fc_month, db.version, db.year, db.month]))[0][0].id;
+      const id = r.insertId || (await pool.query('SELECT id FROM ops_forecast WHERE fc_month=? AND version=? AND bu=? AND year=? AND month=?', [db.fc_month, db.version, db.bu, db.year, db.month]))[0][0].id;
       return send(res, 201, { _id: String(id) });
     }
   }
@@ -508,13 +600,19 @@ async function handleApi(req, res, pathname, method) {
     if (list.length === 0) return send(res, 400, { error: 'expected non-empty array' });
     const year = parseInt(list[0]['年度'], 10) || 0;
     if (!year) return send(res, 400, { error: 'year required' });
+    // 文件级 BU: 传入则只覆盖该 BU; 不传则整批覆盖(含所有 BU)
+    const bu = String((body && body.bu) || (list[0] && list[0]['BU']) || '');
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
-      await conn.query('DELETE FROM ops_budget WHERE year=?', [year]);
+      let delSql = 'DELETE FROM ops_budget WHERE year=?';
+      const delParams = [year];
+      if (bu) { delSql += ' AND bu=?'; delParams.push(bu); }
+      await conn.query(delSql, delParams);
       let count = 0;
       for (const rec of list) {
-        const db = budgetApiToDb(rec);
+        const recBu = bu || (rec && rec['BU']) || '汇总';
+        const db = budgetApiToDb(Object.assign({}, rec, { 'BU': recBu }));
         const cols = Object.keys(db);
         if (cols.length === 0 || !db.year || !db.month) continue;
         await conn.query(
@@ -524,7 +622,7 @@ async function handleApi(req, res, pathname, method) {
         count++;
       }
       await conn.commit();
-      return send(res, 200, { count, year });
+      return send(res, 200, { count, year, bu: bu || null });
     } catch (e) {
       await conn.rollback();
       throw e;
@@ -536,9 +634,12 @@ async function handleApi(req, res, pathname, method) {
     if (method === 'GET') {
       const q = new URL(req.url, 'http://x');
       const year = q.searchParams.get('year');
-      let sql = 'SELECT * FROM ops_budget ORDER BY year ASC, month ASC';
+      const bu = q.searchParams.get('bu');
+      let sql = 'SELECT * FROM ops_budget WHERE 1=1';
       const params = [];
-      if (year) { sql = 'SELECT * FROM ops_budget WHERE year=? ORDER BY month ASC'; params.push(parseInt(year, 10)); }
+      if (year) { sql += ' AND year=?'; params.push(parseInt(year, 10)); }
+      if (bu) { sql += ' AND bu=?'; params.push(String(bu)); }
+      sql += ' ORDER BY year ASC, month ASC';
       const [rows] = await pool.query(sql, params);
       return send(res, 200, rows.map(budgetRowToApi));
     }
@@ -546,8 +647,9 @@ async function handleApi(req, res, pathname, method) {
       const body = await readBody(req);
       const db = budgetApiToDb(body);
       if (!db.year || !db.month) return send(res, 400, { error: 'year and month required' });
+      if (!db.bu) db.bu = '汇总';
       const cols = Object.keys(db);
-      const updCols = cols.filter(c => c !== 'year' && c !== 'month');
+      const updCols = cols.filter(c => c !== 'year' && c !== 'month' && c !== 'bu');
       let sql;
       if (updCols.length > 0) {
         sql = `INSERT INTO ops_budget (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})
@@ -556,8 +658,107 @@ async function handleApi(req, res, pathname, method) {
         sql = `INSERT IGNORE INTO ops_budget (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`;
       }
       const [r] = await pool.query(sql, cols.map(c => db[c]));
-      const id = r.insertId || (await pool.query('SELECT id FROM ops_budget WHERE year=? AND month=?', [db.year, db.month]))[0][0].id;
+      const id = r.insertId || (await pool.query('SELECT id FROM ops_budget WHERE year=? AND month=? AND bu=?', [db.year, db.month, db.bu]))[0][0].id;
       return send(res, 200, { _id: String(id) });
+    }
+  }
+  if (pathname === '/api/actual/batch' && method === 'POST') {
+    const body = await readBody(req);
+    const list = Array.isArray(body) ? body : (body && body.records) || [];
+    if (list.length === 0) return send(res, 400, { error: 'expected non-empty array' });
+    const year = parseInt(list[0]['年度'], 10) || 0;
+    if (!year) return send(res, 400, { error: 'year required' });
+    const bu = String((body && body.bu) || (list[0] && list[0]['BU']) || '');
+    if (!bu || bu === '汇总') return send(res, 400, { error: 'actual requires specific bu (汇总 = 各BU之和, 自动计算, 不可录入)' });
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      await conn.query('DELETE FROM ops_actual WHERE year=? AND bu=?', [year, bu]);
+      let count = 0;
+      for (const rec of list) {
+        const db = actualApiToDb(Object.assign({}, rec, { 'BU': bu }));
+        const cols = Object.keys(db);
+        if (cols.length === 0 || !db.year || !db.month) continue;
+        await conn.query(
+          `INSERT INTO ops_actual (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`,
+          cols.map(c => db[c])
+        );
+        count++;
+      }
+      await conn.commit();
+      return send(res, 200, { count, year, bu });
+    } catch (e) {
+      await conn.rollback();
+      throw e;
+    } finally {
+      conn.release();
+    }
+  }
+  if (pathname === '/api/actual') {
+    if (method === 'GET') {
+      const q = new URL(req.url, 'http://x');
+      const year = q.searchParams.get('year');
+      const bu = q.searchParams.get('bu');
+      if (bu === '汇总' || !bu) {
+        // 汇总口径 = 各 BU 之和, 按月聚合
+        let sql = 'SELECT year, month, SUM(actual_revenue) AS actual_revenue, SUM(actual_profit) AS actual_profit, SUM(actual_cash) AS actual_cash, SUM(actual_expense) AS actual_expense FROM ops_actual WHERE bu IS NOT NULL AND bu <> \'汇总\'';
+        const params = [];
+        if (year) { sql += ' AND year=?'; params.push(parseInt(year, 10)); }
+        sql += ' GROUP BY year, month ORDER BY year ASC, month ASC';
+        const [rows] = await pool.query(sql, params);
+        return send(res, 200, rows.map(r => ({
+          _id: 'agg_' + r.year + '_' + r.month,
+          年度: r.year, 月份: r.month, BU: '汇总',
+          实际收入: Number(r.actual_revenue) || 0, 实际贡献利润: Number(r.actual_profit) || 0,
+          实际现金流: Number(r.actual_cash) || 0, 实际费用: Number(r.actual_expense) || 0, 备注: ''
+        })));
+      }
+      let sql = 'SELECT * FROM ops_actual WHERE bu=?';
+      const params = [String(bu)];
+      if (year) { sql += ' AND year=?'; params.push(parseInt(year, 10)); }
+      sql += ' ORDER BY year ASC, month ASC';
+      const [rows] = await pool.query(sql, params);
+      return send(res, 200, rows.map(actualRowToApi));
+    }
+    if (method === 'POST' || method === 'PUT') {
+      const body = await readBody(req);
+      const db = actualApiToDb(body);
+      if (!db.year || !db.month) return send(res, 400, { error: 'year and month required' });
+      if (!db.bu) db.bu = '软工';
+      if (db.bu === '汇总') return send(res, 400, { error: '汇总 = 各BU之和, 不可单独录入' });
+      const cols = Object.keys(db);
+      const updCols = cols.filter(c => c !== 'year' && c !== 'month' && c !== 'bu');
+      let sql;
+      if (updCols.length > 0) {
+        sql = `INSERT INTO ops_actual (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})
+               ON DUPLICATE KEY UPDATE ${updCols.map(c => c + '=VALUES(' + c + ')').join(',')}`;
+      } else {
+        sql = `INSERT IGNORE INTO ops_actual (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`;
+      }
+      const [r] = await pool.query(sql, cols.map(c => db[c]));
+      const id = r.insertId || (await pool.query('SELECT id FROM ops_actual WHERE bu=? AND year=? AND month=?', [db.bu, db.year, db.month]))[0][0].id;
+      return send(res, 200, { _id: String(id) });
+    }
+  }
+  const am = pathname.match(/^\/api\/actual\/(\d+)$/);
+  if (am) {
+    const id = parseInt(am[1], 10);
+    if (method === 'PUT') {
+      const body = await readBody(req);
+      const db = actualApiToDb(body);
+      const cols = Object.keys(db).filter(c => c !== 'bu');
+      if (cols.length === 0) return send(res, 400, { error: 'no valid fields' });
+      const [r] = await pool.query(
+        `UPDATE ops_actual SET ${cols.map(c => c + '=?').join(',')} WHERE id=?`,
+        [...cols.map(c => db[c]), id]
+      );
+      if (r.affectedRows === 0) return send(res, 404, { error: 'not found' });
+      return send(res, 200, { ok: true });
+    }
+    if (method === 'DELETE') {
+      const [r] = await pool.query('DELETE FROM ops_actual WHERE id=?', [id]);
+      if (r.affectedRows === 0) return send(res, 404, { error: 'not found' });
+      return send(res, 200, { ok: true });
     }
   }
   if (pathname === '/api/target-split/batch' && method === 'POST') {
@@ -729,6 +930,37 @@ function serveStatic(req, res) {
   });
 }
 
+/* ---------- 月度实际预置数据: 从预算目标拆分(SEED_TARGET)各BU季度实际值均摊到月 ----------
+ * 仅当 ops_actual 为空时写入 (演示/初始数据, 后续可编辑或导入覆盖) */
+async function seedActualIfEmpty() {
+  const [[c]] = await pool.query('SELECT COUNT(*) AS c FROM ops_actual');
+  if (c.c > 0) return;
+  const buList = ['软工', '硬工', '云', '智能汽车'];
+  const metricMap = { '收入': 'actual_revenue', '贡献利润': 'actual_profit', '现金流': 'actual_cash' };
+  const qKeys = ['Q1实际', 'Q2实际', 'Q3实际', 'Q4实际'];
+  const byBu = {};
+  SEED_TARGET.forEach(r => {
+    if (!metricMap[r['指标']] || buList.indexOf(r['BU']) < 0) return;
+    if (!byBu[r['BU']]) byBu[r['BU']] = {};
+    byBu[r['BU']][metricMap[r['指标']]] = qKeys.map(k => Number(r[k]) || 0);
+  });
+  let count = 0;
+  const year = new Date().getFullYear();
+  for (const bu of buList) {
+    const d = byBu[bu] || {};
+    for (let m = 1; m <= 12; m++) {
+      const qi = Math.floor((m - 1) / 3);
+      const q = (arr) => (arr && arr[qi]) ? arr[qi] / 3 : 0;
+      await pool.query(
+        'INSERT INTO ops_actual (bu, year, month, actual_revenue, actual_profit, actual_cash, actual_expense, remark) VALUES (?,?,?,?,?,?,?,?)',
+        [bu, year, m, q(d.actual_revenue), q(d.actual_profit), q(d.actual_cash), 0, '预置：目标拆分实际值·季度均摊']
+      );
+      count++;
+    }
+  }
+  console.log('[init] 已写入 ' + count + ' 条月度实际数据(' + year + '年 BU×12月, 预置自目标拆分实际值)');
+}
+
 /* ---------- 启动初始化: 建表 + 种子数据 ---------- */
 async function init() {
   await pool.query(CREATE_TABLE_SQL);
@@ -769,6 +1001,7 @@ async function init() {
     console.log('[init] 预算表结构升级: 重建为月度预算表');
   }
   await pool.query(CREATE_BUDGET_TABLE_SQL);
+  await migrateBudgetTable();
   const [[bdcnt]] = await pool.query('SELECT COUNT(*) AS c FROM ops_budget');
   if (bdcnt.c === 0) {
     for (const rec of SEED_BUDGET) {
@@ -796,7 +1029,10 @@ async function init() {
     const [[tgtafter]] = await pool.query('SELECT COUNT(*) AS c FROM ops_target_split');
     console.log('[init] 已写入 ' + tgtafter.c + ' 条预算目标拆分数据');
   }
-  console.log('[init] MySQL 数据库就绪: ' + DB.database + ' (records=' + cnt.c + ', forecast=' + fccnt.c + ', budget=' + bdcnt.c + ', target=' + tgtcnt.c + ')');
+  await pool.query(CREATE_ACTUAL_TABLE_SQL);
+  await seedActualIfEmpty();
+  const [[actcnt]] = await pool.query('SELECT COUNT(*) AS c FROM ops_actual');
+  console.log('[init] MySQL 数据库就绪: ' + DB.database + ' (records=' + cnt.c + ', forecast=' + fccnt.c + ', budget=' + bdcnt.c + ', target=' + tgtcnt.c + ', actual=' + actcnt.c + ')');
 }
 
 /* ---------- 启动服务 ---------- */

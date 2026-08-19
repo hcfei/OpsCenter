@@ -504,7 +504,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 <!-- Finance -->
 <section id="tab-finance" class="tab-content active">
   <div class="page-title">经营看板</div>
-  <div class="page-subtitle">年度收入 · 贡献利润 · 贡献利润率 · 现金流 预测达成分析；各月 / 各季度 / 半年度 分时段收入与贡献利润达成（金额单位：万元）</div>
+  <div class="page-subtitle">年度收入 · 贡献利润 · 贡献利润率 · 现金流 预测达成分析；各月 / 各季度 / 半年度 分时段达成（金额单位：万元）· 支持按 BU（软工/硬工/云/智能汽车/汇总）拆分预算、预测与实际达成</div>
 
   <!-- 预测月份状态条 -->
   <div class="fc-status-bar">
@@ -512,7 +512,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     <span class="fc-status-chip dim">已录入 <b id="fcEnteredCnt" style="margin:0 2px">0</b>/12 月</span>
     <div class="fc-progress-track" id="fcMonthTrack"></div>
     <div class="tab-actions" style="margin-left:auto">
+      <select class="filter-select" id="fcBuSel" onchange="onFcBuChange()" style="min-width:92px" title="BU 维度：汇总 或 各 BU（预算/预测/实际达成均按 BU 拆分）">
+        <option value="汇总">汇总</option><option value="软工">软工</option><option value="硬工">硬工</option><option value="云">云</option><option value="智能汽车">智能汽车</option>
+      </select>
       <select class="filter-select" id="forecastYear" onchange="switchForecastYear()" style="min-width:90px"></select>
+      <button class="btn-secondary" onclick="openActualModal()" title="按月录入各 BU 实际达成，汇总 = 各 BU 之和自动计算"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>实际</button>
       <button class="btn-secondary" onclick="openBudgetModal()" title="按月设置预算，季度/半年度自动聚合，用于计算达成率"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>预算</button>
       <button class="btn-primary" onclick="openForecastModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增月度预测</button>
     </div>
@@ -542,7 +546,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
         <button class="dim-btn" data-dim="quarter" onclick="setForecastDim('quarter')">各季度</button>
         <button class="dim-btn" data-dim="half" onclick="setForecastDim('half')">半年度</button>
       </div>
-      <span style="font-size:11px;color:var(--text-muted)">达成率 = 预测值 ÷ 预算值（预算逐月设置，季度/半年度自动聚合，点「预算」可调）</span>
+      <span style="font-size:11px;color:var(--text-muted)">达成率 = 实际值 ÷ 预算值（预算逐月设置，季度/半年度自动聚合，点「预算」可调）；无实际时展示预测达成率</span>
     </div>
   </div>
 
@@ -554,10 +558,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     <div class="dash-card full">
       <div class="chart-section-title" id="fcTableTitle">各月达成明细（单位：万元）</div>
       <div class="table-container">
-        <table class="data-table"><thead><tr><th>期间</th><th>预测收入</th><th>预算收入</th><th>收入达成率</th><th>预测贡献利润</th><th>预算贡献利润</th><th>利润达成率</th><th>贡献利润率</th><th>操作</th></tr></thead><tbody id="forecastBody"></tbody></table>
+        <table class="data-table"><thead><tr><th>期间</th><th>预测收入</th><th>预算收入</th><th>实际收入</th><th>收入达成率</th><th>预测贡献利润</th><th>预算贡献利润</th><th>实际贡献利润</th><th>利润达成率</th><th>贡献利润率</th><th>操作</th></tr></thead><tbody id="forecastBody"></tbody></table>
         <div class="mobile-card-list" id="forecastCards"></div>
       </div>
-      <div class="fc-table-note">* 达成率 = 该周期预测值 ÷ 该周期预算（月度=当月预算，季度=当季预算合计，半年度=该半年预算合计）；仅月度行支持编辑与删除</div>
+      <div class="fc-table-note">* 达成率 = 该周期实际值 ÷ 该周期预算（月度=当月预算，季度=当季预算合计，半年度=该半年预算合计）；未录入实际时显示「—」，可点「实际」录入；仅月度行支持编辑与删除</div>
     </div>
   </div>
 </section>
@@ -722,6 +726,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
         <div class="form-section"><h4>预测期间</h4><div class="form-grid">
           <div class="form-field"><label>年度 <span class="req">*</span></label><select id="fcYear" required></select></div>
           <div class="form-field"><label>月份 <span class="req">*</span></label><select id="fcMonth" required></select></div>
+          <div class="form-field"><label>BU <span class="req">*</span></label><select id="fcBu" required>
+            <option value="汇总">汇总</option><option value="软工">软工</option><option value="硬工">硬工</option><option value="云">云</option><option value="智能汽车">智能汽车</option>
+          </select></div>
         </div></div>
         <div class="form-section"><h4>经营指标（万元）</h4><div class="form-grid">
           <div class="form-field"><label>预测收入（万元） <span class="req">*</span></label><input type="number" step="0.01" min="0" id="fcRevenue" required placeholder="0.00"></div>
@@ -773,6 +780,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
         <div style="font-size:11px;color:var(--text-muted);line-height:1.6;margin-top:8px">* 达成率 = 预测值 ÷ 对应周期预算（月度=当月预算，季度/半年度/全年=该周期预算合计）；预算费用达成率超 100% 表示超支预警</div>
       </div>
       <div class="form-actions"><button type="button" class="btn-secondary" onclick="closeBudgetModal()">取消</button><button type="submit" class="btn-primary" id="budgetSubmitBtn">保存预算</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Actual Modal (月度实际达成, 经营看板"实际"口径, 按月+BU 录入) -->
+<div class="modal-overlay" id="actualModalOverlay">
+  <div class="modal" style="max-width:880px">
+    <div class="modal-header"><h3 id="actualModalTitle">月度实际达成</h3><button class="btn-icon" onclick="closeActualModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <form id="actualForm" onsubmit="submitActualForm(event)">
+      <div class="modal-body">
+        <div class="form-section">
+          <h4><span id="actualYearLabel">2026</span> 年月度实际达成（万元）· BU 维度</h4>
+          <div class="form-grid">
+            <div class="form-field"><label>BU <span class="req">*</span></label><select id="acBu" onchange="onAcBuChange()">
+              <option value="软工">软工</option><option value="硬工">硬工</option><option value="云">云</option><option value="智能汽车">智能汽车</option>
+            </select></div>
+            <div class="form-field"><label>说明</label><span id="acBuHint" style="font-size:12px;color:var(--text-muted);align-self:center">按 BU 逐月录入；汇总 = 各 BU 之和（自动计算）</span></div>
+          </div>
+        </div>
+        <div class="table-container" style="max-height:320px;overflow:auto">
+          <table class="data-table budget-table">
+            <thead><tr><th>月份</th><th>实际收入（万元）</th><th>实际贡献利润（万元）</th><th>实际现金流（万元）</th><th>实际费用（万元）</th></tr></thead>
+            <tbody id="actualTableBody"></tbody>
+            <tfoot><tr id="actualTableFoot"></tr></tfoot>
+          </table>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);line-height:1.6;margin-top:8px">* 实际达成率 = 实际值 ÷ 对应周期预算（见经营看板表格/图表）；「汇总」不需要录入，自动等于各 BU 之和；数据可后续从月度 Excel 导入覆盖</div>
+      </div>
+      <div class="form-actions"><button type="button" class="btn-secondary" onclick="closeActualModal()">取消</button><button type="submit" class="btn-primary" id="actualSubmitBtn">保存实际</button></div>
     </form>
   </div>
 </div>
@@ -839,9 +875,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   var CURRENT_TAB='finance';
 
   // 经营看板状态
-  var FC_DATA=[];          // 当前批次版本年份的全部月度记录 {_id,年度,月份,预测收入,贡献利润,现金流,费用,备注,预测批次,版本}
-  var FC_BUDGETS=[];       // 当前年份全部月度预算 [{_id,年度,月份,预算收入,预算贡献利润,预算现金流,预算费用}]
+  var FC_DATA=[];          // 当前批次版本年份的全部月度记录 {_id,年度,月份,BU,预测收入,贡献利润,现金流,费用,备注,预测批次,版本}
+  var FC_BUDGETS=[];       // 当前年份全部月度预算 [{_id,年度,月份,BU,预算收入,预算贡献利润,预算现金流,预算费用}]
   var FC_BUDGET=null;      // 全年预算聚合 (由 FC_BUDGETS 求和, 供 KPI/趋势图使用)
+  var FC_ACTUALS=[];       // 当前年份月度实际达成 [{_id,年度,月份,BU,实际收入,实际贡献利润,实际现金流,实际费用}] (汇总=各BU之和)
+  var FC_ACTUAL=null;      // 全年实际聚合
+  var FC_BU='汇总';        // 当前选中 BU (汇总/软工/硬工/云/智能汽车)
   var FC_YEAR=2026;        // 当前选中年份
   var FC_DIM='month';      // month | quarter | h1 | h2 | year
   var FC_EDIT_ID=null;     // 经营预测编辑中的记录 _id
@@ -1155,9 +1194,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 
   /* ================= 经营看板 ================= */
   var FC_DIM_TITLE={
-    month:{chart:'各月 收入 · 贡献利润达成率',table:'各月达成明细（单位：万元）'},
-    quarter:{chart:'各季度 收入 · 贡献利润达成率',table:'各季度达成明细（单位：万元）'},
-    half:{chart:'半年度 收入 · 贡献利润达成率',table:'半年度达成明细（单位：万元）'}
+    month:{chart:'各月 收入 · 贡献利润实际达成率',table:'各月达成明细（单位：万元）'},
+    quarter:{chart:'各季度 收入 · 贡献利润实际达成率',table:'各季度达成明细（单位：万元）'},
+    half:{chart:'半年度 收入 · 贡献利润实际达成率',table:'半年度达成明细（单位：万元）'}
   };
 
   function initForecast(){
@@ -1174,6 +1213,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     var y=parseInt(document.getElementById('forecastYear').value,10);
     if(!y||y===FC_YEAR)return;
     FC_YEAR=y;
+    updateFcVerInfo();
+    loadForecast();
+  };
+  window.onFcBuChange=function(){
+    FC_BU=document.getElementById('fcBuSel').value||'汇总';
     updateFcVerInfo();
     loadForecast();
   };
@@ -1280,7 +1324,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   }
   function updateFcVerInfo(){
     var el=document.getElementById('fcVerInfo');
-    if(el)el.textContent='当前：'+fcMonthLabel(FC_BATCH)+' 预测 · '+FC_VERSION+' · '+FC_YEAR+' 年';
+    if(el)el.textContent='当前：'+fcMonthLabel(FC_BATCH)+' 预测 · '+FC_VERSION+' · '+FC_YEAR+' 年 · '+FC_BU;
   }
   window.onFcBatchChange=function(){
     FC_BATCH=parseInt(document.getElementById('fcBatchSel').value,10)||0;
@@ -1323,14 +1367,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       fcMonth:FC_BATCH,
       version:FC_VERSION,
       year:FC_YEAR,
+      bu:FC_BU,
       exportedAt:new Date().toISOString(),
       records:FC_DATA.map(function(r){
-        return {月份:Number(r['月份']),预测收入:Number(r['预测收入']||0),贡献利润:Number(r['贡献利润']||0),现金流:Number(r['现金流']||0),费用:Number(r['费用']||0),备注:r['备注']||''};
+        return {月份:Number(r['月份']),BU:r['BU']||FC_BU,预测收入:Number(r['预测收入']||0),贡献利润:Number(r['贡献利润']||0),现金流:Number(r['现金流']||0),费用:Number(r['费用']||0),备注:r['备注']||''};
       })
     };
     var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'});
-    downloadBlob(blob,'运营预测_'+fcMonthLabel(FC_BATCH)+'_'+FC_VERSION+'_'+FC_YEAR+'年.json');
-    toast('已导出 '+FC_DATA.length+' 条预测数据','success');
+    downloadBlob(blob,'运营预测_'+fcMonthLabel(FC_BATCH)+'_'+FC_VERSION+'_'+FC_YEAR+'年_'+FC_BU+'.json');
+    toast('已导出 '+FC_DATA.length+' 条预测数据（'+FC_BU+'）','success');
   };
   window.importForecast=function(){
     var input=document.getElementById('fcImportFile');
@@ -1348,21 +1393,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
         var im=parseInt(obj.fcMonth,10)||0;
         var iv=String(obj.version||'V1');
         var iy=parseInt(obj.year,10)||0;
+        var ibu=String(obj.bu||'汇总');
         var recs=Array.isArray(obj.records)?obj.records:[];
         if(!im||im<200000||im>210000)throw new Error('预测批次月份无效');
         if(!iy||iy<2000||iy>2100)throw new Error('预测年份无效');
+        if(['汇总','软工','硬工','云','智能汽车'].indexOf(ibu)<0)throw new Error('文件内 BU 维度无效：'+ibu);
         if(recs.length===0)throw new Error('文件内无预测记录');
         var exists=FC_VERSIONS.some(function(v){return v.fcMonth===im&&v.version===iv;});
-        var label=fcMonthLabel(im)+' '+iv+'（'+iy+' 年，'+recs.length+' 条记录）';
+        var label=fcMonthLabel(im)+' '+iv+'（'+iy+' 年 · '+ibu+'，'+recs.length+' 条记录）';
         var msg=exists
           ? '文件将【覆盖】已有版本：'+label+'。\n继续？'
           : '文件将【新建】批次版本：'+label+'。\n继续？';
         showConfirm(msg,function(){
-          fetch('/api/forecast/batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fcMonth:im,version:iv,year:iy,records:recs})})
+          fetch('/api/forecast/batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fcMonth:im,version:iv,year:iy,bu:ibu,records:recs})})
             .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
             .then(function(d){
               toast('导入成功：'+label+'（'+d.count+' 条）','success');
-              FC_BATCH=im;FC_VERSION=iv;FC_YEAR=iy;
+              FC_BATCH=im;FC_VERSION=iv;FC_YEAR=iy;FC_BU=ibu;
+              document.getElementById('fcBuSel').value=ibu;
+              updateFcVerInfo();
               loadForecastVersions();
             })
             .catch(function(err){toast('导入失败: '+err.message,'error');});
@@ -1382,8 +1431,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 
   function loadForecast(){
     Promise.all([
-      fetch('/api/forecast?fcMonth='+FC_BATCH+'&version='+encodeURIComponent(FC_VERSION)+'&year='+FC_YEAR,{method:'GET'}),
-      fetch('/api/budget?year='+FC_YEAR,{method:'GET'})
+      fetch('/api/forecast?fcMonth='+FC_BATCH+'&version='+encodeURIComponent(FC_VERSION)+'&year='+FC_YEAR+'&bu='+encodeURIComponent(FC_BU),{method:'GET'}),
+      fetch('/api/budget?year='+FC_YEAR+'&bu='+encodeURIComponent(FC_BU),{method:'GET'}),
+      fetch('/api/actual?year='+FC_YEAR+'&bu='+encodeURIComponent(FC_BU),{method:'GET'})
     ])
       .then(function(responses){
         return Promise.all(responses.map(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();}));
@@ -1391,6 +1441,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       .then(function(results){
         FC_DATA=results[0].sort(function(a,b){return (Number(a['月份'])||0)-(Number(b['月份'])||0);});
         FC_BUDGETS=results[1]||[];
+        FC_ACTUALS=results[2]||[];
         // 聚合全年预算
         var agg={年度:FC_YEAR,预算收入:0,预算贡献利润:0,预算现金流:0,预算费用:0};
         FC_BUDGETS.forEach(function(b){
@@ -1400,11 +1451,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
           agg['预算费用']+=Number(b['预算费用']||0);
         });
         FC_BUDGET=(FC_BUDGETS.length>0)?agg:null;
+        // 聚合全年实际
+        var aagg={年度:FC_YEAR,实际收入:0,实际贡献利润:0,实际现金流:0,实际费用:0};
+        FC_ACTUALS.forEach(function(a){
+          aagg['实际收入']+=Number(a['实际收入']||0);
+          aagg['实际贡献利润']+=Number(a['实际贡献利润']||0);
+          aagg['实际现金流']+=Number(a['实际现金流']||0);
+          aagg['实际费用']+=Number(a['实际费用']||0);
+        });
+        FC_ACTUAL=(FC_ACTUALS.length>0)?aagg:null;
         renderForecastAll();
       })
       .catch(function(err){
         console.error('loadForecast error',err);
-        FC_DATA=[];FC_BUDGETS=[];FC_BUDGET=null;
+        FC_DATA=[];FC_BUDGETS=[];FC_BUDGET=null;FC_ACTUALS=[];FC_ACTUAL=null;
         renderForecastAll();
         toast('经营看板数据加载失败: '+err.message,'error');
       });
@@ -1451,8 +1511,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     months.forEach(function(mn){var b=map[mn];if(b)sum+=Number(b[key]||0);});
     return sum;
   }
+  // 实际工具: 月度实际映射 + 指定月份集合的实际合计
+  function fcActualMap(){
+    var m={};
+    FC_ACTUALS.forEach(function(a){m[Number(a['月份'])]=a;});
+    return m;
+  }
+  function fcActualSum(months,key){
+    var map=fcActualMap(),sum=0;
+    months.forEach(function(mn){var a=map[mn];if(a)sum+=Number(a[key]||0);});
+    return sum;
+  }
 
-  // 年度预测达成总览: 全年预测 vs 全年预算 (收入/贡献利润/贡献利润率/现金流)
+  // 年度达成总览: 实际达成 vs 预算(主口径) + 预测进度 (收入/贡献利润/贡献利润率/现金流)
+  // 实际为空时降级展示预测口径
   function renderForecastAch(){
     var box=document.getElementById('fcAchGrid');
     var rev=0,profit=0,cash=0;
@@ -1463,10 +1535,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     FC_BUDGETS.forEach(function(b){
       bRev+=Number(b['预算收入']||0);bProfit+=Number(b['预算贡献利润']||0);bCash+=Number(b['预算现金流']||0);
     });
-    // 贡献利润率: 预测口径 vs 预算目标口径
-    var margin=fcRate(profit,rev), bMargin=fcRate(bProfit,bRev);
+    var aRev=0,aProfit=0,aCash=0,aExp=0;
+    FC_ACTUALS.forEach(function(a){
+      aRev+=Number(a['实际收入']||0);aProfit+=Number(a['实际贡献利润']||0);
+      aCash+=Number(a['实际现金流']||0);aExp+=Number(a['实际费用']||0);
+    });
+    var hasAct=FC_ACTUALS.length>0;
+    // 贡献利润率: 实际口径(主) / 预算目标口径(参考) / 预测口径
+    var margin=hasAct?fcRate(aProfit,aRev):fcRate(profit,rev);
+    var bMargin=fcRate(bProfit,bRev);
     var marginRate=fcRate(margin,bMargin);
-    function card(cls,icon,label,achVal,rate,budget,extraLine,barPct,budgetTxt){
+    function card(cls,icon,label,achVal,rate,budget,fcText,barPct,budgetTxt){
       var isPct=(typeof achVal==='string'&&achVal.slice(-1)==='%');
       var rTxt=(budget>0||rate>0)?rate.toFixed(1)+'%':'—';
       var rCls=rate>=95?'up':(rate>=70?'mid':'down');
@@ -1475,26 +1554,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       var budTxt=budgetTxt!==undefined?budgetTxt:(budget>0?formatK(budget):'');
       return '<div class="fc-ach-card '+cls+'"><div class="fc-ach-label"><span>'+icon+' '+label+'</span><span class="tag">年度</span></div>'+
         '<div class="fc-ach-value">'+(isPct?achVal:formatCurrency(achVal))+'</div>'+
-        '<div class="fc-ach-rate">达成率 <b class="'+rCls+'">'+rTxt+'</b>'+(budTxt?' <span style="color:var(--text-muted)">预算目标 '+budTxt+'</span>':'')+'</div>'+
-        (extraLine?'<div class="fc-ach-rate" style="margin-top:2px">'+extraLine+'</div>':'')+
+        '<div class="fc-ach-rate">实际达成率 <b class="'+rCls+'">'+rTxt+'</b>'+(budTxt?' <span style="color:var(--text-muted)">预算目标 '+budTxt+'</span>':'')+'</div>'+
+        (fcText?'<div class="fc-ach-rate" style="margin-top:2px">'+fcText+'</div>':'')+
         '<div class="fc-ach-bar"><i style="width:'+pct+'%"></i></div>'+
-        '<div class="fc-ach-target"><span>预测达成</span><span>目标 '+(budTxt||'未设预算')+'</span></div></div>';
+        '<div class="fc-ach-target"><span>'+(hasAct?'实际达成':'预测达成')+'</span><span>目标 '+(budTxt||'未设预算')+'</span></div></div>';
     }
+    var fcMoney=function(v){return v>0?formatCurrency(v):'—';};
     if(FC_BUDGETS.length>0){
       box.innerHTML=
-        card('','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:-2px;margin-right:2px"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>','年度收入',rev,fcRate(rev,bRev),bRev)+
-        card('success','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:-2px;margin-right:2px"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>','年度贡献利润',profit,fcRate(profit,bProfit),bProfit)+
-        card('purple','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:-2px;margin-right:2px"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>','年度贡献利润率',margin.toFixed(2)+'%',marginRate,0,'目标利润率 '+bMargin.toFixed(1)+'% · 预测口径 '+margin.toFixed(1)+'%',marginRate,bMargin.toFixed(1)+'%')+
-        card('info','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:-2px;margin-right:2px"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>','年度现金流',cash,fcRate(cash,bCash),bCash,'现金流为负时达成率仅供参考');
+        card('','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:-2px;margin-right:2px"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>','年度收入',hasAct?aRev:'—',hasAct?fcRate(aRev,bRev):fcRate(rev,bRev),bRev,'预测 '+fcMoney(rev)+' · 预测达成率 '+fcRate(rev,bRev).toFixed(1)+'%')+
+        card('success','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:-2px;margin-right:2px"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>','年度贡献利润',hasAct?aProfit:'—',hasAct?fcRate(aProfit,bProfit):fcRate(profit,bProfit),bProfit,'预测 '+fcMoney(profit)+' · 预测达成率 '+fcRate(profit,bProfit).toFixed(1)+'%')+
+        card('purple','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:-2px;margin-right:2px"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>','年度贡献利润率',margin.toFixed(2)+'%',marginRate,0,'目标利润率 '+bMargin.toFixed(1)+'% · '+(hasAct?'实际口径':'预测口径')+' '+margin.toFixed(1)+'%',marginRate,bMargin.toFixed(1)+'%')+
+        card('info','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:-2px;margin-right:2px"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>','年度现金流',hasAct?aCash:'—',hasAct?fcRate(aCash,bCash):fcRate(cash,bCash),bCash,'预测 '+fcMoney(cash)+' · 预测达成率 '+fcRate(cash,bCash).toFixed(1)+'% · 现金流为负时达成率仅供参考')+
+        (!hasAct?'<div class="fc-ach-card" style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:10px 14px"><span style="font-size:12px;color:var(--text-muted)">ℹ️ 尚未录入「'+FC_BU+'」实际达成，卡片主值暂用预测口径；点击「实际」按钮按月录入后自动切换为 实际 ÷ 预算 达成率</span></div>':'');
     }else{
-      box.innerHTML='<div class="fc-ach-card" style="grid-column:1/-1;display:flex;align-items:center;gap:10px"><span>⚠️ 尚未设置 '+FC_YEAR+' 年预算，无法计算达成率</span><button class="btn-secondary" onclick="openBudgetModal()" style="padding:5px 12px;font-size:12px">立即设置预算</button></div>';
+      box.innerHTML='<div class="fc-ach-card" style="grid-column:1/-1;display:flex;align-items:center;gap:10px"><span>⚠️ 尚未设置 '+FC_YEAR+' 年预算（'+FC_BU+'），无法计算达成率</span><button class="btn-secondary" onclick="openBudgetModal()" style="padding:5px 12px;font-size:12px">立即设置预算</button></div>';
     }
   }
 
-  // 预算 Modal (月度预算, 季度/半年度/全年自动聚合)
+  // 预算 Modal (月度预算, 季度/半年度/全年自动聚合, 按当前 BU 维度)
   window.openBudgetModal=function(){
     var bmap=fcBudgetMap();
     document.getElementById('budgetYearLabel').textContent=String(FC_YEAR);
+    document.getElementById('budgetModalTitle').textContent='月度预算设置 · '+FC_BU;
     // 预填全年总额输入框
     document.getElementById('bdSplitRev').value=FC_BUDGET?String(FC_BUDGET['预算收入']||''):'';
     document.getElementById('bdSplitProfit').value=FC_BUDGET?String(FC_BUDGET['预算贡献利润']||''):'';
@@ -1581,12 +1663,90 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     var btn=document.getElementById('budgetSubmitBtn');
     btn.disabled=true;btn.textContent='保存中...';
     var rows=readBudgetInputs();
-    rows.forEach(function(r){r['年度']=FC_YEAR;});
-    fetch('/api/budget/batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rows)})
+    rows.forEach(function(r){r['年度']=FC_YEAR;r['BU']=FC_BU;});
+    fetch('/api/budget/batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bu:FC_BU,records:rows})})
       .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
-      .then(function(d){toast('预算已保存 ('+(d.count||0)+' 个月)','success');closeBudgetModal();loadForecast();})
+      .then(function(d){toast('预算已保存 ('+(d.count||0)+' 个月 · '+FC_BU+')','success');closeBudgetModal();loadForecast();})
       .catch(function(err){toast('保存失败: '+err.message,'error');})
       .finally(function(){btn.disabled=false;btn.textContent='保存预算';});
+  };
+
+  // ===== 月度实际达成 Modal (按 BU 录入, 汇总 = 各 BU 之和自动计算) =====
+  var AC_BU='软工';        // 实际弹窗当前编辑 BU
+  var AC_EDIT_DATA=[];     // 实际弹窗当前 BU 的月度数据
+  window.openActualModal=function(){
+    document.getElementById('actualYearLabel').textContent=String(FC_YEAR);
+    var sel=document.getElementById('acBu');
+    if(FC_BU!=='汇总'&&sel.querySelector('option[value="'+FC_BU+'"]'))sel.value=FC_BU;
+    AC_BU=sel.value;
+    actualFetchAndRender();
+    document.getElementById('actualModalOverlay').classList.add('show');
+  };
+  window.onAcBuChange=function(){
+    AC_BU=document.getElementById('acBu').value||'软工';
+    actualFetchAndRender();
+  };
+  window.closeActualModal=function(){
+    document.getElementById('actualModalOverlay').classList.remove('show');
+  };
+  function actualFetchAndRender(){
+    fetch('/api/actual?year='+FC_YEAR+'&bu='+encodeURIComponent(AC_BU),{method:'GET'})
+      .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+      .then(function(list){AC_EDIT_DATA=Array.isArray(list)?list:[];renderActualTable();})
+      .catch(function(err){toast('实际数据加载失败: '+err.message,'error');AC_EDIT_DATA=[];renderActualTable();});
+  }
+  function renderActualTable(){
+    var map={};
+    AC_EDIT_DATA.forEach(function(a){map[Number(a['月份'])]=a;});
+    var html='';
+    for(var m=1;m<=12;m++){
+      var a=map[m];
+      var rv=a?(Number(a['实际收入']||0)||''):'';
+      var pf=a?(Number(a['实际贡献利润']||0)||''):'';
+      var cf=a?(Number(a['实际现金流']||0)||''):'';
+      var ex=a?(Number(a['实际费用']||0)||''):'';
+      html+='<tr><td style="font-weight:600">'+m+'月</td>'+
+        '<td><input type="number" step="0.01" min="0" class="ac-input" data-month="'+m+'" data-key="实际收入" value="'+rv+'" oninput="renderActualFoot()" placeholder="0"></td>'+
+        '<td><input type="number" step="0.01" class="ac-input" data-month="'+m+'" data-key="实际贡献利润" value="'+pf+'" oninput="renderActualFoot()" placeholder="0"></td>'+
+        '<td><input type="number" step="0.01" class="ac-input" data-month="'+m+'" data-key="实际现金流" value="'+cf+'" oninput="renderActualFoot()" placeholder="0"></td>'+
+        '<td><input type="number" step="0.01" min="0" class="ac-input" data-month="'+m+'" data-key="实际费用" value="'+ex+'" oninput="renderActualFoot()" placeholder="0"></td></tr>';
+    }
+    document.getElementById('actualTableBody').innerHTML=html;
+    document.getElementById('acBuHint').textContent='当前录入：'+AC_BU+'（按月）；汇总 = 各 BU 之和（自动计算，无需录入）';
+    renderActualFoot();
+  }
+  function readActualInputs(){
+    var rows=[];
+    var inputs=document.querySelectorAll('#actualTableBody .ac-input');
+    for(var i=0;i<inputs.length;i++){
+      var inp=inputs[i];
+      var m=Number(inp.getAttribute('data-month'));
+      var key=inp.getAttribute('data-key');
+      var row=null;
+      for(var j=0;j<rows.length;j++){if(rows[j].月份===m){row=rows[j];break;}}
+      if(!row){row={月份:m,实际收入:0,实际贡献利润:0,实际现金流:0,实际费用:0};rows.push(row);}
+      row[key]=parseFloat(inp.value)||0;
+    }
+    return rows.sort(function(a,b){return a.月份-b.月份;});
+  }
+  window.renderActualFoot=function(){
+    var rows=readActualInputs();
+    var rv=0,pf=0,cf=0,ex=0;
+    rows.forEach(function(r){rv+=r['实际收入'];pf+=r['实际贡献利润'];cf+=r['实际现金流'];ex+=r['实际费用'];});
+    var foot=document.getElementById('actualTableFoot');
+    if(foot)foot.innerHTML='<td style="font-weight:600">合计</td><td>'+formatCurrency(rv)+'</td><td>'+formatCurrency(pf)+'</td><td>'+formatCurrency(cf)+'</td><td>'+formatCurrency(ex)+'</td>';
+  };
+  window.submitActualForm=function(e){
+    e.preventDefault();
+    var btn=document.getElementById('actualSubmitBtn');
+    btn.disabled=true;btn.textContent='保存中...';
+    var rows=readActualInputs();
+    rows.forEach(function(r){r['年度']=FC_YEAR;});
+    fetch('/api/actual/batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bu:AC_BU,records:rows})})
+      .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+      .then(function(d){toast('实际已保存 ('+(d.count||0)+' 个月 · '+AC_BU+')','success');closeActualModal();loadForecast();})
+      .catch(function(err){toast('保存失败: '+err.message,'error');})
+      .finally(function(){btn.disabled=false;btn.textContent='保存实际';});
   };
 
   // ==================== 预算目标拆分 (预测结果模板: 实际7月 vs 2026目标-V1) ====================
@@ -1736,23 +1896,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   }
   function fcRate(v,total){return total>0?(v/total*100):0;}
 
-  // 分时段达成率图: 收入达成率 + 贡献利润达成率 (相对对应周期预算), 100% 目标线
+  // 分时段达成率图: 实际达成率(实线, 主) + 预测达成率(虚线, 参考), 相对对应周期预算, 100% 目标线
   function renderForecastAchChart(){
     var groups=fcGroups();
     var box=document.getElementById('forecastAchChart');
     var title=document.getElementById('fcAchChartTitle');
-    title.textContent=FC_DIM_TITLE[FC_DIM].chart;
+    var hasAct=FC_ACTUALS.length>0;
+    title.textContent=(hasAct?FC_DIM_TITLE[FC_DIM].chart:'各'+(FC_DIM==='month'?'月':(FC_DIM==='quarter'?'季度':'半年度'))+' 收入·贡献利润预测达成率(未录实际)');
     if(groups.length===0){box.innerHTML='<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:40px">暂无数据</div>';return;}
     var data=groups.map(function(g){
       var bRevP=fcBudgetSum(g.months,'预算收入');
       var bProfitP=fcBudgetSum(g.months,'预算贡献利润');
-      return {label:g.label,revRate:fcRate(g.revenue,bRevP),profitRate:fcRate(g.profit,bProfitP)};
+      var aRevP=fcActualSum(g.months,'实际收入');
+      var aProfitP=fcActualSum(g.months,'实际贡献利润');
+      return {label:g.label,
+        revRate:hasAct?fcRate(aRevP,bRevP):fcRate(g.revenue,bRevP),
+        profitRate:hasAct?fcRate(aProfitP,bProfitP):fcRate(g.profit,bProfitP),
+        fcRevRate:fcRate(g.revenue,bRevP),fcProfitRate:fcRate(g.profit,bProfitP),
+        gRev:g.revenue,gProfit:g.profit,aRev:aRevP,aProfit:aProfitP};
     });
     var hasAny=false;
-    data.forEach(function(d){if(d.revRate>0||d.profitRate>0)hasAny=true;});
+    data.forEach(function(d){if(d.revRate>0||d.profitRate>0||d.fcRevRate>0||d.fcProfitRate>0)hasAny=true;});
     if(!hasAny){box.innerHTML='<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:40px">暂无数据</div>';return;}
     var yMax=100;
-    data.forEach(function(d){yMax=Math.max(yMax,d.revRate,d.profitRate);});
+    data.forEach(function(d){yMax=Math.max(yMax,d.revRate,d.profitRate,d.fcRevRate,d.fcProfitRate);});
     yMax=Math.ceil(yMax*1.15);
     var W=680,H=250,padL=48,padB=34,padR=20,padT=26;
     var cw=W-padL-padR,bh=H-padB-padT;
@@ -1768,27 +1935,41 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     var y100=yOf(100);
     svg+='<line x1="'+padL+'" y1="'+y100+'" x2="'+(W-padR)+'" y2="'+y100+'" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="6,4"/>';
     svg+='<text x="'+(W-padR)+'" y="'+(y100-4)+'" text-anchor="end" class="chart-axis" style="font-size:10px;fill:#f59e0b">目标 100%</text>';
-    function linePath(key,color){
+    function linePath(key,color,dash){
       var pts=data.map(function(d,i){return{x:padL+i*slot+slot/2,y:yOf(d[key])};});
       var d='M'+pts[0].x+' '+pts[0].y;
       for(var i=1;i<pts.length;i++)d+=' L'+pts[i].x+' '+pts[i].y;
       var extra='';
       pts.forEach(function(p,idx){
         var rate=data[idx][key];
-        extra+='<circle cx="'+p.x+'" cy="'+p.y+'" r="3.5" fill="'+color+'"><title>'+data[idx].label+' '+(key==='revRate'?'收入':'贡献利润')+'达成率 '+rate.toFixed(1)+'%</title></circle>';
+        if(rate<=0)return;
+        extra+='<circle cx="'+p.x+'" cy="'+p.y+'" r="3.5" fill="'+color+'"><title>'+data[idx].label+' '+(key.indexOf('rev')===0?'收入':'贡献利润')+'达成率 '+rate.toFixed(1)+'%</title></circle>';
         var rTxt=rate>0?rate.toFixed(1)+'%':'—';
         extra+='<text x="'+p.x+'" y="'+(p.y-7)+'" text-anchor="middle" class="chart-label" style="fill:'+color+';font-size:10px">'+rTxt+'</text>';
       });
-      return '<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linejoin="round"/>'+extra;
+      return '<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-dasharray="'+(dash||'')+'" stroke-linejoin="round"/>'+extra;
     }
-    svg+=linePath('revRate','#3b82f6');
-    svg+=linePath('profitRate','#10b981');
+    if(hasAct){
+      svg+=linePath('revRate','#3b82f6');
+      svg+=linePath('profitRate','#10b981');
+    }else{
+      svg+=linePath('fcRevRate','#3b82f6');
+      svg+=linePath('fcProfitRate','#10b981');
+    }
+    // 有实际时叠加预测达成率虚线
+    if(hasAct){
+      svg+=linePath('fcRevRate','#93c5fd','5,4');
+      svg+=linePath('fcProfitRate','#6ee7b7','5,4');
+    }
     data.forEach(function(d,i){
       var lbl=d.label.replace('月','').replace('上半年 H1','H1').replace('下半年 H2','H2');
       svg+='<text x="'+(padL+i*slot+slot/2)+'" y="'+(H-12)+'" text-anchor="middle" class="chart-label">'+lbl+'</text>';
     });
     svg+='</svg>';
-    box.innerHTML='<div class="legend-inline"><span class="li"><span class="line" style="background:#3b82f6"></span>收入达成率</span><span class="li"><span class="line" style="background:#10b981"></span>贡献利润达成率</span><span class="li"><span class="line" style="background:#f59e0b"></span>目标线 100%</span></div>'+svg;
+    var legend='<span class="li"><span class="line" style="background:#3b82f6"></span>收入'+(hasAct?'实际':'预测')+'达成率</span><span class="li"><span class="line" style="background:#10b981"></span>贡献利润'+(hasAct?'实际':'预测')+'达成率</span>';
+    if(hasAct)legend+='<span class="li"><span class="line" style="background:#93c5fd;height:2px;border-top:2px dashed #93c5fd"></span>收入预测达成率</span><span class="li"><span class="line" style="background:#6ee7b7;height:2px;border-top:2px dashed #6ee7b7"></span>利润预测达成率</span>';
+    legend+='<span class="li"><span class="line" style="background:#f59e0b"></span>目标线 100%</span>';
+    box.innerHTML='<div class="legend-inline">'+legend+'</div>'+svg;
   }
 
   function renderForecastTable(){
@@ -1800,20 +1981,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     var html='',mhtml='';
     var ICO_ADD='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
     var hasBudget=FC_BUDGETS.length>0;
+    var hasAct=FC_ACTUALS.length>0;
+    // 达成率单元格: 实际 ÷ 预算 (无实际则显示 —)
     function rateCell(v,b){
       var rate=b>0?fcRate(v,b):0;
       var cls=rate>=95?'ok':(rate>=70?'warn':'bad');
-      var txt=b>0?(rate.toFixed(1)+'%'):'—';
-      return '<div class="fc-rate-cell '+cls+'"><span class="bar"><i style="width:'+Math.min(rate,100)+'%"></i></span><span class="num">'+txt+'</span></div>';
+      var txt=b>0&&v>0?(rate.toFixed(1)+'%'):'—';
+      return '<div class="fc-rate-cell '+cls+'"><span class="bar"><i style="width:'+(b>0&&v>0?Math.min(rate,100):0)+'%"></i></span><span class="num">'+txt+'</span></div>';
     }
     function mRateCls(v,b){
       var rate=b>0?fcRate(v,b):0;
-      return b>0?(rate>=95?'#10b981':(rate>=70?'#f59e0b':'#ef4444')):'var(--text-muted)';
+      return b>0&&v>0?(rate>=95?'#10b981':(rate>=70?'#f59e0b':'#ef4444')):'var(--text-muted)';
+    }
+    function mRateTxt(v,b){
+      return (b>0&&v>0)?fcRate(v,b).toFixed(1)+'%':'—';
     }
     groups.forEach(function(g){
-      var margin=fcRate(g.profit,g.revenue);
       var bRevP=fcBudgetSum(g.months,'预算收入');
       var bProfitP=fcBudgetSum(g.months,'预算贡献利润');
+      var aRevP=fcActualSum(g.months,'实际收入');
+      var aProfitP=fcActualSum(g.months,'实际贡献利润');
+      var margin=hasAct?fcRate(aProfitP,aRevP):fcRate(g.profit,g.revenue);
       var op;
       if(editable){
         if(g.recs.length>0){
@@ -1826,14 +2014,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
         op='<span style="color:var(--text-muted);font-size:11px">聚合</span>';
       }
       html+='<tr><td style="font-weight:600">'+g.label+'</td>'+
-        '<td>'+formatCurrency(g.revenue)+'</td><td style="color:var(--text-muted)">'+(bRevP>0?formatCurrency(bRevP):'—')+'</td><td>'+rateCell(g.revenue,bRevP)+'</td>'+
-        '<td>'+formatCurrency(g.profit)+'</td><td style="color:var(--text-muted)">'+(bProfitP>0?formatCurrency(bProfitP):'—')+'</td><td>'+rateCell(g.profit,bProfitP)+'</td>'+
-        '<td style="color:var(--purple);font-weight:500">'+margin.toFixed(1)+'%</td><td>'+op+'</td></tr>';
-      mhtml+='<div class="mc-item"><div class="mc-item-header"><span class="mc-item-title">'+g.label+'</span><span style="color:var(--purple);font-size:12px">利润率 '+margin.toFixed(1)+'%</span></div>'+
+        '<td>'+formatCurrency(g.revenue)+'</td><td style="color:var(--text-muted)">'+(bRevP>0?formatCurrency(bRevP):'—')+'</td><td>'+(hasAct?formatCurrency(aRevP):'<span style="color:var(--text-muted)">—</span>')+'</td><td>'+rateCell(aRevP,bRevP)+'</td>'+
+        '<td>'+formatCurrency(g.profit)+'</td><td style="color:var(--text-muted)">'+(bProfitP>0?formatCurrency(bProfitP):'—')+'</td><td>'+(hasAct?formatCurrency(aProfitP):'<span style="color:var(--text-muted)">—</span>')+'</td><td>'+rateCell(aProfitP,bProfitP)+'</td>'+
+        '<td style="color:var(--purple);font-weight:500">'+margin.toFixed(1)+'%'+(hasAct?'':'<span style="color:var(--text-muted);font-weight:400"> (预测)</span>')+'</td><td>'+op+'</td></tr>';
+      mhtml+='<div class="mc-item"><div class="mc-item-header"><span class="mc-item-title">'+g.label+'</span><span style="color:var(--purple);font-size:12px">利润率 '+margin.toFixed(1)+'%'+(hasAct?'':' (预测)')+'</span></div>'+
         '<div class="mc-item-row"><span>预测收入</span><span>'+formatCurrency(g.revenue)+'</span></div>'+
-        (hasBudget?'<div class="mc-item-row"><span>预算收入</span><span>'+formatCurrency(bRevP)+'</span></div><div class="mc-item-row"><span>收入达成率</span><span style="color:'+mRateCls(g.revenue,bRevP)+';font-weight:600">'+(bRevP>0?fcRate(g.revenue,bRevP).toFixed(1)+'%':'—')+'</span></div>':'')+
+        (hasBudget?'<div class="mc-item-row"><span>预算收入</span><span>'+formatCurrency(bRevP)+'</span></div>':'')+
+        (hasAct?'<div class="mc-item-row"><span>实际收入</span><span>'+formatCurrency(aRevP)+'</span></div><div class="mc-item-row"><span>收入实际达成率</span><span style="color:'+mRateCls(aRevP,bRevP)+';font-weight:600">'+mRateTxt(aRevP,bRevP)+'</span></div>':'')+
         '<div class="mc-item-row"><span>预测贡献利润</span><span>'+formatCurrency(g.profit)+'</span></div>'+
-        (hasBudget?'<div class="mc-item-row"><span>预算贡献利润</span><span>'+formatCurrency(bProfitP)+'</span></div><div class="mc-item-row"><span>利润达成率</span><span style="color:'+mRateCls(g.profit,bProfitP)+';font-weight:600">'+(bProfitP>0?fcRate(g.profit,bProfitP).toFixed(1)+'%':'—')+'</span></div>':'')+
+        (hasBudget?'<div class="mc-item-row"><span>预算贡献利润</span><span>'+formatCurrency(bProfitP)+'</span></div>':'')+
+        (hasAct?'<div class="mc-item-row"><span>实际贡献利润</span><span>'+formatCurrency(aProfitP)+'</span></div><div class="mc-item-row"><span>利润实际达成率</span><span style="color:'+mRateCls(aProfitP,bProfitP)+';font-weight:600">'+mRateTxt(aProfitP,bProfitP)+'</span></div>':'')+
         '<div class="mc-item-actions">'+op+'</div></div>';
     });
     tbody.innerHTML=html;
@@ -1846,6 +2036,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     document.getElementById('forecastModalTitle').textContent='新增月度预测';
     document.getElementById('fcYear').value=String(FC_YEAR);
     document.getElementById('fcMonth').value=month?String(month):'';
+    var buSel=document.getElementById('fcBu');
+    buSel.disabled=false;
+    if(buSel.querySelector('option[value="'+FC_BU+'"]'))buSel.value=FC_BU;
     ['fcRevenue','fcProfit','fcCash','fcExpense','fcRemark'].forEach(function(id){document.getElementById(id).value='';});
     document.getElementById('forecastModalOverlay').classList.add('show');
   };
@@ -1854,9 +2047,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     for(var i=0;i<FC_DATA.length;i++){if(FC_DATA[i]._id===id){rec=FC_DATA[i];break;}}
     if(!rec)return;
     FC_EDIT_ID=id;
-    document.getElementById('forecastModalTitle').textContent='编辑月度预测 ('+rec['年度']+'年'+rec['月份']+'月)';
+    document.getElementById('forecastModalTitle').textContent='编辑月度预测 ('+rec['年度']+'年'+rec['月份']+'月 · '+(rec['BU']||'汇总')+')';
     document.getElementById('fcYear').value=String(rec['年度']);
     document.getElementById('fcMonth').value=String(rec['月份']);
+    var buSel=document.getElementById('fcBu');
+    buSel.value=rec['BU']||'汇总';
+    buSel.disabled=true; // 编辑时 BU 不可改
     document.getElementById('fcRevenue').value=rec['预测收入'];
     document.getElementById('fcProfit').value=rec['贡献利润'];
     document.getElementById('fcCash').value=rec['现金流'];
@@ -1866,6 +2062,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   };
   window.closeForecastModal=function(){
     document.getElementById('forecastModalOverlay').classList.remove('show');
+    var buSel=document.getElementById('fcBu');
+    if(buSel)buSel.disabled=false;
     FC_EDIT_ID=null;
   };
   window.submitForecastForm=function(e){
@@ -1875,6 +2073,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     var rec={
       预测批次:FC_BATCH,
       版本:FC_VERSION,
+      BU:document.getElementById('fcBu').value||'汇总',
       年度:parseInt(document.getElementById('fcYear').value,10),
       月份:parseInt(document.getElementById('fcMonth').value,10),
       预测收入:parseFloat(document.getElementById('fcRevenue').value)||0,
