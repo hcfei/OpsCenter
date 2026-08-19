@@ -342,6 +342,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 .rate-badge.down{color:var(--danger);background:var(--danger-glow)}
 .fc-ach-bar{height:6px;background:rgba(255,255,255,0.08);border-radius:3px;margin-top:8px;overflow:hidden}
 .fc-ach-bar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,#3b82f6,#60a5fa);transition:width .6s ease}
+/* 各 BU 实际达成占比 (年度 KPI 卡下方) */
+.bu-share-wrap{margin-bottom:14px}
+.bu-share-title{font-size:12px;color:var(--text-muted);margin:0 2px 8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.bu-share-title b{color:var(--text)}
+.bu-share-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.bu-share-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-width:0}
+.bu-share-card .sh-head{font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.bu-share-card .sh-head .sh-tag{font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text-secondary)}
+.bu-share-body{display:flex;align-items:center;gap:12px}
+.bu-share-legend{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.bu-share-legend .lg-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-secondary);white-space:nowrap}
+.bu-share-legend .lg-row .lg-dot{width:8px;height:8px;border-radius:2px;flex:none}
+.bu-share-legend .lg-row .lg-val{margin-left:auto;font-weight:600;color:var(--text)}
+.bu-share-empty{color:var(--text-muted);font-size:11px;padding:18px 0;text-align:center;width:100%}
+@media(max-width:1200px){.bu-share-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){.bu-share-grid{grid-template-columns:1fr 1fr}}
 .fc-ach-card.success .fc-ach-bar i{background:linear-gradient(90deg,#10b981,#34d399)}
 .fc-ach-card.purple .fc-ach-bar i{background:linear-gradient(90deg,#8b5cf6,#a78bfa)}
 .fc-ach-card.warning .fc-ach-bar i{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
@@ -537,6 +553,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 
   <!-- 年度预测达成总览 (全年口径) -->
   <div class="fc-ach-grid" id="fcAchGrid"></div>
+
+  <!-- 各 BU 实际达成占比 (金额类饼图 / 比率类柱状图) -->
+  <div id="buShareWrap"></div>
 
   <!-- 分时段标签: 各月 / 各季度 / 半年度 -->
   <div class="tab-header">
@@ -882,6 +901,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   var FC_ACTUAL=null;      // 全年实际聚合
   var FC_BU='汇总';        // 当前选中 BU (汇总/软工/硬工/云/智能汽车/__all__)
   var FC_ALL=null;         // 全部 BU 对比数据 {BU:{data:[],budgets:[],actuals:[]}} (FC_BU='__all__' 时使用)
+  var FC_ACT_ALL=null;     // 各 BU 全年实际聚合 [{BU,收入,利润,现金流,费用,利润率}] (KPI 卡下方占比图使用)
   var BU_LIST_ALL=['汇总','软工','硬工','云','智能汽车'];
   var BU_COLORS={'汇总':'#3b82f6','软工':'#10b981','硬工':'#f59e0b','云':'#a78bfa','智能汽车':'#ec4899'};
   var FC_YEAR=2026;        // 当前选中年份
@@ -1434,6 +1454,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   };
 
   function loadForecast(){
+    FC_ACT_ALL=null;   // 占比图数据随 BU/批次切换即时清空
     if(FC_BU==='__all__'){loadForecastAll();return;}
     Promise.all([
       fetch('/api/forecast?fcMonth='+FC_BATCH+'&version='+encodeURIComponent(FC_VERSION)+'&year='+FC_YEAR+'&bu='+encodeURIComponent(FC_BU),{method:'GET'}),
@@ -1466,10 +1487,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
         });
         FC_ACTUAL=(FC_ACTUALS.length>0)?aagg:null;
         renderForecastAll();
+        loadBuActuals();
       })
       .catch(function(err){
         console.error('loadForecast error',err);
-        FC_DATA=[];FC_BUDGETS=[];FC_BUDGET=null;FC_ACTUALS=[];FC_ACTUAL=null;
+        FC_DATA=[];FC_BUDGETS=[];FC_BUDGET=null;FC_ACTUALS=[];FC_ACTUAL=null;FC_ACT_ALL=null;
         renderForecastAll();
         toast('经营看板数据加载失败: '+err.message,'error');
       });
@@ -1504,7 +1526,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       })
       .catch(function(err){
         console.error('loadForecastAll error',err);
-        FC_ALL=null;FC_DATA=[];FC_BUDGETS=[];FC_BUDGET=null;FC_ACTUALS=[];FC_ACTUAL=null;
+        FC_ALL=null;FC_DATA=[];FC_BUDGETS=[];FC_BUDGET=null;FC_ACTUALS=[];FC_ACTUAL=null;FC_ACT_ALL=null;
         renderForecastAll();
         toast('全部 BU 对比数据加载失败: '+err.message,'error');
       });
@@ -1515,6 +1537,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     renderForecastAch();
     renderForecastAchChart();
     renderForecastTable();
+    renderBuActualShare();
   }
 
   // 预测月份状态条: 预测至 X 月 + 1-12 月进度轨道
@@ -1628,6 +1651,127 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       });
       box.innerHTML+='<div style="grid-column:1/-1;margin-top:2px"><div style="font-size:11px;color:var(--text-muted);margin:8px 2px 6px">各 BU 全年实际收入 vs 预算（领域整体 = 汇总）</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px">'+chips.join('')+'</div></div>';
     }
+  }
+
+  // ===== 各 BU 实际达成占比 (年度 KPI 卡下方: 金额类饼图 / 比率类柱状图) =====
+  // 聚合单个 BU 全年实际
+  function aggBuActual(bn,rows){
+    var o={BU:bn,收入:0,利润:0,现金流:0,费用:0,利润率:0};
+    (rows||[]).forEach(function(a){
+      o.收入+=Number(a['实际收入']||0);o.利润+=Number(a['实际贡献利润']||0);
+      o.现金流+=Number(a['实际现金流']||0);o.费用+=Number(a['实际费用']||0);
+    });
+    o.利润率=o.收入>0?o.利润/o.收入*100:0;
+    return o;
+  }
+  // 对比模式: 从 FC_ALL 提取 4 个 BU 全年实际
+  function buActualAggFromAll(){
+    return BU_LIST_ALL.slice(1).map(function(bn){
+      return aggBuActual(bn,(FC_ALL&&FC_ALL[bn]&&FC_ALL[bn].actuals)||[]);
+    });
+  }
+  // 普通模式: 异步拉取 4 个 BU 实际 (不阻塞主渲染)
+  function loadBuActuals(){
+    FC_ACT_ALL=null;renderBuActualShare();
+    if(FC_BU==='__all__')return;
+    var qs=BU_LIST_ALL.slice(1).map(function(bn){
+      return fetch('/api/actual?year='+FC_YEAR+'&bu='+encodeURIComponent(bn),{method:'GET'})
+        .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();});
+    });
+    Promise.all(qs).then(function(list){
+      FC_ACT_ALL=BU_LIST_ALL.slice(1).map(function(bn,idx){return aggBuActual(bn,list[idx]||[]);});
+      renderBuActualShare();
+    }).catch(function(err){console.error('loadBuActuals',err);FC_ACT_ALL=null;renderBuActualShare();});
+  }
+  // SVG 饼图 (扇区 + 中心总额)
+  function svgPie(items){
+    var total=0;
+    items.forEach(function(it){total+=it.value;});
+    if(total<=0)return null;
+    var cx=50,cy=50,r=42;
+    var ang=-90,paths=[];
+    items.forEach(function(it){
+      if(it.value<=0)return;
+      var sweep=it.value/total*360;
+      var a1=ang*Math.PI/180,a2=(ang+sweep)*Math.PI/180;
+      var x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1);
+      var x2=cx+r*Math.cos(a2),y2=cy+r*Math.sin(a2);
+      var large=sweep>180?1:0;
+      paths.push('<path d="M'+cx+' '+cy+' L'+x1.toFixed(1)+' '+y1.toFixed(1)+' A'+r+' '+r+' 0 '+large+' 1 '+x2.toFixed(1)+' '+y2.toFixed(1)+' Z" fill="'+it.color+'"><title>'+it.label+' '+formatCurrency(it.value)+'（'+(it.value/total*100).toFixed(1)+'%）</title></path>');
+      ang+=sweep;
+    });
+    return '<svg viewBox="0 0 100 100" width="100" height="100" style="flex:none">'+paths.join('')+
+      '<text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="var(--text)">'+formatCurrency(total)+'</text></svg>';
+  }
+  // 柱状图: 各 BU 实际贡献利润率 + 领域整体参考线
+  function svgBarMargin(items,ref){
+    var W=240,H=112,padL=32,padR=8,padT=14,padB=20;
+    var plotW=W-padL-padR,plotH=H-padT-padB;
+    var maxV=Math.max.apply(null,items.map(function(i){return i.value;}).concat([ref||0,1]));
+    var n=items.length,step=plotW/n;
+    var bw=Math.min(30,step*0.55);
+    var grid='';
+    for(var g=0;g<=2;g++){
+      var gy=padT+plotH*g/2;
+      grid+='<line x1="'+padL+'" y1="'+gy.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+gy.toFixed(1)+'" stroke="rgba(255,255,255,0.06)" stroke-width="1"></line>'+
+        '<text x="'+(padL-3)+'" y="'+(gy+2.5).toFixed(1)+'" text-anchor="end" font-size="7.5" fill="var(--text-muted)">'+(maxV*(1-g/2)).toFixed(0)+'%</text>';
+    }
+    var bars=items.map(function(it,idx){
+      var h=it.value>0?Math.max(it.value/maxV*plotH,2):0;
+      var x=padL+step*idx+(step-bw)/2;
+      var y=padT+plotH-h;
+      return '<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+h.toFixed(1)+'" rx="2" fill="'+it.color+'"><title>'+it.label+' 实际贡献利润率 '+it.value.toFixed(2)+'%</title></rect>'+
+        (it.value>0?'<text x="'+(x+bw/2).toFixed(1)+'" y="'+(y-3).toFixed(1)+'" text-anchor="middle" font-size="8.5" fill="var(--text-secondary)">'+it.value.toFixed(1)+'%</text>':'')+
+        '<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-6).toFixed(1)+'" text-anchor="middle" font-size="8" fill="var(--text-muted)">'+it.label+'</text>';
+    });
+    var refLine='';
+    if(ref>0&&ref<=maxV){
+      var ry=padT+plotH-ref/maxV*plotH;
+      refLine='<line x1="'+padL+'" y1="'+ry.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+ry.toFixed(1)+'" stroke="var(--primary)" stroke-width="1" stroke-dasharray="3 3" opacity="0.8"></line>'+
+        '<text x="'+(W-padR-2)+'" y="'+(ry-3).toFixed(1)+'" text-anchor="end" font-size="8" fill="var(--primary)">领域整体 '+ref.toFixed(1)+'%</text>';
+    }
+    return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:250px;min-width:150px">'+grid+bars.join('')+refLine+'</svg>';
+  }
+  // 主渲染: 四张卡 (收入/利润/现金流 饼图 + 利润率 柱状图)
+  function renderBuActualShare(){
+    var wrap=document.getElementById('buShareWrap');
+    if(!wrap)return;
+    if(FC_BU==='__all__'&&FC_ALL){FC_ACT_ALL=buActualAggFromAll();}
+    if(!FC_ACT_ALL){
+      wrap.innerHTML='<div class="bu-share-card" style="grid-column:1/-1"><div class="bu-share-empty">各 BU 实际达成占比加载中…</div></div>';
+      return;
+    }
+    var any=FC_ACT_ALL.some(function(o){return o.收入>0||o.利润>0||o.现金流>0;});
+    if(!any){
+      wrap.innerHTML='<div class="bu-share-card" style="grid-column:1/-1"><div class="bu-share-empty">暂无可用的各 BU 实际达成数据（请先点「实际」按 BU 录入月度实际）</div></div>';
+      return;
+    }
+    var sumRev=0,sumProfit=0,sumCash=0;
+    FC_ACT_ALL.forEach(function(o){sumRev+=o.收入;sumProfit+=o.利润;sumCash+=o.现金流;});
+    function legend(rows){
+      return '<div class="bu-share-legend">'+rows.map(function(r){
+        return '<div class="lg-row"><span class="lg-dot" style="background:'+r.color+'"></span>'+r.label+'<span class="lg-val">'+r.txt+'</span></div>';
+      }).join('')+'</div>';
+    }
+    function pieCard(key,title){
+      var items=FC_ACT_ALL.map(function(o){return {label:o.BU,color:BU_COLORS[o.BU]||'#3b82f6',value:o[key]};});
+      var total=items.reduce(function(s,it){return s+it.value;},0);
+      var svg=svgPie(items);
+      var rows=items.map(function(it){
+        return {color:it.color,label:it.label,txt:total>0?(formatCurrency(it.value)+' · '+(it.value/total*100).toFixed(1)+'%'):'—'};
+      });
+      return '<div class="bu-share-card"><div class="sh-head"><span>'+title+'</span><span class="sh-tag">年度</span></div>'+
+        '<div class="bu-share-body">'+(svg||'<div class="bu-share-empty" style="width:100px;flex:none">—</div>')+legend(rows)+'</div></div>';
+    }
+    var barItems=FC_ACT_ALL.map(function(o){return {label:o.BU,color:BU_COLORS[o.BU]||'#3b82f6',value:o.利润率};});
+    var ref=sumRev>0?sumProfit/sumRev*100:0;
+    wrap.innerHTML='<div class="bu-share-title">各 BU 实际达成占比（'+FC_YEAR+' 年 · 实际口径）<b>领域整体</b>：收入 '+formatCurrency(sumRev)+' · 贡献利润 '+formatCurrency(sumProfit)+' · 现金流 '+formatCurrency(sumCash)+'</div>'+
+      '<div class="bu-share-grid">'+
+      pieCard('收入','年度实际收入占比')+
+      pieCard('利润','年度实际贡献利润占比')+
+      pieCard('现金流','年度实际现金流占比')+
+      '<div class="bu-share-card"><div class="sh-head"><span>各 BU 实际贡献利润率</span><span class="sh-tag">年度</span></div><div class="bu-share-body">'+svgBarMargin(barItems,ref)+'</div></div>'+
+      '</div>';
   }
 
   // 预算 Modal (月度预算, 季度/半年度/全年自动聚合, 按当前 BU 维度)
