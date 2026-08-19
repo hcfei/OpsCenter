@@ -885,8 +885,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     CONFIRM_CALLBACK=null;
   };
   document.getElementById('confirmBtn').onclick=function(){
+    var cb=CONFIRM_CALLBACK;
     window.hideConfirm();
-    if(CONFIRM_CALLBACK)CONFIRM_CALLBACK();
+    if(cb)cb();
   };
 
   function pad(n){return n<10?'0'+n:''+n;}
