@@ -445,13 +445,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 <!-- Dashboard -->
 <section id="tab-dashboard" class="tab-content">
   <div class="page-title">运营看板</div>
-  <div class="page-subtitle">合同 · 项目 · 验收 · 回款 全流程数据概览</div>
+  <div class="page-subtitle">合同 · 项目 · 验收 · 回款 全流程数据概览（金额单位：万元）</div>
 
   <div class="kpi-grid">
     <div class="kpi-card">
       <div class="kpi-header">
         <div class="kpi-icon primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
-        <div class="kpi-meta"><div class="kpi-label">合同总额</div><div class="kpi-value primary" id="kpiTotalAmount">¥0</div></div>
+        <div class="kpi-meta"><div class="kpi-label">合同总额</div><div class="kpi-value primary" id="kpiTotalAmount">0.00</div></div>
       </div>
       <div class="kpi-sub" id="kpiTotalCount">共 0 个合同</div>
     </div>
@@ -472,7 +472,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     <div class="kpi-card danger">
       <div class="kpi-header">
         <div class="kpi-icon danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
-        <div class="kpi-meta"><div class="kpi-label">待回款金额</div><div class="kpi-value danger" id="kpiPendingPayment">¥0</div></div>
+        <div class="kpi-meta"><div class="kpi-label">待回款金额</div><div class="kpi-value danger" id="kpiPendingPayment">0.00</div></div>
       </div>
       <div class="kpi-sub" id="kpiPaymentSub">未回清金额</div>
     </div>
@@ -485,7 +485,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     </div>
 
     <div class="dash-card full">
-      <div class="chart-section-title">合同月度金额趋势</div>
+      <div class="chart-section-title">合同月度金额趋势（单位：万元）</div>
       <div id="trendBarChart" style="min-height:260px"></div>
     </div>
 
@@ -504,7 +504,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 <!-- Finance -->
 <section id="tab-finance" class="tab-content active">
   <div class="page-title">经营看板</div>
-  <div class="page-subtitle">年度收入 · 贡献利润 · 贡献利润率 · 现金流 预测达成分析；各月 / 各季度 / 半年度 分时段收入与贡献利润达成</div>
+  <div class="page-subtitle">年度收入 · 贡献利润 · 贡献利润率 · 现金流 预测达成分析；各月 / 各季度 / 半年度 分时段收入与贡献利润达成（金额单位：万元）</div>
 
   <!-- 预测月份状态条 -->
   <div class="fc-status-bar">
@@ -552,7 +552,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       <div id="forecastAchChart" style="min-height:280px"></div>
     </div>
     <div class="dash-card full">
-      <div class="chart-section-title" id="fcTableTitle">各月达成明细</div>
+      <div class="chart-section-title" id="fcTableTitle">各月达成明细（单位：万元）</div>
       <div class="table-container">
         <table class="data-table"><thead><tr><th>期间</th><th>预测收入</th><th>预算收入</th><th>收入达成率</th><th>预测贡献利润</th><th>预算贡献利润</th><th>利润达成率</th><th>贡献利润率</th><th>操作</th></tr></thead><tbody id="forecastBody"></tbody></table>
         <div class="mobile-card-list" id="forecastCards"></div>
@@ -615,7 +615,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     </div>
   </div>
   <div class="table-container">
-    <table class="data-table"><thead><tr><th>合同编号</th><th>项目名称</th><th>客户名称</th><th>合同金额</th><th>合同状态</th><th>签订日期</th><th>操作</th></tr></thead><tbody id="contractBody"></tbody></table>
+    <table class="data-table"><thead><tr><th>合同编号</th><th>项目名称</th><th>客户名称</th><th>合同金额（万元）</th><th>合同状态</th><th>签订日期</th><th>操作</th></tr></thead><tbody id="contractBody"></tbody></table>
     <div class="mobile-card-list" id="contractCards"></div>
   </div>
 </section>
@@ -666,7 +666,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     </div>
   </div>
   <div class="table-container">
-    <table class="data-table"><thead><tr><th>项目名称</th><th>客户名称</th><th>合同金额</th><th>已回款</th><th>待回款</th><th>回款状态</th><th>计划回款日期</th><th>操作</th></tr></thead><tbody id="paymentBody"></tbody></table>
+    <table class="data-table"><thead><tr><th>项目名称</th><th>客户名称</th><th>合同金额（万元）</th><th>已回款（万元）</th><th>待回款（万元）</th><th>回款状态</th><th>计划回款日期</th><th>操作</th></tr></thead><tbody id="paymentBody"></tbody></table>
     <div class="mobile-card-list" id="paymentCards"></div>
   </div>
 </section>
@@ -684,7 +684,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
           <div class="form-field"><label>合同编号 <span class="req">*</span></label><input type="text" data-field="合同编号" data-type="text" required></div>
           <div class="form-field"><label>项目名称 <span class="req">*</span></label><input type="text" data-field="项目名称" data-type="text" required></div>
           <div class="form-field"><label>客户名称 <span class="req">*</span></label><input type="text" data-field="客户名称" data-type="text" required></div>
-          <div class="form-field"><label>合同金额 <span class="req">*</span></label><input type="number" step="0.01" data-field="合同金额" data-type="currency" required></div>
+          <div class="form-field"><label>合同金额（万元） <span class="req">*</span></label><input type="number" step="0.01" data-field="合同金额" data-type="currency" required></div>
           <div class="form-field"><label>合同状态 <span class="req">*</span></label><select data-field="合同状态" data-type="select" required><option value="">请选择</option></select></div>
           <div class="form-field"><label>签订日期</label><input type="date" data-field="签订日期" data-type="date"></div>
         </div></div>
@@ -700,7 +700,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
           <div class="form-field"><label>实际验收日期</label><input type="date" data-field="实际验收日期" data-type="date"></div>
         </div></div>
         <div class="form-section"><h4>回款信息</h4><div class="form-grid">
-          <div class="form-field"><label>回款金额</label><input type="number" step="0.01" data-field="回款金额" data-type="currency"></div>
+          <div class="form-field"><label>回款金额（万元）</label><input type="number" step="0.01" data-field="回款金额" data-type="currency"></div>
           <div class="form-field"><label>回款状态</label><select data-field="回款状态" data-type="select"><option value="">请选择</option></select></div>
           <div class="form-field"><label>计划回款日期</label><input type="date" data-field="计划回款日期" data-type="date"></div>
         </div></div>
@@ -723,11 +723,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
           <div class="form-field"><label>年度 <span class="req">*</span></label><select id="fcYear" required></select></div>
           <div class="form-field"><label>月份 <span class="req">*</span></label><select id="fcMonth" required></select></div>
         </div></div>
-        <div class="form-section"><h4>经营指标（元）</h4><div class="form-grid">
-          <div class="form-field"><label>预测收入 <span class="req">*</span></label><input type="number" step="0.01" min="0" id="fcRevenue" required placeholder="0.00"></div>
-          <div class="form-field"><label>贡献利润</label><input type="number" step="0.01" id="fcProfit" placeholder="0.00"></div>
-          <div class="form-field"><label>现金流</label><input type="number" step="0.01" id="fcCash" placeholder="可填负数"></div>
-          <div class="form-field"><label>费用</label><input type="number" step="0.01" min="0" id="fcExpense" placeholder="0.00"></div>
+        <div class="form-section"><h4>经营指标（万元）</h4><div class="form-grid">
+          <div class="form-field"><label>预测收入（万元） <span class="req">*</span></label><input type="number" step="0.01" min="0" id="fcRevenue" required placeholder="0.00"></div>
+          <div class="form-field"><label>贡献利润（万元）</label><input type="number" step="0.01" id="fcProfit" placeholder="0.00"></div>
+          <div class="form-field"><label>现金流（万元）</label><input type="number" step="0.01" id="fcCash" placeholder="可填负数"></div>
+          <div class="form-field"><label>费用（万元）</label><input type="number" step="0.01" min="0" id="fcExpense" placeholder="0.00"></div>
         </div></div>
         <div class="form-section"><h4>其他</h4><div class="form-grid">
           <div class="form-field full"><label>备注</label><textarea id="fcRemark" placeholder="选填"></textarea></div>
@@ -745,12 +745,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     <form id="budgetForm" onsubmit="submitBudgetForm(event)">
       <div class="modal-body">
         <div class="form-section">
-          <h4><span id="budgetYearLabel">2026</span> 年月度预算（元）· 季度 / 半年度 / 全年自动聚合</h4>
+          <h4><span id="budgetYearLabel">2026</span> 年月度预算（万元）· 季度 / 半年度 / 全年自动聚合</h4>
           <div class="form-grid">
-            <div class="form-field"><label>全年预算收入</label><input type="number" step="0.01" min="0" id="bdSplitRev" placeholder="0.00"></div>
-            <div class="form-field"><label>全年预算贡献利润</label><input type="number" step="0.01" min="0" id="bdSplitProfit" placeholder="0.00"></div>
-            <div class="form-field"><label>全年预算现金流</label><input type="number" step="0.01" id="bdSplitCash" placeholder="0.00"></div>
-            <div class="form-field"><label>全年预算费用</label><input type="number" step="0.01" min="0" id="bdSplitExp" placeholder="0.00"></div>
+            <div class="form-field"><label>全年预算收入（万元）</label><input type="number" step="0.01" min="0" id="bdSplitRev" placeholder="0.00"></div>
+            <div class="form-field"><label>全年预算贡献利润（万元）</label><input type="number" step="0.01" min="0" id="bdSplitProfit" placeholder="0.00"></div>
+            <div class="form-field"><label>全年预算现金流（万元）</label><input type="number" step="0.01" id="bdSplitCash" placeholder="0.00"></div>
+            <div class="form-field"><label>全年预算费用（万元）</label><input type="number" step="0.01" min="0" id="bdSplitExp" placeholder="0.00"></div>
           </div>
           <div class="budget-split-bar">
             <span style="font-size:12px;color:var(--text-muted)">快速分摊到 12 个月：</span>
@@ -765,7 +765,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
         </div>
         <div class="table-container" style="max-height:300px;overflow:auto">
           <table class="data-table budget-table">
-            <thead><tr><th>月份</th><th>预算收入</th><th>预算贡献利润</th><th>预算现金流</th><th>预算费用</th></tr></thead>
+            <thead><tr><th>月份</th><th>预算收入（万元）</th><th>预算贡献利润（万元）</th><th>预算现金流（万元）</th><th>预算费用（万元）</th></tr></thead>
             <tbody id="budgetTableBody"></tbody>
             <tfoot><tr id="budgetTableFoot"></tr></tfoot>
           </table>
@@ -787,7 +787,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
           <div class="form-field"><label>指标 <span class="req">*</span></label><select id="tgMetric" required><option value="收入">收入</option><option value="贡献利润">贡献利润</option><option value="现金流">现金流</option></select></div>
           <div class="form-field"><label>BU <span class="req">*</span></label><select id="tgBu" required><option value="软工">软工</option><option value="硬工">硬工</option><option value="云">云</option><option value="智能汽车">智能汽车</option><option value="汇总">汇总</option></select></div>
         </div></div>
-        <div class="form-section"><h4>实际值（7月）</h4><div class="form-grid">
+        <div class="form-section"><h4>实际值（7月，万元）</h4><div class="form-grid">
           <div class="form-field"><label>Q1实际</label><input type="number" step="0.000001" id="tgQ1Act" placeholder="0"></div>
           <div class="form-field"><label>Q2实际</label><input type="number" step="0.000001" id="tgQ2Act" placeholder="0"></div>
           <div class="form-field"><label>Q3实际</label><input type="number" step="0.000001" id="tgQ3Act" placeholder="0"></div>
@@ -796,7 +796,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
           <div class="form-field"><label>H2实际</label><input type="number" step="0.000001" id="tgH2Act" placeholder="0"></div>
           <div class="form-field"><label>YTD实际</label><input type="number" step="0.000001" id="tgYtdAct" placeholder="0"></div>
         </div></div>
-        <div class="form-section"><h4>2026年目标-V1</h4><div class="form-grid">
+        <div class="form-section"><h4>2026年目标-V1（万元）</h4><div class="form-grid">
           <div class="form-field"><label>Q1目标</label><input type="number" step="0.000001" id="tgQ1Tgt" placeholder="0"></div>
           <div class="form-field"><label>Q2目标</label><input type="number" step="0.000001" id="tgQ2Tgt" placeholder="0"></div>
           <div class="form-field"><label>Q3目标</label><input type="number" step="0.000001" id="tgQ3Tgt" placeholder="0"></div>
@@ -892,7 +892,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 
   function pad(n){return n<10?'0'+n:''+n;}
   function formatDate(v){if(!v)return '-';var d=new Date(v);if(isNaN(d.getTime()))return '-';return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
-  function formatCurrency(v){if(v===null||v===undefined||v==='')return '¥0.00';var n=Number(v);if(isNaN(n))return '¥0.00';var p=n.toFixed(2).split('.');p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,',');return '¥'+p.join('.');}
+  // 金额显示: 数值单位统一为「万元」, 输出纯数字千分位(不带 ¥ / 不带"万"字, 避免单位叠加成"万万")
+  function formatCurrency(v){if(v===null||v===undefined||v==='')return '0.00';var n=Number(v);if(isNaN(n))return '0.00';var p=n.toFixed(2).split('.');p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,',');return p.join('.');}
   function isOverdue(v){if(!v)return false;var d=new Date(v);if(isNaN(d.getTime()))return false;var t=new Date();t.setHours(0,0,0,0);return d<t;}
   function isToday(v){if(!v)return false;var d=new Date(v);if(isNaN(d.getTime()))return false;var t=new Date();return d.getFullYear()===t.getFullYear()&&d.getMonth()===t.getMonth()&&d.getDate()===t.getDate();}
 
@@ -1099,7 +1100,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     svg+='</svg>';
     document.getElementById('trendBarChart').innerHTML=svg;
   }
-  function formatK(v){var n=Number(v);if(n>=10000)return (n/10000).toFixed(1)+'万';if(n>=1000)return (n/1000).toFixed(1)+'k';return n.toFixed(0);}
+  // 图表刻度/标签: 数值单位统一为「万元」, 直接千分位显示原值(不再压缩成 X.X万 / X.Xk, 避免万元值再次除以一万)
+  function formatK(v){var n=Number(v)||0;var p=n.toFixed(1).split('.');p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,',');return p.join('.');}
 
   function renderPieChart(data){
     var colors={'待签订':'#64748b','已签订':'#3b82f6','执行中':'#6366f1','已完成':'#10b981','已终止':'#ef4444','未知':'#475569'};
@@ -1153,9 +1155,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 
   /* ================= 经营看板 ================= */
   var FC_DIM_TITLE={
-    month:{chart:'各月 收入 · 贡献利润达成率',table:'各月达成明细'},
-    quarter:{chart:'各季度 收入 · 贡献利润达成率',table:'各季度达成明细'},
-    half:{chart:'半年度 收入 · 贡献利润达成率',table:'半年度达成明细'}
+    month:{chart:'各月 收入 · 贡献利润达成率',table:'各月达成明细（单位：万元）'},
+    quarter:{chart:'各季度 收入 · 贡献利润达成率',table:'各季度达成明细（单位：万元）'},
+    half:{chart:'半年度 收入 · 贡献利润达成率',table:'半年度达成明细（单位：万元）'}
   };
 
   function initForecast(){
