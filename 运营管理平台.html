@@ -504,7 +504,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 <!-- Finance -->
 <section id="tab-finance" class="tab-content active">
   <div class="page-title">经营看板</div>
-  <div class="page-subtitle">年度收入 · 贡献利润 · 贡献利润率 · 现金流 预测达成分析；各月 / 各季度 / 半年度 分时段达成（金额单位：万元）· 支持按 BU（软工/硬工/云/智能汽车/汇总）拆分预算、预测与实际达成</div>
+  <div class="page-subtitle">年度收入 · 贡献利润 · 贡献利润率 · 现金流 预测达成分析；各月 / 各季度 / 半年度 分时段达成（金额单位：万元）· 支持按 BU（软工/硬工/云/智能汽车/汇总）拆分预算、预测与实际达成，或一键「全部 BU 对比」领域整体 vs 各 BU</div>
 
   <!-- 预测月份状态条 -->
   <div class="fc-status-bar">
@@ -512,8 +512,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     <span class="fc-status-chip dim">已录入 <b id="fcEnteredCnt" style="margin:0 2px">0</b>/12 月</span>
     <div class="fc-progress-track" id="fcMonthTrack"></div>
     <div class="tab-actions" style="margin-left:auto">
-      <select class="filter-select" id="fcBuSel" onchange="onFcBuChange()" style="min-width:92px" title="BU 维度：汇总 或 各 BU（预算/预测/实际达成均按 BU 拆分）">
-        <option value="汇总">汇总</option><option value="软工">软工</option><option value="硬工">硬工</option><option value="云">云</option><option value="智能汽车">智能汽车</option>
+      <select class="filter-select" id="fcBuSel" onchange="onFcBuChange()" style="min-width:112px" title="BU 维度：汇总（领域整体）/ 各 BU / 全部 BU 对比">
+        <option value="汇总">汇总</option><option value="软工">软工</option><option value="硬工">硬工</option><option value="云">云</option><option value="智能汽车">智能汽车</option><option value="__all__">全部 BU 对比</option>
       </select>
       <select class="filter-select" id="forecastYear" onchange="switchForecastYear()" style="min-width:90px"></select>
       <button class="btn-secondary" onclick="openActualModal()" title="按月录入各 BU 实际达成，汇总 = 各 BU 之和自动计算"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>实际</button>
@@ -558,7 +558,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     <div class="dash-card full">
       <div class="chart-section-title" id="fcTableTitle">各月达成明细（单位：万元）</div>
       <div class="table-container">
-        <table class="data-table"><thead><tr><th>期间</th><th>预测收入</th><th>预算收入</th><th>实际收入</th><th>收入达成率</th><th>预测贡献利润</th><th>预算贡献利润</th><th>实际贡献利润</th><th>利润达成率</th><th>贡献利润率</th><th>操作</th></tr></thead><tbody id="forecastBody"></tbody></table>
+        <table class="data-table"><thead id="forecastHead"><tr><th>期间</th><th>预测收入</th><th>预算收入</th><th>实际收入</th><th>收入达成率</th><th>预测贡献利润</th><th>预算贡献利润</th><th>实际贡献利润</th><th>利润达成率</th><th>贡献利润率</th><th>操作</th></tr></thead><tbody id="forecastBody"></tbody></table>
         <div class="mobile-card-list" id="forecastCards"></div>
       </div>
       <div class="fc-table-note">* 达成率 = 该周期实际值 ÷ 该周期预算（月度=当月预算，季度=当季预算合计，半年度=该半年预算合计）；未录入实际时显示「—」，可点「实际」录入；仅月度行支持编辑与删除</div>
@@ -880,7 +880,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   var FC_BUDGET=null;      // 全年预算聚合 (由 FC_BUDGETS 求和, 供 KPI/趋势图使用)
   var FC_ACTUALS=[];       // 当前年份月度实际达成 [{_id,年度,月份,BU,实际收入,实际贡献利润,实际现金流,实际费用}] (汇总=各BU之和)
   var FC_ACTUAL=null;      // 全年实际聚合
-  var FC_BU='汇总';        // 当前选中 BU (汇总/软工/硬工/云/智能汽车)
+  var FC_BU='汇总';        // 当前选中 BU (汇总/软工/硬工/云/智能汽车/__all__)
+  var FC_ALL=null;         // 全部 BU 对比数据 {BU:{data:[],budgets:[],actuals:[]}} (FC_BU='__all__' 时使用)
+  var BU_LIST_ALL=['汇总','软工','硬工','云','智能汽车'];
+  var BU_COLORS={'汇总':'#3b82f6','软工':'#10b981','硬工':'#f59e0b','云':'#a78bfa','智能汽车':'#ec4899'};
   var FC_YEAR=2026;        // 当前选中年份
   var FC_DIM='month';      // month | quarter | h1 | h2 | year
   var FC_EDIT_ID=null;     // 经营预测编辑中的记录 _id
@@ -1324,7 +1327,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   }
   function updateFcVerInfo(){
     var el=document.getElementById('fcVerInfo');
-    if(el)el.textContent='当前：'+fcMonthLabel(FC_BATCH)+' 预测 · '+FC_VERSION+' · '+FC_YEAR+' 年 · '+FC_BU;
+    if(el)el.textContent='当前：'+fcMonthLabel(FC_BATCH)+' 预测 · '+FC_VERSION+' · '+FC_YEAR+' 年 · '+fcBuName();
   }
   window.onFcBatchChange=function(){
     FC_BATCH=parseInt(document.getElementById('fcBatchSel').value,10)||0;
@@ -1361,6 +1364,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     setTimeout(function(){URL.revokeObjectURL(a.href);if(a.parentNode)a.parentNode.removeChild(a);},100);
   }
   window.exportForecast=function(){
+    if(FC_BU==='__all__'){toast('对比视图仅用于查看，请先选择具体 BU（汇总/软工/硬工/云/智能汽车）再导出','warn');return;}
     if(FC_DATA.length===0){toast('当前批次版本无数据，无可导出','error');return;}
     var payload={
       type:'ops_forecast',
@@ -1430,6 +1434,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   };
 
   function loadForecast(){
+    if(FC_BU==='__all__'){loadForecastAll();return;}
     Promise.all([
       fetch('/api/forecast?fcMonth='+FC_BATCH+'&version='+encodeURIComponent(FC_VERSION)+'&year='+FC_YEAR+'&bu='+encodeURIComponent(FC_BU),{method:'GET'}),
       fetch('/api/budget?year='+FC_YEAR+'&bu='+encodeURIComponent(FC_BU),{method:'GET'}),
@@ -1469,6 +1474,42 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
         toast('经营看板数据加载失败: '+err.message,'error');
       });
   }
+  // 全部 BU 对比: 一次拉取 forecast(所有BU) + budget(所有BU) + actual(汇总聚合+4BU), 按 BU 分组
+  function loadForecastAll(){
+    var qs=[
+      fetch('/api/forecast?fcMonth='+FC_BATCH+'&version='+encodeURIComponent(FC_VERSION)+'&year='+FC_YEAR,{method:'GET'}),
+      fetch('/api/budget?year='+FC_YEAR,{method:'GET'})
+    ];
+    BU_LIST_ALL.forEach(function(bn){
+      qs.push(fetch('/api/actual?year='+FC_YEAR+'&bu='+encodeURIComponent(bn),{method:'GET'}));
+    });
+    Promise.all(qs)
+      .then(function(responses){return Promise.all(responses.map(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();}));})
+      .then(function(results){
+        var fcRows=results[0]||[],bdRows=results[1]||[];
+        FC_ALL={};
+        BU_LIST_ALL.forEach(function(bn,idx){FC_ALL[bn]={data:[],budgets:[],actuals:results[2+idx]||[]};});
+        fcRows.forEach(function(r){var bn=r['BU']||'汇总';if(FC_ALL[bn])FC_ALL[bn].data.push(r);});
+        bdRows.forEach(function(b){var bn=b['BU']||'汇总';if(FC_ALL[bn])FC_ALL[bn].budgets.push(b);});
+        // 汇总组作为主数据 (KPI 卡 / 状态条使用; 汇总 = 领域整体)
+        var sum=FC_ALL['汇总'];
+        FC_DATA=sum.data;FC_BUDGETS=sum.budgets;FC_ACTUALS=sum.actuals;
+        var agg={年度:FC_YEAR,预算收入:0,预算贡献利润:0,预算现金流:0,预算费用:0};
+        FC_BUDGETS.forEach(function(b){agg['预算收入']+=Number(b['预算收入']||0);agg['预算贡献利润']+=Number(b['预算贡献利润']||0);agg['预算现金流']+=Number(b['预算现金流']||0);agg['预算费用']+=Number(b['预算费用']||0);});
+        FC_BUDGET=(FC_BUDGETS.length>0)?agg:null;
+        var aagg={年度:FC_YEAR,实际收入:0,实际贡献利润:0,实际现金流:0,实际费用:0};
+        FC_ACTUALS.forEach(function(a){aagg['实际收入']+=Number(a['实际收入']||0);aagg['实际贡献利润']+=Number(a['实际贡献利润']||0);aagg['实际现金流']+=Number(a['实际现金流']||0);aagg['实际费用']+=Number(a['实际费用']||0);});
+        FC_ACTUAL=(FC_ACTUALS.length>0)?aagg:null;
+        renderForecastAll();
+      })
+      .catch(function(err){
+        console.error('loadForecastAll error',err);
+        FC_ALL=null;FC_DATA=[];FC_BUDGETS=[];FC_BUDGET=null;FC_ACTUALS=[];FC_ACTUAL=null;
+        renderForecastAll();
+        toast('全部 BU 对比数据加载失败: '+err.message,'error');
+      });
+  }
+
   function renderForecastAll(){
     renderForecastStatus();
     renderForecastAch();
@@ -1566,14 +1607,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
         card('success','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:-2px;margin-right:2px"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>','年度贡献利润',hasAct?aProfit:'—',hasAct?fcRate(aProfit,bProfit):fcRate(profit,bProfit),bProfit,'预测 '+fcMoney(profit)+' · 预测达成率 '+fcRate(profit,bProfit).toFixed(1)+'%')+
         card('purple','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:-2px;margin-right:2px"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>','年度贡献利润率',margin.toFixed(2)+'%',marginRate,0,'目标利润率 '+bMargin.toFixed(1)+'% · '+(hasAct?'实际口径':'预测口径')+' '+margin.toFixed(1)+'%',marginRate,bMargin.toFixed(1)+'%')+
         card('info','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:-2px;margin-right:2px"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>','年度现金流',hasAct?aCash:'—',hasAct?fcRate(aCash,bCash):fcRate(cash,bCash),bCash,'预测 '+fcMoney(cash)+' · 预测达成率 '+fcRate(cash,bCash).toFixed(1)+'% · 现金流为负时达成率仅供参考')+
-        (!hasAct?'<div class="fc-ach-card" style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:10px 14px"><span style="font-size:12px;color:var(--text-muted)">ℹ️ 尚未录入「'+FC_BU+'」实际达成，卡片主值暂用预测口径；点击「实际」按钮按月录入后自动切换为 实际 ÷ 预算 达成率</span></div>':'');
+        (!hasAct?'<div class="fc-ach-card" style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:10px 14px"><span style="font-size:12px;color:var(--text-muted)">ℹ️ 尚未录入「'+fcBuName()+'」实际达成，卡片主值暂用预测口径；点击「实际」按钮按月录入后自动切换为 实际 ÷ 预算 达成率</span></div>':'');
     }else{
-      box.innerHTML='<div class="fc-ach-card" style="grid-column:1/-1;display:flex;align-items:center;gap:10px"><span>⚠️ 尚未设置 '+FC_YEAR+' 年预算（'+FC_BU+'），无法计算达成率</span><button class="btn-secondary" onclick="openBudgetModal()" style="padding:5px 12px;font-size:12px">立即设置预算</button></div>';
+      box.innerHTML='<div class="fc-ach-card" style="grid-column:1/-1;display:flex;align-items:center;gap:10px"><span>⚠️ 尚未设置 '+FC_YEAR+' 年预算（'+fcBuName()+'），无法计算达成率</span><button class="btn-secondary" onclick="openBudgetModal()" style="padding:5px 12px;font-size:12px">立即设置预算</button></div>';
+    }
+    // 全部 BU 对比: 追加各 BU 全年速览 (领域整体 = 汇总)
+    if(FC_BU==='__all__'&&FC_ALL){
+      var chips=BU_LIST_ALL.map(function(bn){
+        var o=FC_ALL[bn];var rev=0,prof=0,bRev=0,bProf=0;
+        (o.actuals||[]).forEach(function(a){rev+=Number(a['实际收入']||0);prof+=Number(a['实际贡献利润']||0);});
+        (o.budgets||[]).forEach(function(b){bRev+=Number(b['预算收入']||0);bProf+=Number(b['预算贡献利润']||0);});
+        var rate=bRev>0?fcRate(rev,bRev):0;
+        var cls=rate>=95?'up':(rate>=70?'mid':'down');
+        var color=BU_COLORS[bn]||'#3b82f6';
+        return '<div class="fc-ach-card" style="padding:10px 14px;border-top:3px solid '+color+'">'+
+          '<div class="fc-ach-label"><span>'+bn+'</span><span class="tag">全年</span></div>'+
+          '<div class="fc-ach-value" style="font-size:18px">'+formatCurrency(rev)+'</div>'+
+          '<div class="fc-ach-rate">实际达成率 <b class="'+cls+'">'+(bRev>0&&rev>0?rate.toFixed(1)+'%':'—')+'</b></div>'+
+          '<div class="fc-ach-bar"><i style="width:'+Math.min(rate,100)+'%"></i></div></div>';
+      });
+      box.innerHTML+='<div style="grid-column:1/-1;margin-top:2px"><div style="font-size:11px;color:var(--text-muted);margin:8px 2px 6px">各 BU 全年实际收入 vs 预算（领域整体 = 汇总）</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px">'+chips.join('')+'</div></div>';
     }
   }
 
   // 预算 Modal (月度预算, 季度/半年度/全年自动聚合, 按当前 BU 维度)
   window.openBudgetModal=function(){
+    if(FC_BU==='__all__'){toast('对比视图仅用于查看，请先选择具体 BU（汇总/软工/硬工/云/智能汽车）再设置预算','warn');return;}
     var bmap=fcBudgetMap();
     document.getElementById('budgetYearLabel').textContent=String(FC_YEAR);
     document.getElementById('budgetModalTitle').textContent='月度预算设置 · '+FC_BU;
@@ -1675,6 +1734,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   var AC_BU='软工';        // 实际弹窗当前编辑 BU
   var AC_EDIT_DATA=[];     // 实际弹窗当前 BU 的月度数据
   window.openActualModal=function(){
+    if(FC_BU==='__all__'){toast('对比视图仅用于查看，请先选择具体 BU（软工/硬工/云/智能汽车）再录入实际','warn');return;}
     document.getElementById('actualYearLabel').textContent=String(FC_YEAR);
     var sel=document.getElementById('acBu');
     if(FC_BU!=='汇总'&&sel.querySelector('option[value="'+FC_BU+'"]'))sel.value=FC_BU;
@@ -1895,6 +1955,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     return groups;
   }
   function fcRate(v,total){return total>0?(v/total*100):0;}
+  function fcBuName(){return FC_BU==='__all__'?'全部 BU 对比':FC_BU;}
 
   // 分时段达成率图: 实际达成率(实线, 主) + 预测达成率(虚线, 参考), 相对对应周期预算, 100% 目标线
   function renderForecastAchChart(){
@@ -1902,6 +1963,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     var box=document.getElementById('forecastAchChart');
     var title=document.getElementById('fcAchChartTitle');
     var hasAct=FC_ACTUALS.length>0;
+    // 全部 BU 对比: 各 BU 收入实际达成率多线图
+    if(FC_BU==='__all__'&&FC_ALL){renderForecastAllChart();return;}
     title.textContent=(hasAct?FC_DIM_TITLE[FC_DIM].chart:'各'+(FC_DIM==='month'?'月':(FC_DIM==='quarter'?'季度':'半年度'))+' 收入·贡献利润预测达成率(未录实际)');
     if(groups.length===0){box.innerHTML='<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:40px">暂无数据</div>';return;}
     var data=groups.map(function(g){
@@ -1972,11 +2035,91 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     box.innerHTML='<div class="legend-inline">'+legend+'</div>'+svg;
   }
 
+  // 全部 BU 对比: 各周期 × 各 BU 的预算/实际聚合
+  function fcAllPeriods(){
+    var defs=fcGroups();
+    return defs.map(function(d){
+      var bu={};
+      BU_LIST_ALL.forEach(function(bn){
+        var o=FC_ALL[bn];var bRev=0,bProfit=0,aRev=0,aProfit=0;
+        var bmap={},amap={};
+        (o.budgets||[]).forEach(function(b){bmap[Number(b['月份'])]=b;});
+        (o.actuals||[]).forEach(function(a){amap[Number(a['月份'])]=a;});
+        d.months.forEach(function(mn){
+          var b=bmap[mn];if(b){bRev+=Number(b['预算收入']||0);bProfit+=Number(b['预算贡献利润']||0);}
+          var a=amap[mn];if(a){aRev+=Number(a['实际收入']||0);aProfit+=Number(a['实际贡献利润']||0);}
+        });
+        bu[bn]={bRev:bRev,bProfit:bProfit,aRev:aRev,aProfit:aProfit};
+      });
+      return {label:d.label,months:d.months,bu:bu};
+    });
+  }
+
+  // 全部 BU 对比图: 各周期 5 条 BU 收入实际达成率折线 + 100% 目标线
+  function renderForecastAllChart(){
+    var box=document.getElementById('forecastAchChart');
+    var title=document.getElementById('fcAchChartTitle');
+    var dimName=FC_DIM==='month'?'各月':(FC_DIM==='quarter'?'各季度':'半年度');
+    title.textContent=dimName+' 各 BU 收入实际达成率对比';
+    var rows=fcAllPeriods();
+    if(rows.length===0){box.innerHTML='<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:40px">暂无数据</div>';return;}
+    var yMax=100;
+    rows.forEach(function(r){
+      BU_LIST_ALL.forEach(function(bn){if(r.bu[bn].aRev>0)yMax=Math.max(yMax,fcRate(r.bu[bn].aRev,r.bu[bn].bRev));});
+    });
+    yMax=Math.ceil(yMax*1.15);
+    var W=680,H=250,padL=48,padB=34,padR=20,padT=26;
+    var cw=W-padL-padR,bh=H-padB-padT;
+    function yOf(v){return padT+bh*(1-v/yMax);}
+    var slot=cw/rows.length;
+    var svg='<svg width="100%" height="'+H+'" viewBox="0 0 '+W+' '+H+'">';
+    for(var g=0;g<=4;g++){
+      var val=yMax*g/4;
+      var yy=padT+bh*(1-g/4);
+      svg+='<line x1="'+padL+'" y1="'+yy+'" x2="'+(W-padR)+'" y2="'+yy+'" class="chart-grid" stroke-dasharray="3,3"/>';
+      svg+='<text x="'+(padL-8)+'" y="'+(yy+3)+'" text-anchor="end" class="chart-axis">'+val.toFixed(0)+'%</text>';
+    }
+    var y100=yOf(100);
+    svg+='<line x1="'+padL+'" y1="'+y100+'" x2="'+(W-padR)+'" y2="'+y100+'" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="6,4"/>';
+    svg+='<text x="'+(W-padR)+'" y="'+(y100-4)+'" text-anchor="end" class="chart-axis" style="font-size:10px;fill:#f59e0b">目标 100%</text>';
+    function linePath(bn){
+      var color=BU_COLORS[bn];
+      var pts=rows.map(function(r,i){
+        var rate=r.bu[bn].aRev>0?fcRate(r.bu[bn].aRev,r.bu[bn].bRev):0;
+        return{x:padL+i*slot+slot/2,y:yOf(rate)};
+      });
+      var d='M'+pts[0].x+' '+pts[0].y;
+      for(var i=1;i<pts.length;i++)d+=' L'+pts[i].x+' '+pts[i].y;
+      var w=(bn==='汇总')?2.6:1.6;
+      var extra='';
+      pts.forEach(function(p,idx){
+        var rate=rows[idx].bu[bn].aRev>0?fcRate(rows[idx].bu[bn].aRev,rows[idx].bu[bn].bRev):0;
+        if(rate<=0)return;
+        extra+='<circle cx="'+p.x+'" cy="'+p.y+'" r="3" fill="'+color+'"><title>'+rows[idx].label+' '+bn+' 收入达成率 '+rate.toFixed(1)+'%</title></circle>';
+        if(bn==='汇总')extra+='<text x="'+p.x+'" y="'+(p.y-7)+'" text-anchor="middle" class="chart-label" style="fill:'+color+';font-size:10px">'+rate.toFixed(1)+'%</text>';
+      });
+      return '<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="'+w+'" stroke-linejoin="round"/>'+extra;
+    }
+    BU_LIST_ALL.forEach(function(bn){svg+=linePath(bn);});
+    rows.forEach(function(r,i){
+      var lbl=r.label.replace('月','').replace('上半年 H1','H1').replace('下半年 H2','H2');
+      svg+='<text x="'+(padL+i*slot+slot/2)+'" y="'+(H-12)+'" text-anchor="middle" class="chart-label">'+lbl+'</text>';
+    });
+    svg+='</svg>';
+    var legend=BU_LIST_ALL.map(function(bn){return '<span class="li"><span class="line" style="background:'+BU_COLORS[bn]+(bn==='汇总'?';height:4px':'')+'"></span>'+bn+'</span>';}).join('');
+    legend+='<span class="li"><span class="line" style="background:#f59e0b"></span>目标线 100%</span>';
+    box.innerHTML='<div class="legend-inline">'+legend+'</div>'+svg;
+  }
+
   function renderForecastTable(){
     var groups=fcGroups();
     var tbody=document.getElementById('forecastBody');
     var cardList=document.getElementById('forecastCards');
     document.getElementById('fcTableTitle').textContent=FC_DIM_TITLE[FC_DIM].table;
+    // 恢复默认表头 (「全部 BU 对比」动态替换过, 切回时还原)
+    document.getElementById('forecastHead').innerHTML='<tr><th>期间</th><th>预测收入</th><th>预算收入</th><th>实际收入</th><th>收入达成率</th><th>预测贡献利润</th><th>预算贡献利润</th><th>实际贡献利润</th><th>利润达成率</th><th>贡献利润率</th><th>操作</th></tr>';
+    // 全部 BU 对比: 周期 × BU 矩阵 (实际收入 + 达成率)
+    if(FC_BU==='__all__'&&FC_ALL){renderForecastAllTable(tbody,cardList);return;}
     var editable=(FC_DIM==='month');
     var html='',mhtml='';
     var ICO_ADD='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
@@ -2030,8 +2173,60 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     if(cardList)cardList.innerHTML=mhtml;
   }
 
+  // 全部 BU 对比表: 行=期间(+全年合计), 列=5 BU, 单元格=实际收入(万元)+达成率
+  function renderForecastAllTable(tbody,cardList){
+    var dimName=FC_DIM==='month'?'各月':(FC_DIM==='quarter'?'各季度':'半年度');
+    document.getElementById('fcTableTitle').textContent=dimName+' 各 BU 实际收入与达成率对比（单位：万元）';
+    var rows=fcAllPeriods();
+    // 全年合计行
+    var yearRow={label:'全年合计',months:[1,2,3,4,5,6,7,8,9,10,11,12],bu:{}};
+    BU_LIST_ALL.forEach(function(bn){
+      var bRev=0,bProfit=0,aRev=0,aProfit=0;
+      (FC_ALL[bn].budgets||[]).forEach(function(b){bRev+=Number(b['预算收入']||0);bProfit+=Number(b['预算贡献利润']||0);});
+      (FC_ALL[bn].actuals||[]).forEach(function(a){aRev+=Number(a['实际收入']||0);aProfit+=Number(a['实际贡献利润']||0);});
+      yearRow.bu[bn]={bRev:bRev,bProfit:bProfit,aRev:aRev,aProfit:aProfit};
+    });
+    rows.push(yearRow);
+    // thead 动态: 期间 + 5 BU 列
+    var head='<tr><th style="min-width:70px">期间</th>';
+    BU_LIST_ALL.forEach(function(bn){
+      head+='<th style="border-top:3px solid '+(BU_COLORS[bn]||'#3b82f6')+'">'+bn+'<br><span style="font-weight:400;font-size:10px;color:var(--text-muted)">实际收入(万元) / 达成率</span></th>';
+    });
+    head+='</tr>';
+    document.getElementById('forecastHead').innerHTML=head;
+    var html='';
+    rows.forEach(function(r){
+      var isYear=(r.label==='全年合计');
+      html+='<tr'+(isYear?' style="background:rgba(255,255,255,0.04);font-weight:600"':'')+'><td style="font-weight:600">'+r.label+'</td>';
+      BU_LIST_ALL.forEach(function(bn){
+        var o=r.bu[bn];
+        var rate=o.bRev>0&&o.aRev>0?fcRate(o.aRev,o.bRev):0;
+        var cls=o.bRev>0&&o.aRev>0?(rate>=95?'ok':(rate>=70?'warn':'bad')):'';
+        var amt=o.aRev>0?formatCurrency(o.aRev):'—';
+        var rat=o.bRev>0&&o.aRev>0?(rate.toFixed(1)+'%'):'—';
+        html+='<td><div style="font-size:12px;font-weight:500">'+amt+'</div>'+
+          '<div class="fc-rate-cell '+cls+'" style="margin-top:3px"><span class="bar"><i style="width:'+(o.bRev>0&&o.aRev>0?Math.min(rate,100):0)+'%"></i></span><span class="num">'+rat+'</span></div></td>';
+      });
+      html+='</tr>';
+    });
+    tbody.innerHTML=html;
+    // 移动端卡片: 每 BU 一张全年汇总卡
+    var mhtml='';
+    BU_LIST_ALL.forEach(function(bn){
+      var o=yearRow.bu[bn];
+      var rate=o.bRev>0&&o.aRev>0?fcRate(o.aRev,o.bRev):0;
+      var cls=o.bRev>0&&o.aRev>0?(rate>=95?'#10b981':(rate>=70?'#f59e0b':'#ef4444')):'var(--text-muted)';
+      mhtml+='<div class="mc-item"><div class="mc-item-header"><span class="mc-item-title">'+bn+'</span><span style="font-size:12px;font-weight:600;color:'+cls+'">'+(o.bRev>0&&o.aRev>0?rate.toFixed(1)+'%':'—')+'</span></div>'+
+        '<div class="mc-item-row"><span>全年实际收入</span><span>'+(o.aRev>0?formatCurrency(o.aRev):'—')+'</span></div>'+
+        '<div class="mc-item-row"><span>全年预算收入</span><span>'+(o.bRev>0?formatCurrency(o.bRev):'—')+'</span></div>'+
+        '<div class="mc-item-row"><span>达成率</span><span style="color:'+cls+';font-weight:600">'+(o.bRev>0&&o.aRev>0?rate.toFixed(1)+'%':'—')+'</span></div></div>';
+    });
+    if(cardList)cardList.innerHTML=mhtml;
+  }
+
   // 经营预测 Modal
   window.openForecastModal=function(month){
+    if(FC_BU==='__all__'){toast('对比视图仅用于查看，请先选择具体 BU（汇总/软工/硬工/云/智能汽车）再新增预测','warn');return;}
     FC_EDIT_ID=null;
     document.getElementById('forecastModalTitle').textContent='新增月度预测';
     document.getElementById('fcYear').value=String(FC_YEAR);
