@@ -10,6 +10,7 @@ _fc_final.json
 _page_check2.html
 _verify_finance2.js
 _verify_bu.js
+_verify_bu_all.js
 
 # 系统与日志
 *.log
