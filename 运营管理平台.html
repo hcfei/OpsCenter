@@ -43,14 +43,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 .sidebar-toggle svg{width:12px;height:12px}
 
 .sidebar-nav{flex:1;padding:12px 10px;overflow-y:auto}
-.nav-group{margin-bottom:16px}
+.nav-group{margin-bottom:14px}
 .nav-group-title{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;padding:0 10px;margin-bottom:6px;white-space:nowrap;transition:opacity .3s}
 .sidebar.collapsed .nav-group-title{opacity:0;height:0;margin:0;overflow:hidden}
+/* 一级菜单（分组头，可点击展开/收起） */
+.nav-group-header{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:none;background:none;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;border-radius:var(--radius-sm);margin-bottom:2px;white-space:nowrap;transition:all .2s;text-align:left}
+.nav-group-header:hover{background:rgba(59,130,246,0.08);color:var(--text)}
+.nav-group-header .nav-group-icon{width:18px;height:18px;flex-shrink:0;color:var(--primary)}
+.nav-group-header .nav-group-label{flex:0 1 auto;overflow:hidden;text-overflow:ellipsis}
+.nav-group-header .nav-arrow{width:14px;height:14px;margin-left:auto;flex-shrink:0;transition:transform .2s;color:var(--text-muted)}
+.nav-group.collapsed .nav-group-header .nav-arrow{transform:rotate(-90deg)}
+/* 二级菜单（子项） */
+.nav-sub{display:flex;flex-direction:column;gap:1px;margin:2px 0 8px}
+.nav-group.collapsed .nav-sub{display:none}
+.nav-sub .nav-item{position:relative;margin-left:12px;padding-left:20px;width:calc(100% - 12px)}
+.nav-sub .nav-item:before{content:'';position:absolute;left:7px;top:9px;bottom:9px;width:2px;border-radius:1px;background:var(--border)}
+.nav-sub .nav-item.active:before{background:var(--primary)}
+.nav-sub .nav-item.active{margin-left:9px;padding-left:20px;border-left:3px solid var(--primary)}
+.sidebar-nav>.nav-item.nav-top{font-weight:600;margin-bottom:6px;color:var(--text)}
+.sidebar-nav>.nav-item.nav-top+.nav-group{margin-top:0}
+.nav-group+.nav-item.nav-top{margin-top:6px}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-sm);cursor:pointer;color:var(--text-secondary);font-size:13px;transition:all .2s;margin-bottom:2px;white-space:nowrap;overflow:hidden;border:none;background:none;width:100%;text-align:left}
 .nav-item:hover{background:rgba(59,130,246,0.08);color:var(--text)}
 .nav-item.active{background:linear-gradient(90deg,rgba(59,130,246,0.15),transparent);color:var(--primary);border-left:3px solid var(--primary);margin-left:-3px;padding-left:15px}
 .nav-item svg{width:18px;height:18px;flex-shrink:0}
 .nav-item .nav-text{white-space:nowrap;transition:opacity .3s}
+.sidebar.collapsed .nav-group-header{padding:9px 12px;justify-content:center}
+.sidebar.collapsed .nav-group-label{opacity:0;width:0;overflow:hidden}
+.sidebar.collapsed .nav-group-header .nav-arrow{display:none}
+.sidebar.collapsed .nav-sub{display:none}
 .sidebar.collapsed .nav-item{padding:9px 12px;justify-content:center}
 .sidebar.collapsed .nav-item.active{padding-left:12px;margin-left:0;border-left:none;border-radius:var(--radius-sm)}
 .sidebar.collapsed .nav-text{opacity:0;width:0;display:none}
@@ -285,6 +306,73 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 .chart-tooltip{position:absolute;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:12px;pointer-events:none;opacity:0;transition:opacity .2s;z-index:50;box-shadow:var(--shadow-card)}
 .chart-tooltip.show{opacity:1}
 
+/* ====== 数据表管理 ====== */
+.badge-purple{background:rgba(139,92,246,0.15);color:#a78bfa}
+.btn-sm{padding:5px 10px;height:28px;font-size:12px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.btn-danger{background:var(--danger);color:#fff;border:none;padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;height:36px;transition:all .2s}
+.btn-danger:hover{background:#dc2626;box-shadow:0 0 12px rgba(239,68,68,0.3)}
+.tm-wrap{display:flex;gap:16px;align-items:flex-start}
+.tm-tree{width:300px;flex-shrink:0;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.tm-tree-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600}
+.tm-tree-head .tm-head-btns{display:flex;gap:6px}
+.tm-tree-body{padding:8px;max-height:calc(100vh - 230px);overflow-y:auto;min-height:200px}
+.tm-node{user-select:none}
+.tm-node-row{display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text-secondary);transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.tm-node-row:hover{background:rgba(59,130,246,0.08);color:var(--text)}
+.tm-node-row.sel{background:linear-gradient(90deg,rgba(59,130,246,0.18),transparent);color:var(--primary);font-weight:500}
+.tm-arrow{width:12px;height:12px;flex-shrink:0;color:var(--text-muted);transition:transform .2s}
+.tm-node.collapsed>.tm-node-row .tm-arrow{transform:rotate(-90deg)}
+.tm-node.collapsed>.tm-children{display:none}
+.tm-ico{width:16px;height:16px;flex-shrink:0}
+.tm-ico.cat{color:var(--primary)}
+.tm-ico.tbl{color:var(--info)}
+.tm-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tm-tblname{font-size:10px;color:var(--text-muted);font-family:Consolas,monospace;flex-shrink:0}
+.tm-children{margin-left:16px;border-left:1px solid var(--border);padding-left:6px;margin-top:2px}
+.tm-status{font-size:10px;padding:2px 8px;border-radius:20px;flex-shrink:0;font-weight:500}
+.tm-node-actions{display:flex;gap:2px;opacity:0;transition:opacity .15s;flex-shrink:0}
+.tm-node-row:hover .tm-node-actions{opacity:1}
+.tm-node-actions button{background:none;border:none;cursor:pointer;color:var(--text-muted);padding:3px;border-radius:4px;display:flex}
+.tm-node-actions button:hover{color:var(--primary);background:rgba(59,130,246,0.1)}
+.tm-node-actions button.del:hover{color:var(--danger);background:rgba(239,68,68,0.1)}
+.tm-node-actions button svg{width:13px;height:13px}
+.tm-detail{flex:1;min-width:0;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px}
+.tm-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:360px;color:var(--text-muted);font-size:14px;text-align:center;gap:8px}
+.tm-empty svg{width:44px;height:44px;opacity:.4;margin-bottom:6px}
+.tm-detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.tm-detail-title{font-size:18px;font-weight:600;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tm-detail-sub{font-size:12px;color:var(--text-secondary);margin-top:4px;display:flex;gap:16px;flex-wrap:wrap}
+.tm-detail-sub b{color:var(--text)}
+.tm-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:14px;flex-wrap:wrap}
+.tm-tab{padding:8px 14px;border:none;background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.tm-tab:hover{color:var(--text)}
+.tm-tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:500}
+.tm-pane{display:none}
+.tm-pane.active{display:block}
+.tm-pane-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.tm-pane-head h4{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.tm-pane-head h4::before{content:'';width:3px;height:14px;background:var(--primary);border-radius:2px}
+.tm-info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.tm-info-item{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px}
+.tm-info-item .k{font-size:11px;color:var(--text-muted);margin-bottom:3px}
+.tm-info-item .v{font-size:13px;color:var(--text);word-break:break-all}
+.tm-info-item .v code{background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;font-family:Consolas,monospace;font-size:12px}
+.ddl-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;font-family:Consolas,'Courier New',monospace;font-size:12px;line-height:1.6;color:#a5b4fc;overflow:auto;max-height:480px;white-space:pre}
+.tm-log-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px dashed var(--border);font-size:13px;align-items:baseline}
+.tm-log-item:last-child{border-bottom:none}
+.tm-log-item .tm-log-time{color:var(--text-muted);font-size:12px;flex-shrink:0;min-width:130px}
+.tm-log-item .tm-log-act{color:var(--text-secondary);font-size:12px;flex-shrink:0;min-width:80px}
+.tm-log-item .tm-log-detail{color:var(--text)}
+.tm-empty-tip{color:var(--text-muted);font-size:13px;text-align:center;padding:30px 10px}
+.tm-lock-tip{font-size:12px;color:var(--text-muted)}
+.tm-rel-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.tm-rel-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px}
+.tm-rel-card h5{font-size:13px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.tm-rel-card .tm-rel-num{font-size:11px;color:var(--text-muted)}
+.tm-rel-chip{display:inline-block;padding:3px 9px;margin:2px;border-radius:4px;font-size:11px;font-family:Consolas,monospace;background:rgba(255,255,255,0.05);border:1px solid var(--border)}
+@media(max-width:1024px){.tm-wrap{flex-direction:column}.tm-tree{width:100%}.tm-info-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){.tm-info-grid{grid-template-columns:1fr}.tm-rel-grid{grid-template-columns:1fr}}
+
 /* ====== 经营看板 ====== */
 .kpi-grid.five{grid-template-columns:repeat(5,1fr)}
 .kpi-icon.purple{background:var(--purple-glow);color:var(--purple)}
@@ -386,9 +474,119 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 @media(max-width:768px){.fc-ach-grid{grid-template-columns:1fr 1fr}.fc-rate-cell{min-width:90px}.budget-table input.bd-input{min-width:64px}}
 @media(max-width:1200px){.kpi-grid.five{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:768px){.kpi-grid.five{grid-template-columns:1fr 1fr}}
+/* ====== 登录页 ====== */
+.login-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 30% 20%,#16213e 0%,#0b0f19 55%,#0b0f19 100%)}
+.login-overlay.hidden{display:none}
+.login-card{width:min(400px,92vw);background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:36px 32px 28px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+.login-brand{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.login-brand .logo-icon{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--primary),#6366f1);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.login-brand .logo-icon svg{width:22px;height:22px}
+.login-title{font-size:20px;font-weight:700;color:var(--text)}
+.login-sub{color:var(--text-muted);font-size:13px;margin:4px 0 24px}
+.login-form{display:flex;flex-direction:column;gap:14px}
+.login-field label{display:block;font-size:12px;color:var(--text-secondary);margin-bottom:6px}
+.login-field input{width:100%;height:42px;background:var(--bg-input, #0f1524);border:1px solid var(--border);border-radius:8px;padding:0 14px;color:var(--text);font-size:16px;outline:none;transition:border-color .2s}
+.login-field input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-glow)}
+.login-btn{height:44px;border:none;border-radius:8px;background:linear-gradient(135deg,var(--primary),#6366f1);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s,transform .1s}
+.login-btn:hover{opacity:.9}
+.login-btn:active{transform:scale(.98)}
+.login-btn:disabled{opacity:.6;cursor:not-allowed}
+.login-error{display:none;background:var(--danger-glow);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;font-size:13px;padding:9px 12px;border-radius:8px}
+.login-error.show{display:block}
+.login-tip{color:var(--text-muted);font-size:12px;text-align:center;margin-top:18px;line-height:1.7}
+.login-tip code{background:rgba(59,130,246,0.12);color:#93c5fd;padding:1px 6px;border-radius:4px;font-size:12px}
+/* ====== 顶部用户区 ====== */
+.user-area{display:flex;align-items:center;gap:8px;margin-left:12px;padding-left:12px;border-left:1px solid var(--border)}
+.user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#6366f1);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.user-name{font-size:13px;color:var(--text);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-role{font-size:11px;color:var(--text-muted)}
+.btn-logout{height:28px;padding:0 10px;font-size:12px;color:var(--text-secondary);background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .2s}
+.btn-logout:hover{color:var(--danger);border-color:var(--danger)}
+/* ====== 后台管理 ====== */
+.am-tabs{display:flex;gap:4px;margin:16px 0;padding:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;width:fit-content;flex-wrap:wrap}
+.am-tab{padding:8px 18px;font-size:13px;color:var(--text-secondary);background:transparent;border:none;border-radius:8px;cursor:pointer;transition:all .2s}
+.am-tab:hover{color:var(--text)}
+.am-tab.active{background:linear-gradient(135deg,var(--primary),#6366f1);color:#fff;font-weight:600}
+.am-pane{display:none}
+.am-pane.active{display:block}
+.am-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.am-toolbar input[type="text"],.am-toolbar select{height:34px;background:var(--bg-input, #0f1524);border:1px solid var(--border);border-radius:6px;padding:0 10px;color:var(--text);font-size:13px;outline:none;min-width:180px}
+.am-toolbar input:focus,.am-toolbar select:focus{border-color:var(--primary)}
+.am-toolbar .spacer{flex:1}
+.am-table-wrap{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:auto}
+.am-table{width:100%;border-collapse:collapse;font-size:13px;min-width:760px}
+.am-table th{background:rgba(59,130,246,0.08);color:var(--text-secondary);font-weight:600;text-align:left;padding:11px 12px;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1;background-color:var(--bg-card)}
+.am-table td{padding:10px 12px;border-bottom:1px solid rgba(30,41,59,0.6);color:var(--text);vertical-align:middle}
+.am-table tr:hover td{background:var(--bg-card-hover)}
+.am-table .num{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+.am-tag{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;background:rgba(59,130,246,0.12);color:#93c5fd;margin:2px 3px 2px 0}
+.am-tag.green{background:rgba(16,185,129,0.12);color:#6ee7b7}
+.am-tag.gray{background:rgba(100,116,139,0.15);color:var(--text-secondary)}
+.am-tag.orange{background:rgba(245,158,11,0.12);color:#fcd34d}
+.am-tag.red{background:rgba(239,68,68,0.12);color:#fca5a5}
+.am-status{display:inline-flex;align-items:center;gap:5px;padding:2px 10px;border-radius:20px;font-size:12px}
+.am-status.on{background:rgba(16,185,129,0.12);color:#6ee7b7}
+.am-status.off{background:rgba(100,116,139,0.15);color:var(--text-secondary)}
+.am-actions{white-space:nowrap}
+.am-actions button{margin-right:6px}
+.am-pagination{display:flex;align-items:center;gap:10px;justify-content:flex-end;padding:12px 14px;color:var(--text-secondary);font-size:13px}
+.am-pagination button{min-width:28px;height:28px;background:var(--bg-input, #0f1524);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;cursor:pointer;padding:0 8px}
+.am-pagination button:hover:not(:disabled){border-color:var(--primary);color:var(--primary)}
+.am-pagination button:disabled{opacity:.4;cursor:not-allowed}
+.am-tree{font-size:13px}
+.am-tree-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;transition:background .15s}
+.am-tree-row:hover{background:var(--bg-card-hover)}
+.am-tree-children{margin-left:26px;padding-left:14px;border-left:1px solid var(--border)}
+.am-tree-arrow{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;color:var(--text-secondary);cursor:pointer;transition:transform .2s;flex-shrink:0;background:none;border:none}
+.am-tree-arrow svg{width:12px;height:12px}
+.am-node.collapsed>.am-tree-children{display:none}
+.am-node.collapsed>.am-tree-row .am-tree-arrow{transform:rotate(-90deg)}
+.am-tree-name{color:var(--text);font-weight:500}
+.am-tree-name .org-type{font-size:11px;color:var(--text-muted);font-weight:400;margin-left:6px}
+.am-perm-table td.name-cell{font-weight:500}
+.am-perm-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;color:var(--text-secondary)}
+.am-empty{padding:40px 0;text-align:center;color:var(--text-muted);font-size:13px}
+.am-lock-tip{font-size:12px;color:var(--text-muted);margin-left:8px}
+.perm-tree-list{list-style:none;padding:0}
+.perm-tree-list ul{list-style:none;padding-left:24px}
+.perm-tree-list label{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text)}
+.perm-tree-list label:hover{background:var(--bg-card-hover)}
+.perm-tree-list label input{width:15px;height:15px;accent-color:var(--primary)}
+.perm-tree-list .perm-code{font-size:11px;color:var(--text-muted);font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.role-check-list{display:flex;flex-wrap:wrap;gap:8px}
+.role-check-list label{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;background:var(--bg-input, #0f1524);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--text);transition:all .15s}
+.role-check-list label:hover{border-color:var(--primary)}
+.role-check-list label input{width:15px;height:15px;accent-color:var(--primary)}
+.required{color:var(--danger);margin-left:2px}
+@media(max-width:768px){.user-name,.user-role{display:none}.am-toolbar input[type="text"]{min-width:140px}.am-tabs{width:100%}}
 </style>
 </head>
 <body>
+<!-- 登录页 -->
+<div class="login-overlay hidden" id="loginOverlay">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+      <div>
+        <div class="login-title">运营管理平台</div>
+        <div class="login-sub">请登录后使用 · 权限按角色控制（RBAC）</div>
+      </div>
+    </div>
+    <form class="login-form" id="loginForm" onsubmit="doLogin(event)">
+      <div class="login-error" id="loginError"></div>
+      <div class="login-field">
+        <label for="loginUsername">用户名</label>
+        <input type="text" id="loginUsername" autocomplete="username" placeholder="请输入用户名" required>
+      </div>
+      <div class="login-field">
+        <label for="loginPassword">密码</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" placeholder="请输入密码" required>
+      </div>
+      <button type="submit" class="login-btn" id="loginBtn">登 录</button>
+      <div class="login-tip">初始管理员：<code>admin</code> / <code>Admin@123</code>（登录后请尽快修改密码）</div>
+    </form>
+  </div>
+</div>
 <div class="app-container">
 <!-- Mobile sidebar toggle -->
 <button class="mobile-sidebar-toggle" onclick="toggleMobileSidebar()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
@@ -402,48 +600,92 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   <button class="sidebar-toggle" onclick="toggleSidebar()" title="收起/展开"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></button>
 
   <nav class="sidebar-nav">
-    <div class="nav-group">
-      <div class="nav-group-title">核心模块</div>
-      <button class="nav-item active" data-tab="finance" onclick="switchTab('finance')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/><circle cx="19" cy="8" r="1.6"/></svg>
-        <span class="nav-text">经营看板</span>
+    <!-- 经营看板 -->
+    <button class="nav-item nav-top" id="nav-finance" data-tab="finance" onclick="switchTab('finance')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/><circle cx="19" cy="8" r="1.6"/></svg>
+      <span class="nav-text">经营看板</span>
+    </button>
+    <!-- 经营预测 -->
+    <div class="nav-group" id="navg-oper">
+      <button class="nav-group-header" onclick="toggleNavGroup(this)" title="经营预测">
+        <svg class="nav-group-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/><circle cx="19" cy="8" r="1.6"/></svg>
+        <span class="nav-group-label">经营预测</span>
+        <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
-      <button class="nav-item" data-tab="dashboard" onclick="switchTab('dashboard')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        <span class="nav-text">运营看板</span>
-      </button>
-      <button class="nav-item" data-tab="target" onclick="switchTab('target')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-        <span class="nav-text">预算目标拆分</span>
-      </button>
-      <button class="nav-item" data-tab="contract" onclick="switchTab('contract')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        <span class="nav-text">合同管理</span>
-      </button>
-      <button class="nav-item" data-tab="project" onclick="switchTab('project')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-        <span class="nav-text">项目管理</span>
-      </button>
-      <button class="nav-item" data-tab="acceptance" onclick="switchTab('acceptance')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-        <span class="nav-text">验收管理</span>
-      </button>
-      <button class="nav-item" data-tab="payment" onclick="switchTab('payment')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-        <span class="nav-text">回款管理</span>
-      </button>
+      <div class="nav-sub">
+        <button class="nav-item" data-tab="budget" onclick="switchTab('budget')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          <span class="nav-text">预算管理</span>
+        </button>
+        <button class="nav-item" data-tab="forecast" onclick="switchTab('forecast')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <span class="nav-text">预测管理</span>
+        </button>
+        <button class="nav-item" data-tab="actual" onclick="switchTab('actual')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          <span class="nav-text">实际回填</span>
+        </button>
+      </div>
     </div>
-    <div class="nav-group">
-      <div class="nav-group-title">数据工具</div>
-      <button class="nav-item" onclick="exportJSON()">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <span class="nav-text">导出数据</span>
+    <!-- 运营看板 -->
+    <button class="nav-item nav-top" id="nav-dashboard" data-tab="dashboard" onclick="switchTab('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span class="nav-text">运营看板</span>
+    </button>
+    <!-- 运营指标 -->
+    <div class="nav-group" id="navg-ops">
+      <button class="nav-group-header" onclick="toggleNavGroup(this)" title="运营指标">
+        <svg class="nav-group-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span class="nav-group-label">运营指标</span>
+        <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
-      <button class="nav-item" onclick="importJSON()">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        <span class="nav-text">导入数据</span>
-      </button>
+      <div class="nav-sub">
+        <button class="nav-item" data-tab="project" onclick="switchTab('project')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+          <span class="nav-text">项目运营</span>
+        </button>
+        <button class="nav-item" data-tab="contract" onclick="switchTab('contract')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span class="nav-text">合同管理</span>
+        </button>
+        <button class="nav-item" data-tab="acceptance" onclick="switchTab('acceptance')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          <span class="nav-text">验收管理</span>
+        </button>
+        <button class="nav-item" data-tab="payment" onclick="switchTab('payment')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          <span class="nav-text">回款管理</span>
+        </button>
+      </div>
     </div>
+    <!-- 数据表管理 -->
+    <button class="nav-item nav-top" id="nav-table-mgmt" data-tab="table-mgmt" onclick="switchTab('table-mgmt')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+      <span class="nav-text">数据表管理</span>
+    </button>
+    <!-- 数据工具 -->
+    <div class="nav-group" id="navg-tools">
+      <button class="nav-group-header" onclick="toggleNavGroup(this)" title="数据工具">
+        <svg class="nav-group-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        <span class="nav-group-label">数据工具</span>
+        <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="nav-sub">
+        <button class="nav-item" onclick="exportJSON()">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span class="nav-text">导出数据</span>
+        </button>
+        <button class="nav-item" onclick="importJSON()">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span class="nav-text">导入数据</span>
+        </button>
+      </div>
+    </div>
+    <!-- 后台管理（仅 admin 可见）→ 跳转独立页面 -->
+    <a class="nav-item nav-top" id="nav-admin" href="/admin.html" style="display:none;text-decoration:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+      <span class="nav-text">后台管理</span>
+    </a>
   </nav>
   <div class="sidebar-footer"><span>v1.0 · MySQL版</span></div>
 </aside>
@@ -460,6 +702,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     <button class="btn-icon" onclick="exportJSON()" title="导出备份"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg></button>
     <input type="file" id="importFile" accept=".json" onchange="handleImport(event)">
     <button class="btn-icon" onclick="importJSON()" title="导入备份"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
+    <div class="user-area" id="userArea" style="display:none">
+      <div class="user-avatar" id="userAvatar">管</div>
+      <div>
+        <div class="user-name" id="userName">-</div>
+        <div class="user-role" id="userRole">-</div>
+      </div>
+      <button class="btn-logout" onclick="logout()" title="退出登录"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>退出</button>
+    </div>
   </div>
 </div>
 
@@ -591,21 +841,61 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   </div>
 </section>
 
-<!-- 预算目标拆分 (预测结果模板: 实际值7月 / 2026年目标-V1 / 偏差 / 达成率) -->
-<section id="tab-target" class="tab-content">
-  <div class="page-title">预算目标拆分</div>
-  <div class="page-subtitle">收入 · 贡献利润 · 现金流 × 软工 / 硬工 / 云 / 智能汽车 / 汇总 — 实际值(7月) vs 2026年目标-V1</div>
+<!-- Budget Management (月度预算设置 + 预算目标拆分) -->
+<section id="tab-budget" class="tab-content">
+  <div class="page-title">预算管理</div>
+  <div class="page-subtitle">月度预算设置 · 预算目标拆分（金额单位：万元）</div>
 
   <div class="fc-status-bar" style="margin-bottom:14px">
-    <span class="fc-status-chip"><span class="dot"></span>口径：实际值(7月) / 2026年目标-V1</span>
-    <span class="fc-status-chip dim">偏差 = 实际 − 目标 · 达成率 = 实际 ÷ 目标</span>
+    <span class="fc-status-chip"><span class="dot"></span>预算 = 达成率分母（季度 / 半年度 / 全年自动聚合）</span>
     <div class="tab-actions" style="margin-left:auto">
-      <button class="btn-primary" onclick="openTargetModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增记录</button>
+      <select class="filter-select" id="bdBuSel" onchange="onBdBuChange()" style="min-width:112px" title="BU 维度">
+        <option value="汇总">汇总</option><option value="软工">软工</option><option value="硬工">硬工</option><option value="云">云</option><option value="智能汽车">智能汽车</option>
+      </select>
+      <select class="filter-select" id="bdYearSel" onchange="onBdYearChange()" style="min-width:90px"></select>
     </div>
   </div>
 
   <div class="dash-card full">
-    <div class="chart-section-title">预算目标拆分明细（单位：万元）</div>
+    <div class="chart-section-title"><span id="bdPageYearLabel">2026</span> 年月度预算（万元）</div>
+    <div class="form-section" style="padding:0 0 12px;border-bottom:1px solid var(--border);margin-bottom:14px">
+      <h4>全年预算快速设置</h4>
+      <div class="form-grid">
+        <div class="form-field"><label>全年预算收入（万元）</label><input type="number" step="0.01" min="0" id="bdSplitRev" placeholder="0.00"></div>
+        <div class="form-field"><label>全年预算贡献利润（万元）</label><input type="number" step="0.01" min="0" id="bdSplitProfit" placeholder="0.00"></div>
+        <div class="form-field"><label>全年预算现金流（万元）</label><input type="number" step="0.01" id="bdSplitCash" placeholder="0.00"></div>
+        <div class="form-field"><label>全年预算费用（万元）</label><input type="number" step="0.01" min="0" id="bdSplitExp" placeholder="0.00"></div>
+      </div>
+      <div class="budget-split-bar">
+        <span style="font-size:12px;color:var(--text-muted)">快速分摊到 12 个月：</span>
+        <select id="bdSplitMode" class="filter-select" style="min-width:130px">
+          <option value="even">均摊 12 个月</option>
+          <option value="grow">递增分摊（年初低年末高）</option>
+          <option value="ratio">按预测收入比例分摊</option>
+        </select>
+        <button type="button" class="btn-secondary" onclick="applyBudgetPageSplit()">应用到 12 个月</button>
+        <span style="font-size:11px;color:var(--text-muted)">填左侧全年总额 → 选模式 → 应用，然后可在下方逐月微调</span>
+      </div>
+    </div>
+    <div class="table-container" style="max-height:320px;overflow:auto">
+      <table class="data-table budget-table">
+        <thead><tr><th>月份</th><th>预算收入（万元）</th><th>预算贡献利润（万元）</th><th>预算现金流（万元）</th><th>预算费用（万元）</th></tr></thead>
+        <tbody id="budgetPageBody"></tbody>
+        <tfoot><tr id="budgetPageFoot"></tr></tfoot>
+      </table>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn-primary" id="bdSaveBtn" onclick="submitBudgetPage()">保存预算</button>
+      <span style="font-size:11px;color:var(--text-muted)">* 达成率 = 实际值 ÷ 对应周期预算；预算费用达成率超 100% 表示超支预警</span>
+    </div>
+  </div>
+
+  <div class="dash-card full">
+    <div class="chart-section-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>预算目标拆分明细（单位：万元）</span>
+      <button class="btn-primary" onclick="openTargetModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增记录</button>
+    </div>
+    <div class="fc-status-chip dim" style="margin-bottom:10px">口径：实际值(7月) / 2026年目标-V1 · 偏差 = 实际 − 目标 · 达成率 = 实际 ÷ 目标</div>
     <div class="table-container" style="overflow-x:auto">
       <table class="data-table target-table">
         <thead>
@@ -629,6 +919,75 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       <div class="mobile-card-list" id="targetCards"></div>
     </div>
     <div class="fc-table-note">* 数据来源：《预测结果模板.xlsx》预算目标拆分 Sheet；达成率 H1+Q3 = (H1实际+Q3实际) ÷ (H1目标+Q3目标)；达成率 ≥95% 绿 / 70-95% 黄 / &lt;70% 红；偏差为正表示超额、为负表示缺口（现金流/费用类负偏差视指标含义解读）</div>
+  </div>
+</section>
+
+<!-- Forecast Management (预测批次/版本 + 月度预测) -->
+<section id="tab-forecast" class="tab-content">
+  <div class="page-title">预测管理</div>
+  <div class="page-subtitle">预测批次 / 版本管理 · 月度预测录入（金额单位：万元）</div>
+
+  <div class="fc-status-bar">
+    <select class="filter-select" id="f2BuSel" onchange="onF2BuChange()" style="min-width:112px" title="BU 维度：与经营看板联动">
+      <option value="汇总">汇总</option><option value="软工">软工</option><option value="硬工">硬工</option><option value="云">云</option><option value="智能汽车">智能汽车</option>
+    </select>
+    <select class="filter-select" id="f2YearSel" onchange="onF2YearChange()" style="min-width:90px"></select>
+    <div class="tab-actions" style="margin-left:auto">
+      <button class="btn-primary" onclick="openForecastModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增月度预测</button>
+      <button class="btn-secondary" onclick="exportForecast()" title="导出当前批次版本全年预测为 JSON 文件"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>导出</button>
+      <button class="btn-secondary" onclick="importForecast()" title="导入预测 JSON 文件（新建或覆盖批次版本）"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>导入</button>
+    </div>
+  </div>
+
+  <div class="fc-ver-bar">
+    <span class="fc-ver-label">预测批次</span>
+    <select class="filter-select" id="f2BatchSel" onchange="onF2BatchChange()" style="min-width:112px" title="预测批次 = 做预测的月份，每月滚动新建一批"></select>
+    <select class="filter-select" id="f2VerSel" onchange="onF2VersionChange()" style="min-width:72px" title="同批次内可存在多个版本 V1/V2/..."></select>
+    <button class="btn-secondary" onclick="cloneForecastVersion()" title="以当前版本为底稿，在当前批次下新建下一版本（如 V2）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>新建版本</button>
+    <button class="btn-secondary" onclick="rollForecastMonth()" title="以当前版本为底稿，滚动到下月新建批次 V1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 16 16 12 12 8"/><line x1="8" y1="12" x2="16" y2="12"/></svg>下月滚动</button>
+    <span class="fc-ver-info" id="f2VerInfo">当前：—</span>
+  </div>
+  <input type="file" id="f2ImportFile" accept=".json,application/json" style="display:none">
+
+  <div class="dash-card full">
+    <div class="chart-section-title">月度预测明细（单位：万元）</div>
+    <div class="table-container">
+      <table class="data-table">
+        <thead><tr><th>月份</th><th>预测收入</th><th>预测贡献利润</th><th>预测现金流</th><th>预测费用</th><th>备注</th><th>操作</th></tr></thead>
+        <tbody id="f2Body"></tbody>
+      </table>
+      <div class="mobile-card-list" id="f2Cards"></div>
+    </div>
+    <div class="fc-table-note">* 预测按月录入；批次 = 做预测的月份，版本 = 同批次内修订稿（V1/V2...）；新增预测 / 编辑 / 删除后自动同步经营看板</div>
+  </div>
+</section>
+
+<!-- Actual Fill (按 BU 月度实际达成回填) -->
+<section id="tab-actual" class="tab-content">
+  <div class="page-title">实际回填</div>
+  <div class="page-subtitle">按 BU 逐月回填实际达成（金额单位：万元）· 汇总 = 各 BU 之和自动计算</div>
+
+  <div class="fc-status-bar" style="margin-bottom:14px">
+    <select class="filter-select" id="ac2BuSel" onchange="onAc2BuChange()" style="min-width:112px" title="BU 维度（实际按 BU 录入，汇总自动计算）">
+      <option value="软工">软工</option><option value="硬工">硬工</option><option value="云">云</option><option value="智能汽车">智能汽车</option>
+    </select>
+    <select class="filter-select" id="ac2YearSel" onchange="onAc2YearChange()" style="min-width:90px"></select>
+    <span id="ac2Hint" style="font-size:12px;color:var(--text-muted);margin-left:6px"></span>
+    <div class="tab-actions" style="margin-left:auto">
+      <button class="btn-primary" onclick="submitActualPage()">保存实际</button>
+    </div>
+  </div>
+
+  <div class="dash-card full">
+    <div class="chart-section-title"><span id="ac2YearLabel">2026</span> 年月度实际达成（万元）· <span id="ac2BuLabel">软工</span></div>
+    <div class="table-container" style="max-height:380px;overflow:auto">
+      <table class="data-table budget-table">
+        <thead><tr><th>月份</th><th>实际收入（万元）</th><th>实际贡献利润（万元）</th><th>实际现金流（万元）</th><th>实际费用（万元）</th></tr></thead>
+        <tbody id="actualPageBody"></tbody>
+        <tfoot><tr id="actualPageFoot"></tr></tfoot>
+      </table>
+    </div>
+    <div class="fc-table-note">* 实际达成率 = 实际值 ÷ 对应周期预算（见「经营看板」表格/图表）；「汇总」不需要录入，自动等于各 BU 之和；数据可后续从月度 Excel 导入覆盖</div>
   </div>
 </section>
 
@@ -699,6 +1058,54 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     <div class="mobile-card-list" id="paymentCards"></div>
   </div>
 </section>
+<!-- 数据表管理 -->
+<section id="tab-table-mgmt" class="tab-content">
+  <div class="page-title">数据表管理</div>
+  <div class="page-subtitle">业务数据表结构设计 · 字段与关联关系管理 · 审批发布流程（审批通过后执行 DDL 建表）</div>
+  <div class="tm-wrap">
+    <div class="tm-tree">
+      <div class="tm-tree-head">
+        <span>业务表目录</span>
+        <div class="tm-head-btns">
+          <button class="btn-secondary btn-sm" onclick="tmAddCategory()" title="新增分类">+ 分类</button>
+          <button class="btn-primary btn-sm" onclick="tmAddTable()" title="新增业务表">+ 表</button>
+        </div>
+      </div>
+      <div class="tm-tree-body" id="tmTree"><div class="tm-empty-tip">加载中...</div></div>
+    </div>
+    <div class="tm-detail" id="tmDetail">
+      <div class="tm-empty" id="tmEmpty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        <div>从左侧选择分类或业务表查看详情</div>
+        <div style="font-size:12px;color:var(--text-muted)">分类下可新增子分类与业务表；业务表可配置字段、主键/外键/索引等关联关系，提交审批通过后执行建表</div>
+      </div>
+      <div id="tmDetailBody" style="display:none">
+        <div class="tm-detail-head">
+          <div>
+            <div class="tm-detail-title"><span id="tmDetailName"></span><span class="tm-status" id="tmDetailStatus"></span></div>
+            <div class="tm-detail-sub" id="tmDetailSub"></div>
+          </div>
+          <div class="tab-actions" id="tmDetailActions"></div>
+        </div>
+        <div class="tm-tabs" id="tmTabs">
+          <button class="tm-tab active" data-t="info" onclick="tmSwitchPane('info')">基本信息</button>
+          <button class="tm-tab" data-t="fields" onclick="tmSwitchPane('fields')">字段管理</button>
+          <button class="tm-tab" data-t="relation" onclick="tmSwitchPane('relation')">关联关系</button>
+          <button class="tm-tab" data-t="ddl" onclick="tmSwitchPane('ddl')">DDL 预览</button>
+          <button class="tm-tab" data-t="approvals" onclick="tmSwitchPane('approvals')">审批记录</button>
+          <button class="tm-tab" data-t="logs" onclick="tmSwitchPane('logs')">操作日志</button>
+        </div>
+        <div class="tm-pane active" id="tmPane-info"></div>
+        <div class="tm-pane" id="tmPane-fields"></div>
+        <div class="tm-pane" id="tmPane-relation"></div>
+        <div class="tm-pane" id="tmPane-ddl"></div>
+        <div class="tm-pane" id="tmPane-approvals"></div>
+        <div class="tm-pane" id="tmPane-logs"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 </div>
 </main>
 </div>
@@ -872,6 +1279,70 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   </div>
 </div>
 
+<!-- 数据表管理: 节点(分类/表)编辑弹窗 -->
+<div class="modal-overlay" id="tmNodeModalOverlay">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-header"><h3 id="tmNodeModalTitle">新增业务表</h3><button class="btn-icon" onclick="tmCloseNodeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <form id="tmNodeForm" onsubmit="tmSubmitNode(event)">
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-field"><label>节点类型</label><select id="tmNodeType" onchange="tmNodeTypeChanged()"><option value="table">业务表</option><option value="category">分类</option></select></div>
+          <div class="form-field"><label>所属分类</label><select id="tmNodeParent"><option value="">（顶级）</option></select></div>
+          <div class="form-field"><label>名称 <span class="req">*</span></label><input type="text" id="tmNodeName" placeholder="如：预算管理" required></div>
+          <div class="form-field" id="tmNodeTableNameWrap"><label>物理表名 <span class="req">*</span></label><input type="text" id="tmNodeTableName" placeholder="如：ops_budget"></div>
+          <div class="form-field full"><label>备注说明</label><textarea id="tmNodeDesc" placeholder="选填，说明该表/分类用途"></textarea></div>
+        </div>
+      </div>
+      <div class="form-actions"><button type="button" class="btn-secondary" onclick="tmCloseNodeModal()">取消</button><button type="submit" class="btn-primary">保存</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- 数据表管理: 字段编辑弹窗 -->
+<div class="modal-overlay" id="tmFieldModalOverlay">
+  <div class="modal" style="max-width:660px">
+    <div class="modal-header"><h3 id="tmFieldModalTitle">新增字段</h3><button class="btn-icon" onclick="tmCloseFieldModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <form id="tmFieldForm" onsubmit="tmSubmitField(event)">
+      <div class="modal-body">
+        <div class="form-section"><h4>字段定义</h4><div class="form-grid">
+          <div class="form-field"><label>字段名 <span class="req">*</span></label><input type="text" id="tmFieldName" placeholder="如：revenue" required></div>
+          <div class="form-field"><label>显示名</label><input type="text" id="tmFieldDisplay" placeholder="如：收入"></div>
+          <div class="form-field"><label>数据类型 <span class="req">*</span></label><select id="tmFieldType" onchange="tmFieldTypeChanged()">
+            <option>VARCHAR</option><option>INT</option><option>BIGINT</option><option>CHAR</option><option>TEXT</option><option>DECIMAL</option><option>DATE</option><option>DATETIME</option><option>TIMESTAMP</option><option>JSON</option>
+          </select></div>
+          <div class="form-field"><label>长度</label><input type="text" id="tmFieldLength" placeholder="如：255 或 10,2"></div>
+          <div class="form-field"><label>是否必填</label><select id="tmFieldNullable"><option value="1">否（可空）</option><option value="0">是（NOT NULL）</option></select></div>
+          <div class="form-field"><label>默认值</label><input type="text" id="tmFieldDefault" placeholder="选填"></div>
+          <div class="form-field full"><label>字段注释</label><input type="text" id="tmFieldComment" placeholder="如：年度收入（万元）"></div>
+        </div></div>
+        <div class="form-section"><h4>约束与关联关系</h4><div class="form-grid">
+          <div class="form-field"><label>主键</label><select id="tmFieldPk"><option value="0">否</option><option value="1">是（INT 自动自增）</option></select></div>
+          <div class="form-field"><label>唯一索引</label><select id="tmFieldUnique"><option value="0">否</option><option value="1">是（UNIQUE）</option></select></div>
+          <div class="form-field"><label>普通索引</label><select id="tmFieldIndex"><option value="0">否</option><option value="1">是（INDEX）</option></select></div>
+          <div class="form-field"><label>字段排序</label><input type="number" id="tmFieldOrder" placeholder="数值越小越靠前"></div>
+          <div class="form-field"><label>外键表</label><input type="text" id="tmFieldFkTable" placeholder="如：ops_records"></div>
+          <div class="form-field"><label>外键字段</label><input type="text" id="tmFieldFkField" placeholder="如：id"></div>
+        </div></div>
+      </div>
+      <div class="form-actions"><button type="button" class="btn-secondary" onclick="tmCloseFieldModal()">取消</button><button type="submit" class="btn-primary">保存</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- 数据表管理: 审批操作弹窗 -->
+<div class="modal-overlay" id="tmApprovalModalOverlay">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><h3 id="tmApprovalModalTitle">提交审批</h3><button class="btn-icon" onclick="tmCloseApprovalModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <form id="tmApprovalForm" onsubmit="tmSubmitApproval(event)">
+      <div class="modal-body">
+        <div class="tm-lock-tip" id="tmApprovalHint" style="margin-bottom:10px;color:var(--text-secondary)"></div>
+        <div class="form-field"><label>审批说明</label><textarea id="tmApprovalComment" placeholder="选填，说明本次提交内容 / 审批意见"></textarea></div>
+      </div>
+      <div class="form-actions"><button type="button" class="btn-secondary" onclick="tmCloseApprovalModal()">取消</button><button type="submit" class="btn-primary">确定</button></div>
+    </form>
+  </div>
+</div>
+
 <!-- Confirm -->
 <div class="confirm-overlay" id="confirmOverlay"><div class="confirm-box"><p id="confirmMsg">确认操作？</p><div class="confirm-actions"><button class="btn-secondary" onclick="hideConfirm()">取消</button><button class="btn-danger" id="confirmBtn">确认</button></div></div></div>
 
@@ -881,11 +1352,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 <!-- Mobile Nav -->
 <nav class="mobile-nav">
   <button class="mobile-tab active" data-tab="finance" onclick="switchTab('finance')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg><span>经营</span></button>
-  <button class="mobile-tab" data-tab="dashboard" onclick="switchTab('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span>看板</span></button>
-  <button class="mobile-tab" data-tab="target" onclick="switchTab('target')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>目标</span></button>
-  <button class="mobile-tab" data-tab="contract" onclick="switchTab('contract')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>合同</span></button>
+  <button class="mobile-tab" data-tab="budget" onclick="switchTab('budget')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><span>预算</span></button>
+  <button class="mobile-tab" data-tab="forecast" onclick="switchTab('forecast')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>预测</span></button>
+  <button class="mobile-tab" data-tab="actual" onclick="switchTab('actual')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span>实际</span></button>
   <button class="mobile-tab" data-tab="project" onclick="switchTab('project')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg><span>项目</span></button>
-  <button class="mobile-tab" data-tab="acceptance" onclick="switchTab('acceptance')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span>验收</span></button>
+  <button class="mobile-tab" data-tab="contract" onclick="switchTab('contract')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>合同</span></button>
   <button class="mobile-tab" data-tab="payment" onclick="switchTab('payment')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><span>回款</span></button>
 </nav>
 
@@ -898,6 +1369,145 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   var EDITING_ID=null;
   var CONFIRM_CALLBACK=null;
   var CURRENT_TAB='finance';
+
+  /* ================= 登录与会话管理 (RBAC) ================= */
+  var SYS_TOKEN = localStorage.getItem('wb_ops_token') || '';
+  var SYS_USER = null;
+  var SYS_ROLES = [];
+  var SYS_PERMS = [];
+  var ROLE_NAME_MAP = { 'admin': '管理员', 'user': '普通用户' };
+  // 菜单 tab -> 所需权限码
+  var TAB_PERM = { finance:'dashboard:view', dashboard:'opsboard:view', budget:'forecast:view', forecast:'forecast:view', actual:'forecast:view', project:'ops:view', contract:'ops:view', acceptance:'ops:view', payment:'ops:view', 'table-mgmt':'tablemeta:view' };
+
+  // 覆写全局 fetch: 自动注入 Authorization 头 + 统一 401 处理
+  (function(){
+    var _origFetch = window.fetch;
+    window.fetch = function(url, opts){
+      opts = opts || {};
+      opts.method = opts.method || 'GET';
+      opts.headers = opts.headers || {};
+      if (!opts.headers.Authorization && SYS_TOKEN) opts.headers.Authorization = 'Bearer ' + SYS_TOKEN;
+      return _origFetch(url, opts).then(function(resp){
+        if (resp.status === 401) {
+          var p = String(url);
+          if (p.indexOf('/api/auth/login') < 0 && p.indexOf('/api/auth/me') < 0) {
+            clearSession();
+            showLoginPage();
+          }
+        }
+        return resp;
+      });
+    };
+  })();
+
+  function saveSession(token, user, roles, perms){
+    SYS_TOKEN = token; SYS_USER = user; SYS_ROLES = roles || []; SYS_PERMS = perms || [];
+    localStorage.setItem('wb_ops_token', token);
+    localStorage.setItem('wb_ops_user', JSON.stringify({ user: user, roles: SYS_ROLES, perms: SYS_PERMS }));
+  }
+  function clearSession(){
+    SYS_TOKEN = ''; SYS_USER = null; SYS_ROLES = []; SYS_PERMS = [];
+    localStorage.removeItem('wb_ops_token');
+    localStorage.removeItem('wb_ops_user');
+  }
+  function showLoginPage(){
+    document.getElementById('loginOverlay').classList.remove('hidden');
+    document.getElementById('userArea').style.display = 'none';
+  }
+  function hideLoginPage(){
+    document.getElementById('loginOverlay').classList.add('hidden');
+    document.getElementById('userArea').style.display = 'flex';
+    document.getElementById('userAvatar').textContent = (SYS_USER && SYS_USER.username) ? SYS_USER.username.charAt(0).toUpperCase() : '?';
+    document.getElementById('userName').textContent = SYS_USER ? (SYS_USER.realName || SYS_USER.username) : '-';
+    document.getElementById('userRole').textContent = SYS_ROLES.map(function(r){ return ROLE_NAME_MAP[r] || r; }).join(' / ') || '无角色';
+  }
+  function applyMenuPerms(){
+    // 按权限码控制一级菜单/分组显隐
+    function has(code){ return SYS_PERMS.indexOf(code) >= 0; }
+    var map = [
+      ['nav-finance', 'dashboard:view'], ['nav-dashboard', 'opsboard:view'],
+      ['navg-oper', 'forecast:view'], ['navg-ops', 'ops:view'],
+      ['nav-table-mgmt', 'tablemeta:view'], ['navg-tools', 'data:view'], ['nav-admin', 'system:admin']
+    ];
+    for (var i = 0; i < map.length; i++) {
+      var el = document.getElementById(map[i][0]);
+      if (!el) continue;
+      el.style.display = has(map[i][1]) ? '' : 'none';
+    }
+  }
+  window.doLogin = function(e){
+    if (e) e.preventDefault();
+    var username = document.getElementById('loginUsername').value.trim();
+    var password = document.getElementById('loginPassword').value;
+    var errBox = document.getElementById('loginError');
+    var btn = document.getElementById('loginBtn');
+    if (!username || !password) {
+      errBox.textContent = '请输入用户名和密码'; errBox.classList.add('show'); return;
+    }
+    btn.disabled = true; btn.textContent = '登录中...';
+    errBox.classList.remove('show');
+    fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username: username, password: password }) })
+      .then(function(res){
+        return res.json().then(function(d){ return { ok: res.ok, status: res.status, data: d }; });
+      })
+      .then(function(r){
+        if (!r.ok || !r.data.token) throw new Error((r.data && r.data.error) || '登录失败');
+        saveSession(r.data.token, r.data.user, r.data.roles, r.data.perms);
+        errBox.classList.remove('show');
+        hideLoginPage();
+        applyMenuPerms();
+        refreshAfterLogin();
+        toast('欢迎回来，' + (SYS_USER.realName || SYS_USER.username), 'success');
+      })
+      .catch(function(err){
+        errBox.textContent = err.message || '登录失败，请重试';
+        errBox.classList.add('show');
+      })
+      .finally(function(){
+        btn.disabled = false; btn.textContent = '登 录';
+      });
+  };
+  window.logout = function(){
+    showConfirm('确认退出登录吗？', function(){
+      fetch('/api/auth/logout', { method:'POST' }).catch(function(){});
+      clearSession();
+      showLoginPage();
+      document.getElementById('loginPassword').value = '';
+      toast('已退出登录');
+    });
+  };
+  // 登录成功后刷新业务数据
+  function refreshAfterLogin(){
+    loadData();
+    initForecast();
+    loadTarget();
+    switchTab(CURRENT_TAB);
+  }
+  // 启动时校验会话
+  (function(){
+    if (!SYS_TOKEN) { showLoginPage(); return; }
+    try {
+      var cached = JSON.parse(localStorage.getItem('wb_ops_user') || 'null');
+      if (cached && cached.user) { SYS_USER = cached.user; SYS_ROLES = cached.roles || []; SYS_PERMS = cached.perms || []; }
+    } catch(e) {}
+    fetch('/api/auth/me')
+      .then(function(res){ return res.json(); })
+      .then(function(d){
+        if (d && d.user) {
+          SYS_USER = d.user; SYS_ROLES = d.roles || []; SYS_PERMS = d.perms || [];
+          localStorage.setItem('wb_ops_user', JSON.stringify({ user: SYS_USER, roles: SYS_ROLES, perms: SYS_PERMS }));
+          hideLoginPage();
+          applyMenuPerms();
+        } else {
+          clearSession(); showLoginPage();
+        }
+      })
+      .catch(function(){
+        // 网络异常: 若有缓存用户则放行(离线可用), 否则要求登录
+        if (SYS_USER) { hideLoginPage(); applyMenuPerms(); }
+        else { showLoginPage(); }
+      });
+  })();
 
   // 经营看板状态
   var FC_DATA=[];          // 当前批次版本年份的全部月度记录 {_id,年度,月份,BU,预测收入,贡献利润,现金流,费用,备注,预测批次,版本}
@@ -922,7 +1532,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   var TG_EDIT_ID=null;     // 编辑中的记录 _id
 
   // Tab titles for breadcrumb
-  var TAB_TITLES={dashboard:'运营看板',finance:'经营看板',target:'预算目标拆分',contract:'合同管理',project:'项目管理',acceptance:'验收管理',payment:'回款管理'};
+  var TAB_TITLES={dashboard:'运营看板',finance:'经营看板',target:'预算目标拆分',contract:'合同管理',project:'项目管理',acceptance:'验收管理',payment:'回款管理',budget:'预算管理',forecast:'预测管理',actual:'实际回填','table-mgmt':'数据表管理'};
 
   SCHEMA_OPTIONS['合同状态']=[
     {id:'s1',text:'待签订'},{id:'s2',text:'已签订'},{id:'s3',text:'执行中'},{id:'s4',text:'已完成'},{id:'s5',text:'已终止'}
@@ -982,8 +1592,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   window.toggleMobileSidebar=function(){
     document.getElementById('sidebar').classList.toggle('mobile-open');
   };
+  // 一级分组展开/收起
+  window.toggleNavGroup=function(btn){
+    var g=btn.parentElement;
+    if(g)g.classList.toggle('collapsed');
+  };
 
   window.switchTab=function(tab){
+    // 权限守卫: 未登录或无权访问时拦截
+    var needPerm = TAB_PERM[tab];
+    if (needPerm && SYS_PERMS.indexOf(needPerm) < 0) {
+      if (!SYS_USER) showLoginPage();
+      else toast('无权限访问该模块', 'error');
+      return;
+    }
     CURRENT_TAB=tab;
     var tabs=document.querySelectorAll('.tab-content');
     for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
@@ -994,6 +1616,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     for(var k=0;k<mobBtns.length;k++)mobBtns[k].classList.toggle('active',mobBtns[k].getAttribute('data-tab')===tab);
     document.getElementById('breadcrumb').innerHTML='<span class="current">'+TAB_TITLES[tab]+'</span>';
     document.getElementById('sidebar').classList.remove('mobile-open');
+    // 新页面懒加载（预算/预测/实际/数据表管理）
+    if(tab==='budget'){loadBudgetPage();}
+    else if(tab==='forecast'){syncF2Controls();renderForecastPage();}
+    else if(tab==='actual'){loadActualPage();}
+    else if(tab==='table-mgmt'){tmLoadTree();}
   };
 
   function populateSelects(){
@@ -2431,7 +3058,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     var method=FC_EDIT_ID?'PUT':'POST';
     fetch(url,{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)})
       .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
-      .then(function(){toast(FC_EDIT_ID?'更新成功':'添加成功','success');closeForecastModal();loadForecast();})
+      .then(function(){toast(FC_EDIT_ID?'更新成功':'添加成功','success');closeForecastModal();loadForecast();renderForecastPage();})
       .catch(function(err){toast('保存失败: '+err.message,'error');})
       .finally(function(){btn.disabled=false;btn.textContent='保存';});
   };
@@ -2439,9 +3066,359 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     window.showConfirm('确认删除该月预测数据？删除后不可恢复。',function(){
       fetch('/api/forecast/'+encodeURIComponent(id),{method:'DELETE'})
         .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
-        .then(function(){toast('删除成功','success');loadForecast();})
+        .then(function(){toast('删除成功','success');loadForecast();renderForecastPage();})
         .catch(function(err){toast('删除失败: '+err.message,'error');});
     });
+  };
+
+  // ==================== 预算管理页 (独立页面: 月度预算设置 + 预算目标拆分) ====================
+  var BD_BU='汇总',BD_YEAR=2026,BD_DATA=[];
+  window.onBdBuChange=function(){
+    BD_BU=document.getElementById('bdBuSel').value||'汇总';
+    loadBudgetPage();
+  };
+  window.onBdYearChange=function(){
+    BD_YEAR=parseInt(document.getElementById('bdYearSel').value,10)||new Date().getFullYear();
+    loadBudgetPage();
+  };
+  function fillBdYearSel(){
+    var sel=document.getElementById('bdYearSel');
+    if(!sel)return;
+    var years=[];
+    FC_VERSIONS.forEach(function(v){if(years.indexOf(v.year)<0)years.push(v.year);});
+    years.sort(function(a,b){return a-b;});
+    if(years.length===0){
+      var cur=new Date().getFullYear();
+      for(var y=cur-1;y<=cur+2;y++)years.push(y);
+    }
+    if(years.indexOf(BD_YEAR)<0)BD_YEAR=years[years.length-1]||new Date().getFullYear();
+    sel.innerHTML='';
+    years.forEach(function(yv){
+      var o=document.createElement('option');
+      o.value=String(yv);o.textContent=yv+' 年';
+      sel.appendChild(o);
+      if(yv===BD_YEAR)o.selected=true;
+    });
+    var lab=document.getElementById('bdPageYearLabel');
+    if(lab)lab.textContent=String(BD_YEAR);
+  }
+  function loadBudgetPage(){
+    var bs=document.getElementById('bdBuSel');if(bs)bs.value=BD_BU;
+    fillBdYearSel();
+    fetch('/api/budget?year='+BD_YEAR+'&bu='+encodeURIComponent(BD_BU),{method:'GET'})
+      .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+      .then(function(list){BD_DATA=Array.isArray(list)?list:[];renderBudgetPageTable();})
+      .catch(function(err){toast('预算数据加载失败: '+err.message,'error');BD_DATA=[];renderBudgetPageTable();});
+  }
+  function renderBudgetPageTable(){
+    var tot={预算收入:0,预算贡献利润:0,预算现金流:0,预算费用:0};
+    BD_DATA.forEach(function(b){
+      tot['预算收入']+=Number(b['预算收入']||0);
+      tot['预算贡献利润']+=Number(b['预算贡献利润']||0);
+      tot['预算现金流']+=Number(b['预算现金流']||0);
+      tot['预算费用']+=Number(b['预算费用']||0);
+    });
+    document.getElementById('bdSplitRev').value=tot['预算收入']?String(Number(tot['预算收入'].toFixed(2))):'';
+    document.getElementById('bdSplitProfit').value=tot['预算贡献利润']?String(Number(tot['预算贡献利润'].toFixed(2))):'';
+    document.getElementById('bdSplitCash').value=tot['预算现金流']?String(Number(tot['预算现金流'].toFixed(2))):'';
+    document.getElementById('bdSplitExp').value=tot['预算费用']?String(Number(tot['预算费用'].toFixed(2))):'';
+    var bmap={};
+    BD_DATA.forEach(function(b){bmap[Number(b['月份'])]=b;});
+    var html='';
+    for(var m=1;m<=12;m++){
+      var b=bmap[m];
+      var rev=b?(Number(b['预算收入']||0)||''):'';
+      var pf=b?(Number(b['预算贡献利润']||0)||''):'';
+      var cf=b?(Number(b['预算现金流']||0)||''):'';
+      var ex=b?(Number(b['预算费用']||0)||''):'';
+      html+='<tr><td style="font-weight:600">'+m+'月</td>'+
+        '<td><input type="number" step="0.01" min="0" class="bd-input" data-month="'+m+'" data-key="预算收入" value="'+rev+'" oninput="renderBudgetPageFoot()" placeholder="0"></td>'+
+        '<td><input type="number" step="0.01" min="0" class="bd-input" data-month="'+m+'" data-key="预算贡献利润" value="'+pf+'" oninput="renderBudgetPageFoot()" placeholder="0"></td>'+
+        '<td><input type="number" step="0.01" class="bd-input" data-month="'+m+'" data-key="预算现金流" value="'+cf+'" oninput="renderBudgetPageFoot()" placeholder="0"></td>'+
+        '<td><input type="number" step="0.01" min="0" class="bd-input" data-month="'+m+'" data-key="预算费用" value="'+ex+'" oninput="renderBudgetPageFoot()" placeholder="0"></td></tr>';
+    }
+    document.getElementById('budgetPageBody').innerHTML=html;
+    renderBudgetPageFoot();
+  }
+  function readBudgetPageInputs(){
+    var rows=[];
+    var inputs=document.querySelectorAll('#budgetPageBody .bd-input');
+    for(var i=0;i<inputs.length;i++){
+      var inp=inputs[i];
+      var m=Number(inp.getAttribute('data-month'));
+      var key=inp.getAttribute('data-key');
+      var row=null;
+      for(var j=0;j<rows.length;j++){if(rows[j].月份===m){row=rows[j];break;}}
+      if(!row){row={月份:m,预算收入:0,预算贡献利润:0,预算现金流:0,预算费用:0};rows.push(row);}
+      row[key]=parseFloat(inp.value)||0;
+    }
+    return rows.sort(function(a,b){return a.月份-b.月份;});
+  }
+  window.renderBudgetPageFoot=function(){
+    var rows=readBudgetPageInputs();
+    var rev=0,pf=0,cf=0,ex=0;
+    rows.forEach(function(r){rev+=r['预算收入'];pf+=r['预算贡献利润'];cf+=r['预算现金流'];ex+=r['预算费用'];});
+    var foot=document.getElementById('budgetPageFoot');
+    if(foot)foot.innerHTML='<td style="font-weight:600">合计</td><td>'+formatCurrency(rev)+'</td><td>'+formatCurrency(pf)+'</td><td>'+formatCurrency(cf)+'</td><td>'+formatCurrency(ex)+'</td>';
+  };
+  window.applyBudgetPageSplit=function(){
+    var mode=document.getElementById('bdSplitMode').value;
+    var keys=['预算收入','预算贡献利润','预算现金流','预算费用'];
+    var inputIds=['bdSplitRev','bdSplitProfit','bdSplitCash','bdSplitExp'];
+    var predMap={},predSum=0;
+    FC_DATA.forEach(function(r){var mn=Number(r['月份']);predMap[mn]=Number(r['预测收入']||0);predSum+=predMap[mn];});
+    keys.forEach(function(key,ki){
+      var total=parseFloat(document.getElementById(inputIds[ki]).value)||0;
+      var vals=[];
+      if(mode==='grow'){
+        for(var m=1;m<=12;m++){
+          var t=(m-6.5)/5.5;
+          vals.push(Math.round(total/12*(1+0.3*t)));
+        }
+      }else if(mode==='ratio'&&predSum>0){
+        for(var m=1;m<=12;m++)vals.push(Math.round(total*((predMap[m]||0)/predSum)));
+      }else{
+        for(var m=1;m<=12;m++)vals.push(Math.round(total/12));
+      }
+      var diff=total;
+      vals.forEach(function(v){diff-=v;});
+      vals[11]+=diff;
+      for(var m=1;m<=12;m++){
+        var inp=document.querySelector('#budgetPageBody .bd-input[data-month="'+m+'"][data-key="'+key+'"]');
+        if(inp)inp.value=vals[m-1];
+      }
+    });
+    renderBudgetPageFoot();
+    toast('已按所选模式分摊到 12 个月，可继续逐月微调','success');
+  };
+  window.submitBudgetPage=function(){
+    var btn=document.getElementById('bdSaveBtn');
+    if(btn){btn.disabled=true;btn.textContent='保存中...';}
+    var rows=readBudgetPageInputs();
+    rows.forEach(function(r){r['年度']=BD_YEAR;r['BU']=BD_BU;});
+    fetch('/api/budget/batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bu:BD_BU,records:rows})})
+      .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+      .then(function(d){toast('预算已保存 ('+(d.count||0)+' 个月 · '+BD_BU+')','success');loadBudgetPage();loadForecast();})
+      .catch(function(err){toast('保存失败: '+err.message,'error');})
+      .finally(function(){if(btn){btn.disabled=false;btn.textContent='保存预算';}});
+  };
+
+  // ==================== 预测管理页 (独立页面, 与经营看板联动全局 FC_* 状态) ====================
+  function syncF2Controls(){
+    var b=document.getElementById('f2BatchSel');
+    if(!b)return;
+    var batches=[];
+    FC_VERSIONS.forEach(function(v){if(batches.indexOf(v.fcMonth)<0)batches.push(v.fcMonth);});
+    batches.sort(function(a,b){return b-a;});
+    if(batches.length===0){
+      var now=new Date();
+      FC_BATCH=now.getFullYear()*100+(now.getMonth()+1);
+    }else if(batches.indexOf(FC_BATCH)<0){
+      FC_BATCH=batches[0];
+    }
+    b.innerHTML='';
+    batches.forEach(function(fm){
+      var o=document.createElement('option');
+      o.value=String(fm);o.textContent=fcMonthLabel(fm)+' 预测';
+      b.appendChild(o);
+      if(fm===FC_BATCH)o.selected=true;
+    });
+    var v=document.getElementById('f2VerSel');
+    var vers=fcBatchVersions();
+    if(vers.length>0&&vers.indexOf(FC_VERSION)<0)FC_VERSION=vers[0];
+    if(vers.length===0)FC_VERSION='V1';
+    v.innerHTML='';
+    vers.forEach(function(ver){
+      var o=document.createElement('option');
+      o.value=ver;o.textContent=ver;
+      v.appendChild(o);
+      if(ver===FC_VERSION)o.selected=true;
+    });
+    if(vers.length===0){
+      var o=document.createElement('option');
+      o.value='V1';o.textContent='V1';
+      v.appendChild(o);
+    }
+    var ys=document.getElementById('f2YearSel');
+    var years=[];
+    FC_VERSIONS.forEach(function(vv){if(vv.fcMonth===FC_BATCH&&years.indexOf(vv.year)<0)years.push(vv.year);});
+    years.sort(function(a,b){return a-b;});
+    if(years.length===0){
+      var cur=new Date().getFullYear();
+      for(var y=cur-2;y<=cur+4;y++)years.push(y);
+    }
+    if(years.indexOf(FC_YEAR)<0)FC_YEAR=years[years.length-1]||new Date().getFullYear();
+    ys.innerHTML='';
+    years.forEach(function(yv){
+      var o=document.createElement('option');
+      o.value=String(yv);o.textContent=yv+' 年';
+      ys.appendChild(o);
+      if(yv===FC_YEAR)o.selected=true;
+    });
+    var bs=document.getElementById('f2BuSel');if(bs)bs.value=FC_BU;
+    updateF2VerInfo();
+  }
+  function syncF2VersionSel(){
+    var v=document.getElementById('f2VerSel');
+    if(!v)return;
+    var vers=fcBatchVersions();
+    v.innerHTML='';
+    vers.forEach(function(ver){
+      var o=document.createElement('option');
+      o.value=ver;o.textContent=ver;
+      v.appendChild(o);
+      if(ver===FC_VERSION)o.selected=true;
+    });
+    if(vers.length===0){
+      var o=document.createElement('option');
+      o.value='V1';o.textContent='V1';
+      v.appendChild(o);
+    }
+  }
+  function updateF2VerInfo(){
+    var el=document.getElementById('f2VerInfo');
+    if(el)el.textContent='当前：'+fcMonthLabel(FC_BATCH)+' 预测 · '+FC_VERSION+' · '+FC_YEAR+' 年 · '+fcBuName();
+  }
+  window.onF2BuChange=function(){
+    FC_BU=document.getElementById('f2BuSel').value||'汇总';
+    var s1=document.getElementById('fcBuSel');if(s1)s1.value=FC_BU;
+    updateFcVerInfo();updateF2VerInfo();
+    loadForecast();renderForecastPage();
+  };
+  window.onF2YearChange=function(){
+    FC_YEAR=parseInt(document.getElementById('f2YearSel').value,10)||new Date().getFullYear();
+    var s1=document.getElementById('forecastYear');if(s1)s1.value=FC_YEAR;
+    updateFcVerInfo();updateF2VerInfo();
+    loadForecast();renderForecastPage();
+  };
+  window.onF2BatchChange=function(){
+    FC_BATCH=parseInt(document.getElementById('f2BatchSel').value,10)||0;
+    var s1=document.getElementById('fcBatchSel');if(s1)s1.value=String(FC_BATCH);
+    fillFcVersionSel();syncF2VersionSel();
+    updateFcVerInfo();updateF2VerInfo();
+    loadForecast();renderForecastPage();
+  };
+  window.onF2VersionChange=function(){
+    FC_VERSION=document.getElementById('f2VerSel').value||'V1';
+    var s1=document.getElementById('fcVerSel');if(s1)s1.value=FC_VERSION;
+    updateFcVerInfo();updateF2VerInfo();
+    loadForecast();renderForecastPage();
+  };
+  function renderForecastPage(){
+    var body=document.getElementById('f2Body');
+    if(!body)return;
+    updateF2VerInfo();
+    fetch('/api/forecast?fcMonth='+FC_BATCH+'&version='+encodeURIComponent(FC_VERSION)+'&year='+FC_YEAR+'&bu='+encodeURIComponent(FC_BU),{method:'GET'})
+      .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+      .then(function(list){
+        var data=Array.isArray(list)?list:[];
+        FC_DATA=data;
+        var map={};
+        data.forEach(function(r){map[Number(r['月份'])]=r;});
+        var html='';
+        for(var m=1;m<=12;m++){
+          var r=map[m];
+          html+='<tr><td style="font-weight:600">'+m+'月</td>'+
+            '<td>'+formatCurrency(r?r['预测收入']:0)+'</td>'+
+            '<td>'+formatCurrency(r?r['贡献利润']:0)+'</td>'+
+            '<td>'+formatCurrency(r?r['现金流']:0)+'</td>'+
+            '<td>'+formatCurrency(r?r['费用']:0)+'</td>'+
+            '<td style="color:var(--text-muted);font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(r&&r['备注']?r['备注']:'')+'</td>'+
+            '<td>'+(r?'<div class="row-actions"><button class="row-btn" onclick="editForecastRecord(\''+r._id+'\')" title="编辑">'+ICO_EDIT+'</button><button class="row-btn delete" onclick="deleteForecastRecord(\''+r._id+'\')" title="删除">'+ICO_DEL+'</button></div>':'—')+'</td></tr>';
+        }
+        body.innerHTML=html;
+      })
+      .catch(function(err){toast('预测数据加载失败: '+err.message,'error');});
+  }
+
+  // ==================== 实际回填页 (独立页面: 按 BU 月度实际回填) ====================
+  var AC2_BU='软工',AC2_YEAR=2026,AC2_DATA=[];
+  window.onAc2BuChange=function(){
+    AC2_BU=document.getElementById('ac2BuSel').value||'软工';
+    loadActualPage();
+  };
+  window.onAc2YearChange=function(){
+    AC2_YEAR=parseInt(document.getElementById('ac2YearSel').value,10)||new Date().getFullYear();
+    loadActualPage();
+  };
+  function fillAc2YearSel(){
+    var sel=document.getElementById('ac2YearSel');
+    if(!sel)return;
+    var years=[];
+    FC_VERSIONS.forEach(function(v){if(years.indexOf(v.year)<0)years.push(v.year);});
+    years.sort(function(a,b){return a-b;});
+    if(years.length===0){
+      var cur=new Date().getFullYear();
+      for(var y=cur-1;y<=cur+2;y++)years.push(y);
+    }
+    if(years.indexOf(AC2_YEAR)<0)AC2_YEAR=years[years.length-1]||new Date().getFullYear();
+    sel.innerHTML='';
+    years.forEach(function(yv){
+      var o=document.createElement('option');
+      o.value=String(yv);o.textContent=yv+' 年';
+      sel.appendChild(o);
+      if(yv===AC2_YEAR)o.selected=true;
+    });
+  }
+  function loadActualPage(){
+    var bs=document.getElementById('ac2BuSel');if(bs)bs.value=AC2_BU;
+    fillAc2YearSel();
+    var yl=document.getElementById('ac2YearLabel');if(yl)yl.textContent=String(AC2_YEAR);
+    var bl=document.getElementById('ac2BuLabel');if(bl)bl.textContent=AC2_BU;
+    fetch('/api/actual?year='+AC2_YEAR+'&bu='+encodeURIComponent(AC2_BU),{method:'GET'})
+      .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+      .then(function(list){AC2_DATA=Array.isArray(list)?list:[];renderActualPageTable();})
+      .catch(function(err){toast('实际数据加载失败: '+err.message,'error');AC2_DATA=[];renderActualPageTable();});
+  }
+  function renderActualPageTable(){
+    var map={};
+    AC2_DATA.forEach(function(a){map[Number(a['月份'])]=a;});
+    var html='';
+    for(var m=1;m<=12;m++){
+      var a=map[m];
+      var rv=a?(Number(a['实际收入']||0)||''):'';
+      var pf=a?(Number(a['实际贡献利润']||0)||''):'';
+      var cf=a?(Number(a['实际现金流']||0)||''):'';
+      var ex=a?(Number(a['实际费用']||0)||''):'';
+      html+='<tr><td style="font-weight:600">'+m+'月</td>'+
+        '<td><input type="number" step="0.01" min="0" class="ac2-input" data-month="'+m+'" data-key="实际收入" value="'+rv+'" oninput="renderActualPageFoot()" placeholder="0"></td>'+
+        '<td><input type="number" step="0.01" class="ac2-input" data-month="'+m+'" data-key="实际贡献利润" value="'+pf+'" oninput="renderActualPageFoot()" placeholder="0"></td>'+
+        '<td><input type="number" step="0.01" class="ac2-input" data-month="'+m+'" data-key="实际现金流" value="'+cf+'" oninput="renderActualPageFoot()" placeholder="0"></td>'+
+        '<td><input type="number" step="0.01" min="0" class="ac2-input" data-month="'+m+'" data-key="实际费用" value="'+ex+'" oninput="renderActualPageFoot()" placeholder="0"></td></tr>';
+    }
+    document.getElementById('actualPageBody').innerHTML=html;
+    var hint=document.getElementById('ac2Hint');
+    if(hint)hint.textContent='当前录入：'+AC2_BU+'（按月）；汇总 = 各 BU 之和（自动计算，无需录入）';
+    renderActualPageFoot();
+  }
+  function readActualPageInputs(){
+    var rows=[];
+    var inputs=document.querySelectorAll('#actualPageBody .ac2-input');
+    for(var i=0;i<inputs.length;i++){
+      var inp=inputs[i];
+      var m=Number(inp.getAttribute('data-month'));
+      var key=inp.getAttribute('data-key');
+      var row=null;
+      for(var j=0;j<rows.length;j++){if(rows[j].月份===m){row=rows[j];break;}}
+      if(!row){row={月份:m,实际收入:0,实际贡献利润:0,实际现金流:0,实际费用:0};rows.push(row);}
+      row[key]=parseFloat(inp.value)||0;
+    }
+    return rows.sort(function(a,b){return a.月份-b.月份;});
+  }
+  window.renderActualPageFoot=function(){
+    var rows=readActualPageInputs();
+    var rv=0,pf=0,cf=0,ex=0;
+    rows.forEach(function(r){rv+=r['实际收入'];pf+=r['实际贡献利润'];cf+=r['实际现金流'];ex+=r['实际费用'];});
+    var foot=document.getElementById('actualPageFoot');
+    if(foot)foot.innerHTML='<td style="font-weight:600">合计</td><td>'+formatCurrency(rv)+'</td><td>'+formatCurrency(pf)+'</td><td>'+formatCurrency(cf)+'</td><td>'+formatCurrency(ex)+'</td>';
+  };
+  window.submitActualPage=function(){
+    var rows=readActualPageInputs();
+    rows.forEach(function(r){r['年度']=AC2_YEAR;});
+    fetch('/api/actual/batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bu:AC2_BU,records:rows})})
+      .then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);return res.json();})
+      .then(function(d){toast('实际已保存 ('+(d.count||0)+' 个月 · '+AC2_BU+')','success');loadActualPage();loadForecast();})
+      .catch(function(err){toast('保存失败: '+err.message,'error');});
   };
 
   function getFilteredData(tab){
@@ -2672,6 +3649,553 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   document.getElementById('targetModalOverlay').addEventListener('click',function(e){
     if(e.target===this)closeTargetModal();
   });
+
+  /* ================= 数据表管理 ================= */
+  var TM_TREE=[],TM_SEL_ID=null,TM_DETAIL=null;
+  var TM_NODE_EDIT_ID=null,TM_FIELD_EDIT_ID=null,TM_APPROVAL_MODE=null,TM_CUR_PANE='info';
+  var TM_STATUS_MAP={
+    'draft':{text:'草稿',cls:'badge-gray'},
+    'pending':{text:'审批中',cls:'badge-amber'},
+    'approved':{text:'已通过',cls:'badge-green'},
+    'rejected':{text:'已驳回',cls:'badge-red'},
+    'pending_drop':{text:'下线审批中',cls:'badge-purple'},
+    'active':{text:'分类',cls:'badge-blue'}
+  };
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function tmStatusInfo(st){var m=TM_STATUS_MAP[st];return m?m:{text:esc(st),cls:'badge-gray'};}
+  function tmStatusBadge(st){var m=tmStatusInfo(st);return '<span class="tm-status '+m.cls+'">'+m.text+'</span>';}
+  function tmLockText(st){if(st==='pending')return '审批中，不可编辑';if(st==='approved')return '已审批通过，不可编辑';if(st==='pending_drop')return '下线审批中，不可编辑';return '';}
+  function tmInfoItem(k,v){return '<div class="tm-info-item"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>';}
+  function tmFindNode(list,id){
+    for(var i=0;i<list.length;i++){
+      if(list[i].id==id)return list[i];
+      var f=tmFindNode(list[i].children||[],id);
+      if(f)return f;
+    }
+    return null;
+  }
+  function tmCollectCats(list,out){
+    out=out||[];
+    list.forEach(function(n){if(n.type==='category'){out.push(n);tmCollectCats(n.children||[],out);}});
+    return out;
+  }
+  function tmCountTables(n){
+    var c=0;
+    (function walk(node){(node.children||[]).forEach(function(k){if(k.type==='table')c++;else walk(k);});})(n);
+    return c;
+  }
+  function tmHandleResp(r){
+    return r.json().then(function(d){if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d;});
+  }
+
+  // ---- 树形目录 ----
+  window.tmLoadTree=function(){
+    fetch('/api/table-meta/tree')
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(function(list){
+        TM_TREE=Array.isArray(list)?list:[];
+        tmRenderTree();
+        if(TM_SEL_ID){
+          var n=tmFindNode(TM_TREE,TM_SEL_ID);
+          if(n)tmShowDetail(n);else tmResetDetail();
+        }
+      })
+      .catch(function(err){document.getElementById('tmTree').innerHTML='<div class="tm-empty-tip">加载失败: '+esc(err.message)+'</div>';});
+  };
+  function tmReloadTree(){
+    fetch('/api/table-meta/tree')
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(function(list){
+        TM_TREE=Array.isArray(list)?list:[];
+        tmRenderTree();
+        if(TM_SEL_ID){
+          var n=tmFindNode(TM_TREE,TM_SEL_ID);
+          if(n)tmShowDetail(n);else tmResetDetail();
+        }
+      })
+      .catch(function(err){toast('刷新目录失败: '+err.message,'error');});
+  }
+  function tmRenderTree(){
+    var box=document.getElementById('tmTree');
+    if(!TM_TREE.length){box.innerHTML='<div class="tm-empty-tip">暂无分类，点击右上角「+ 分类」创建</div>';return;}
+    box.innerHTML=TM_TREE.map(function(n){return tmNodeHtml(n);}).join('');
+  }
+  function tmNodeHtml(n){
+    var isCat=n.type==='category';
+    var hasKids=isCat&&n.children&&n.children.length;
+    var kids=hasKids?n.children.map(tmNodeHtml).join(''):'';
+    var sel=TM_SEL_ID==n.id?' sel':'';
+    var arrow=hasKids
+      ?'<svg class="tm-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 6 15 12 9 18"/></svg>'
+      :'<span style="width:12px;flex-shrink:0"></span>';
+    var ico=isCat
+      ?'<svg class="tm-ico cat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>'
+      :'<svg class="tm-ico tbl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>';
+    var actions='<span class="tm-node-actions">'
+      +'<button title="编辑" onclick="event.stopPropagation();tmEditNode('+n.id+')">'+ICO_EDIT+'</button>'
+      +'<button class="del" title="删除" onclick="event.stopPropagation();tmDeleteNode('+n.id+')">'+ICO_DEL+'</button>'
+      +'</span>';
+    var st=isCat?'':'<span class="tm-status '+tmStatusInfo(n.status).cls+'">'+tmStatusInfo(n.status).text+'</span>';
+    return '<div class="tm-node" data-id="'+n.id+'">'
+      +'<div class="tm-node-row'+sel+'" onclick="tmToggleNode('+n.id+')">'
+      +arrow+ico+'<span class="tm-label">'+esc(n.name)+'</span>'
+      +(n.tableName?'<span class="tm-tblname">'+esc(n.tableName)+'</span>':'')
+      +st+actions
+      +'</div>'
+      +(kids?'<div class="tm-children">'+kids+'</div>':'')
+      +'</div>';
+  }
+  window.tmToggleNode=function(id){
+    var n=tmFindNode(TM_TREE,id);
+    if(!n)return;
+    tmSelectNode(n);
+    if(n.type==='category'){
+      var el=document.querySelector('.tm-node[data-id="'+id+'"]');
+      if(el)el.classList.toggle('collapsed');
+    }
+  };
+  function tmSelectNode(n){
+    TM_SEL_ID=n.id;
+    var rows=document.querySelectorAll('.tm-tree .tm-node-row');
+    for(var i=0;i<rows.length;i++)rows[i].classList.toggle('sel',rows[i].parentElement.getAttribute('data-id')==String(n.id));
+    tmShowDetail(n);
+  }
+  function tmResetDetail(){
+    TM_SEL_ID=null;TM_DETAIL=null;
+    document.getElementById('tmDetailBody').style.display='none';
+    document.getElementById('tmEmpty').style.display='flex';
+    var rows=document.querySelectorAll('.tm-tree .tm-node-row');
+    for(var i=0;i<rows.length;i++)rows[i].classList.remove('sel');
+  }
+  function tmShowDetail(n){
+    var body=document.getElementById('tmDetailBody'),empty=document.getElementById('tmEmpty');
+    body.style.display='block';empty.style.display='none';
+    if(n.type==='category'){tmShowCategoryDetail(n);return;}
+    fetch('/api/table-meta/'+n.id)
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(function(d){TM_DETAIL=d;tmRenderTableDetail(d);tmSwitchPane(TM_CUR_PANE);})
+      .catch(function(err){toast('加载表详情失败: '+err.message,'error');});
+  }
+  function tmShowCategoryDetail(n){
+    TM_DETAIL=n;
+    document.getElementById('tmDetailName').textContent=n.name;
+    document.getElementById('tmDetailStatus').innerHTML=tmStatusBadge('active');
+    document.getElementById('tmDetailSub').innerHTML='<span>类型：分类</span><span>业务表数量：<b>'+tmCountTables(n)+'</b></span>'+(n.description?'<span>备注：'+esc(n.description)+'</span>':'');
+    document.getElementById('tmDetailActions').innerHTML=
+      '<button class="btn-secondary btn-sm" onclick="tmAddTable('+n.id+')">+ 业务表</button>'
+      +'<button class="btn-secondary btn-sm" onclick="tmAddCategory('+n.id+')">+ 子分类</button>'
+      +'<button class="btn-secondary btn-sm" onclick="tmEditNode('+n.id+')">编辑</button>'
+      +'<button class="btn-danger btn-sm" onclick="tmDeleteNode('+n.id+')">删除</button>';
+    var tabs=document.querySelectorAll('#tmTabs .tm-tab');
+    for(var i=0;i<tabs.length;i++)tabs[i].style.display=tabs[i].getAttribute('data-t')==='info'?'':'none';
+    tmSwitchPane('info');
+    document.getElementById('tmPane-info').innerHTML=
+      '<div class="tm-pane-head"><h4>分类信息</h4></div>'
+      +'<div class="tm-info-grid">'
+      +tmInfoItem('名称',esc(n.name))
+      +tmInfoItem('类型','分类')
+      +tmInfoItem('业务表数量',String(tmCountTables(n)))
+      +tmInfoItem('备注',esc(n.description||'-'))
+      +'</div>';
+  }
+  function tmRenderTableDetail(d){
+    document.getElementById('tmDetailName').textContent=d.name;
+    document.getElementById('tmDetailStatus').innerHTML=tmStatusBadge(d.status);
+    document.getElementById('tmDetailSub').innerHTML=
+      '<span>物理表名：<b style="font-family:Consolas,monospace">'+esc(d.tableName)+'</b></span>'
+      +'<span>字段数：<b>'+d.fields.length+'</b></span>'
+      +'<span>状态：<b>'+tmStatusText(d.status)+'</b></span>'
+      +(d.description?'<span>备注：'+esc(d.description)+'</span>':'');
+    document.getElementById('tmDetailActions').innerHTML=tmActionsHtml(d);
+    var tabs=document.querySelectorAll('#tmTabs .tm-tab');
+    for(var i=0;i<tabs.length;i++)tabs[i].style.display='';
+  }
+  function tmStatusText(st){return tmStatusInfo(st).text;}
+  function tmActionsHtml(d){
+    var a=[];
+    function btn(label,fn,cls){return '<button class="'+(cls||'btn-secondary')+' btn-sm" onclick="'+fn+'">'+label+'</button>';}
+    if(d.status==='draft'){
+      a.push(btn('提交审批',"tmOpenApproval('submit')",'btn-primary'));
+      a.push(btn('编辑','tmEditNode('+d.id+')'));
+      a.push(btn('删除','tmDeleteNode('+d.id+')','btn-danger'));
+    }else if(d.status==='pending'){
+      a.push(btn('审批通过',"tmOpenApproval('approve')",'btn-primary'));
+      a.push(btn('驳回',"tmOpenApproval('reject')"));
+      a.push('<span class="tm-lock-tip">审批中不可编辑/删除</span>');
+    }else if(d.status==='approved'){
+      a.push(btn('执行建表 DDL','tmExecuteDDL()','btn-primary'));
+      a.push(btn('申请下线',"tmOpenApproval('drop')"));
+      a.push('<span class="tm-lock-tip">已通过 · 删除物理表需走下线审批</span>');
+    }else if(d.status==='rejected'){
+      a.push(btn('重新提交',"tmOpenApproval('submit')",'btn-primary'));
+      a.push(btn('编辑','tmEditNode('+d.id+')'));
+      a.push(btn('删除','tmDeleteNode('+d.id+')','btn-danger'));
+    }else if(d.status==='pending_drop'){
+      a.push(btn('执行删除 DROP','tmExecuteDrop()','btn-danger'));
+      a.push('<span class="tm-lock-tip">下线审批已通过，执行后将删除物理表</span>');
+    }
+    return a.join('');
+  }
+
+  // ---- Tab 面板 ----
+  window.tmSwitchPane=function(t){
+    TM_CUR_PANE=t;
+    var tabs=document.querySelectorAll('#tmTabs .tm-tab');
+    for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',tabs[i].getAttribute('data-t')===t);
+    var panes=document.querySelectorAll('.tm-pane');
+    for(var j=0;j<panes.length;j++)panes[j].classList.toggle('active',panes[j].id==='tmPane-'+t);
+    var d=TM_DETAIL;if(!d||d.type!=='table')return;
+    if(t==='info')tmRenderInfo(d);
+    else if(t==='fields')tmRenderFields(d);
+    else if(t==='relation')tmRenderRelation(d);
+    else if(t==='ddl')tmLoadDDL();
+    else if(t==='approvals')tmLoadApprovals();
+    else if(t==='logs')tmLoadLogs();
+  };
+  function tmRenderInfo(d){
+    var html='<div class="tm-pane-head"><h4>基本信息</h4></div>'
+      +'<div class="tm-info-grid">'
+      +tmInfoItem('名称',esc(d.name))
+      +tmInfoItem('类型','业务表')
+      +tmInfoItem('物理表名','<code>'+esc(d.tableName)+'</code>')
+      +tmInfoItem('状态',tmStatusBadge(d.status))
+      +tmInfoItem('字段数',String(d.fields.length))
+      +tmInfoItem('创建人',esc(d.createdBy||'-'))
+      +tmInfoItem('创建时间',esc(d.createdAt||'-'))
+      +tmInfoItem('更新时间',esc(d.updatedAt||'-'))
+      +'</div>'
+      +(d.description?'<div style="margin-top:14px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;color:var(--text-secondary)"><b style="color:var(--text)">备注：</b>'+esc(d.description)+'</div>':'');
+    document.getElementById('tmPane-info').innerHTML=html;
+  }
+  function tmRenderFields(d){
+    var locked=d.status==='pending'||d.status==='approved'||d.status==='pending_drop';
+    var html='<div class="tm-pane-head"><h4>字段列表（'+d.fields.length+'）</h4>'
+      +(locked?'<span class="tm-lock-tip">'+tmLockText(d.status)+'</span>':'<button class="btn-primary btn-sm" onclick="tmOpenField(null)">+ 新增字段</button>')
+      +'</div>';
+    if(!d.fields.length){html+='<div class="tm-empty-tip">尚未定义字段，点击右上角「新增字段」开始设计</div>';}
+    else{
+      html+='<div class="table-container"><table class="data-table"><thead><tr>'
+        +'<th>序号</th><th>字段名</th><th>显示名</th><th>类型</th><th>长度</th><th>必填</th><th>默认值</th><th>主键</th><th>唯一</th><th>索引</th><th>外键</th><th>注释</th>'
+        +(locked?'':'<th>操作</th>')
+        +'</tr></thead><tbody>';
+      d.fields.forEach(function(f){
+        html+='<tr>'
+          +'<td>'+(f.fieldOrder!=null?f.fieldOrder:'-')+'</td>'
+          +'<td><code style="color:var(--primary)">'+esc(f.fieldName)+'</code></td>'
+          +'<td>'+esc(f.displayName||'-')+'</td>'
+          +'<td>'+esc(f.dataType)+'</td>'
+          +'<td>'+(f.length!=null?f.length:'-')+'</td>'
+          +'<td>'+(f.nullable?'可空':'<b style="color:var(--danger)">必填</b>')+'</td>'
+          +'<td>'+esc(f.defaultValue!=null?f.defaultValue:'-')+'</td>'
+          +'<td>'+(f.isPk?'<span style="color:var(--warning);font-weight:600">PK</span>':'-')+'</td>'
+          +'<td>'+(f.isUnique?'<span style="color:var(--success);font-weight:600">UQ</span>':'-')+'</td>'
+          +'<td>'+(f.isIndex?'<span style="color:var(--info);font-weight:600">IX</span>':'-')+'</td>'
+          +'<td>'+(f.fkTable?'<span style="color:var(--purple)">'+esc(f.fkTable)+'.'+esc(f.fkField)+'</span>':'-')+'</td>'
+          +'<td style="color:var(--text-secondary)">'+esc(f.comment||'-')+'</td>'
+          +(locked?'':'<td><span class="tm-node-actions" style="opacity:1">'
+            +'<button title="编辑" onclick="tmOpenField('+f.id+')">'+ICO_EDIT+'</button>'
+            +'<button class="del" title="删除" onclick="tmDeleteField('+f.id+')">'+ICO_DEL+'</button>'
+            +'</span></td>')
+          +'</tr>';
+      });
+      html+='</tbody></table></div>';
+    }
+    document.getElementById('tmPane-fields').innerHTML=html;
+  }
+  function tmRenderRelation(d){
+    function chips(list,label,color){
+      if(!list.length)return '<div class="tm-rel-card"><h5>'+label+' <span class="tm-rel-num">0</span></h5><span style="color:var(--text-muted);font-size:12px">未设置</span></div>';
+      return '<div class="tm-rel-card"><h5>'+label+' <span class="tm-rel-num">'+list.length+'</span></h5>'+list.map(function(f){
+        if(label.indexOf('外键')>=0)return '<span class="tm-rel-chip" style="color:var(--purple)">'+esc(f.fieldName)+' → '+esc(f.fkTable)+'.'+esc(f.fkField)+'</span>';
+        return '<span class="tm-rel-chip" style="'+(color||'')+'">'+esc(f.fieldName)+'</span>';
+      }).join('')+'</div>';
+    }
+    var html='<div class="tm-pane-head"><h4>关联关系</h4></div>'
+      +'<div class="tm-rel-grid">'
+      +chips(d.fields.filter(function(f){return f.isPk;}),'主键 PRIMARY KEY')
+      +chips(d.fields.filter(function(f){return f.isUnique;}),'唯一索引 UNIQUE','color:var(--success)')
+      +chips(d.fields.filter(function(f){return f.isIndex;}),'普通索引 INDEX','color:var(--info)')
+      +chips(d.fields.filter(function(f){return f.fkTable;}),'外键 FOREIGN KEY')
+      +'</div>';
+    document.getElementById('tmPane-relation').innerHTML=html;
+  }
+  window.tmLoadDDL=function(){
+    var d=TM_DETAIL;if(!d)return;
+    var box=document.getElementById('tmPane-ddl');
+    box.innerHTML='<div class="tm-pane-head"><h4>DDL 预览</h4><button class="btn-secondary btn-sm" onclick="tmLoadDDL()">刷新</button></div><div class="tm-empty-tip">加载中...</div>';
+    fetch('/api/table-meta/'+d.id+'/ddl')
+      .then(tmHandleResp)
+      .then(function(x){
+        box.innerHTML='<div class="tm-pane-head"><h4>DDL 预览</h4><button class="btn-secondary btn-sm" onclick="tmCopyDDL()">复制</button></div>'
+          +'<div class="ddl-box" id="tmDdlBox">'+esc(x.ddl||'')+'</div>';
+      })
+      .catch(function(err){box.innerHTML='<div class="tm-pane-head"><h4>DDL 预览</h4></div><div class="tm-empty-tip">加载失败: '+esc(err.message)+'</div>';});
+  };
+  window.tmCopyDDL=function(){
+    var box=document.getElementById('tmDdlBox');
+    if(!box)return;
+    var range=document.createRange();range.selectNodeContents(box);
+    var sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
+    try{document.execCommand('copy');toast('DDL 已复制','success');}catch(e){toast('复制失败，请手动选择复制','error');}
+    sel.removeAllRanges();
+  };
+  function tmLoadApprovals(){
+    var d=TM_DETAIL;if(!d)return;
+    var box=document.getElementById('tmPane-approvals');
+    box.innerHTML='<div class="tm-pane-head"><h4>审批记录</h4></div><div class="tm-empty-tip">加载中...</div>';
+    fetch('/api/table-meta/'+d.id+'/approvals')
+      .then(tmHandleResp)
+      .then(function(list){
+        if(!list.length){box.innerHTML='<div class="tm-pane-head"><h4>审批记录</h4></div><div class="tm-empty-tip">暂无审批记录</div>';return;}
+        var html='<div class="tm-pane-head"><h4>审批记录（'+list.length+'）</h4></div>'
+          +'<div class="table-container"><table class="data-table"><thead><tr>'
+          +'<th>动作</th><th>状态</th><th>申请人</th><th>审批人</th><th>审批意见</th><th>提交时间</th><th>处理时间</th>'
+          +'</tr></thead><tbody>';
+        list.forEach(function(a){
+          var actMap={'create':'建表审批','drop':'下线审批'};
+          html+='<tr>'
+            +'<td>'+(actMap[a.action]||esc(a.action))+'</td>'
+            +'<td>'+tmStatusBadge(a.status)+'</td>'
+            +'<td>'+esc(a.applicant||'-')+'</td>'
+            +'<td>'+esc(a.approver||'-')+'</td>'
+            +'<td style="color:var(--text-secondary);max-width:280px">'+esc(a.comment||'-')+'</td>'
+            +'<td>'+esc(a.createdAt||'-')+'</td>'
+            +'<td>'+esc(a.resolvedAt||'-')+'</td>'
+            +'</tr>';
+        });
+        box.innerHTML=html+'</tbody></table></div>';
+      })
+      .catch(function(err){box.innerHTML='<div class="tm-pane-head"><h4>审批记录</h4></div><div class="tm-empty-tip">加载失败: '+esc(err.message)+'</div>';});
+  }
+  function tmLoadLogs(){
+    var d=TM_DETAIL;if(!d)return;
+    var box=document.getElementById('tmPane-logs');
+    box.innerHTML='<div class="tm-pane-head"><h4>操作日志</h4></div><div class="tm-empty-tip">加载中...</div>';
+    fetch('/api/table-meta/'+d.id+'/logs')
+      .then(tmHandleResp)
+      .then(function(list){
+        if(!list.length){box.innerHTML='<div class="tm-pane-head"><h4>操作日志</h4></div><div class="tm-empty-tip">暂无操作记录</div>';return;}
+        var html='<div class="tm-pane-head"><h4>操作日志（'+list.length+'）</h4></div>';
+        list.forEach(function(l){
+          html+='<div class="tm-log-item"><span class="tm-log-time">'+esc(l.createdAt||'')+'</span><span class="tm-log-act">'+esc(l.action)+'</span><span class="tm-log-detail">'+esc(l.detail||'')+'</span></div>';
+        });
+        box.innerHTML=html;
+      })
+      .catch(function(err){box.innerHTML='<div class="tm-pane-head"><h4>操作日志</h4></div><div class="tm-empty-tip">加载失败: '+esc(err.message)+'</div>';});
+  }
+
+  // ---- 节点(分类/表) 增删改 ----
+  window.tmAddCategory=function(parentId){tmOpenNode(null,'category',parentId);};
+  window.tmAddTable=function(parentId){tmOpenNode(null,'table',parentId);};
+  window.tmEditNode=function(id){tmOpenNode(id,null,null);};
+  function tmOpenNode(id,forcedType,parentId){
+    var node=id?tmFindNode(TM_TREE,id):null;
+    TM_NODE_EDIT_ID=id;
+    var type=forcedType||(node?node.type:'table');
+    var sel=document.getElementById('tmNodeParent');
+    sel.innerHTML='<option value="">（顶级）</option>';
+    tmCollectCats(TM_TREE).forEach(function(c){
+      var o=document.createElement('option');o.value=c.id;o.textContent=c.name;sel.appendChild(o);
+    });
+    document.getElementById('tmNodeModalTitle').textContent=type==='category'?(node?'编辑分类':'新增分类'):(node?'编辑业务表':'新增业务表');
+    document.getElementById('tmNodeType').value=type;
+    document.getElementById('tmNodeType').disabled=!!node;
+    document.getElementById('tmNodeName').value=node?node.name:'';
+    document.getElementById('tmNodeTableName').value=node?(node.tableName||''):'';
+    document.getElementById('tmNodeDesc').value=node?(node.description||''):'';
+    sel.value=node?(node.parentId||''):(parentId||'');
+    sel.disabled=!!node;
+    tmNodeTypeChanged();
+    document.getElementById('tmNodeModalOverlay').classList.add('show');
+  }
+  window.tmNodeTypeChanged=function(){
+    var t=document.getElementById('tmNodeType').value;
+    document.getElementById('tmNodeTableNameWrap').style.display=t==='table'?'':'none';
+  };
+  window.tmCloseNodeModal=function(){document.getElementById('tmNodeModalOverlay').classList.remove('show');TM_NODE_EDIT_ID=null;};
+  window.tmSubmitNode=function(e){
+    e.preventDefault();
+    var type=document.getElementById('tmNodeType').value;
+    var name=document.getElementById('tmNodeName').value.trim();
+    var tableName=document.getElementById('tmNodeTableName').value.trim();
+    var desc=document.getElementById('tmNodeDesc').value.trim();
+    var parentId=document.getElementById('tmNodeParent').value||null;
+    if(!name)return toast('请填写名称','error');
+    if(type==='table'&&!tableName)return toast('请填写物理表名','error');
+    var payload={name:name,description:desc,parentId:parentId};
+    if(type==='table')payload.tableName=tableName;
+    if(TM_NODE_EDIT_ID){
+      fetch('/api/table-meta/'+TM_NODE_EDIT_ID,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+        .then(tmHandleResp)
+        .then(function(){
+          toast('已保存','success');
+          tmCloseNodeModal();
+          tmReloadTree();
+        })
+        .catch(function(err){toast(err.message,'error');});
+    }else{
+      payload.type=type;
+      fetch('/api/table-meta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+        .then(tmHandleResp)
+        .then(function(d){
+          toast('已创建','success');
+          tmCloseNodeModal();
+          TM_SEL_ID=Number(d._id);
+          tmReloadTree();
+        })
+        .catch(function(err){toast(err.message,'error');});
+    }
+  };
+  window.tmDeleteNode=function(id){
+    var n=tmFindNode(TM_TREE,id);if(!n)return;
+    var msg=n.type==='table'
+      ?'确定删除业务表「'+n.name+'」吗？\n其字段定义、审批记录与操作日志将一并删除。'
+      :'确定删除分类「'+n.name+'」吗？\n其下所有子分类与业务表将一并删除！';
+    showConfirm(msg,function(){
+      fetch('/api/table-meta/'+id,{method:'DELETE'})
+        .then(tmHandleResp)
+        .then(function(){
+          toast('已删除','success');
+          if(TM_SEL_ID==id)tmResetDetail();
+          tmReloadTree();
+        })
+        .catch(function(err){toast(err.message,'error');});
+    });
+  };
+
+  // ---- 字段增删改 ----
+  window.tmOpenField=function(fid){
+    var d=TM_DETAIL;if(!d)return;
+    TM_FIELD_EDIT_ID=fid;
+    var f=null;
+    if(fid){for(var i=0;i<d.fields.length;i++)if(d.fields[i].id==fid)f=d.fields[i];}
+    document.getElementById('tmFieldModalTitle').textContent=fid?'编辑字段':'新增字段';
+    document.getElementById('tmFieldName').value=f?f.fieldName:'';
+    document.getElementById('tmFieldDisplay').value=f?(f.displayName||''):'';
+    document.getElementById('tmFieldType').value=f?f.dataType:'VARCHAR';
+    document.getElementById('tmFieldLength').value=f&&f.length!=null?f.length:'';
+    document.getElementById('tmFieldNullable').value=f?(f.nullable?'1':'0'):'1';
+    document.getElementById('tmFieldDefault').value=f&&f.defaultValue!=null?f.defaultValue:'';
+    document.getElementById('tmFieldComment').value=f?(f.comment||''):'';
+    document.getElementById('tmFieldPk').value=f?(f.isPk?'1':'0'):'0';
+    document.getElementById('tmFieldUnique').value=f?(f.isUnique?'1':'0'):'0';
+    document.getElementById('tmFieldIndex').value=f?(f.isIndex?'1':'0'):'0';
+    document.getElementById('tmFieldOrder').value=f&&f.fieldOrder!=null?f.fieldOrder:'';
+    document.getElementById('tmFieldFkTable').value=f?(f.fkTable||''):'';
+    document.getElementById('tmFieldFkField').value=f?(f.fkField||''):'';
+    document.getElementById('tmFieldModalOverlay').classList.add('show');
+  };
+  window.tmCloseFieldModal=function(){document.getElementById('tmFieldModalOverlay').classList.remove('show');TM_FIELD_EDIT_ID=null;};
+  window.tmSubmitField=function(e){
+    e.preventDefault();
+    var d=TM_DETAIL;if(!d)return;
+    var fieldName=document.getElementById('tmFieldName').value.trim();
+    var dataType=document.getElementById('tmFieldType').value;
+    if(!fieldName)return toast('请填写字段名','error');
+    if(!dataType)return toast('请选择数据类型','error');
+    var payload={
+      fieldName:fieldName,
+      displayName:document.getElementById('tmFieldDisplay').value.trim(),
+      dataType:dataType,
+      length:document.getElementById('tmFieldLength').value.trim()||null,
+      nullable:document.getElementById('tmFieldNullable').value==='1',
+      defaultValue:document.getElementById('tmFieldDefault').value.trim()||null,
+      comment:document.getElementById('tmFieldComment').value.trim(),
+      isPk:document.getElementById('tmFieldPk').value==='1',
+      isUnique:document.getElementById('tmFieldUnique').value==='1',
+      isIndex:document.getElementById('tmFieldIndex').value==='1',
+      fieldOrder:document.getElementById('tmFieldOrder').value.trim()||null,
+      fkTable:document.getElementById('tmFieldFkTable').value.trim()||null,
+      fkField:document.getElementById('tmFieldFkField').value.trim()||null
+    };
+    var url=TM_FIELD_EDIT_ID?'/api/table-meta/'+d.id+'/fields/'+TM_FIELD_EDIT_ID:'/api/table-meta/'+d.id+'/fields';
+    var method=TM_FIELD_EDIT_ID?'PUT':'POST';
+    fetch(url,{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+      .then(tmHandleResp)
+      .then(function(){
+        toast(TM_FIELD_EDIT_ID?'字段已更新':'字段已新增','success');
+        tmCloseFieldModal();
+        tmReloadTable();
+      })
+      .catch(function(err){toast(err.message,'error');});
+  };
+  window.tmDeleteField=function(fid){
+    var d=TM_DETAIL;if(!d)return;
+    var f=null;for(var i=0;i<d.fields.length;i++)if(d.fields[i].id==fid)f=d.fields[i];
+    showConfirm('确定删除字段「'+(f?f.fieldName:fid)+'」吗？',function(){
+      fetch('/api/table-meta/'+d.id+'/fields/'+fid,{method:'DELETE'})
+        .then(tmHandleResp)
+        .then(function(){toast('字段已删除','success');tmReloadTable();})
+        .catch(function(err){toast(err.message,'error');});
+    });
+  };
+  function tmReloadTable(){
+    var d=TM_DETAIL;if(!d)return;
+    fetch('/api/table-meta/'+d.id)
+      .then(tmHandleResp)
+      .then(function(x){TM_DETAIL=x;tmRenderTableDetail(x);tmSwitchPane(TM_CUR_PANE);tmReloadTree();})
+      .catch(function(err){toast('刷新详情失败: '+err.message,'error');});
+  }
+
+  // ---- 审批流 ----
+  window.tmOpenApproval=function(mode){
+    TM_APPROVAL_MODE=mode;
+    var titles={submit:'提交审批',approve:'审批通过',reject:'驳回审批',drop:'申请下线删除'};
+    var hints={
+      submit:'提交后表定义将被锁定；审批通过后可执行 DDL 建表。',
+      approve:'通过后表状态变为「已通过」，可执行 DDL 建表。',
+      reject:'驳回后表回到「草稿」状态，可继续编辑后重新提交。',
+      drop:'提交后等待审批；审批通过后需再次执行「删除」才会真正 DROP 物理表。'
+    };
+    document.getElementById('tmApprovalModalTitle').textContent=titles[mode]||'审批';
+    document.getElementById('tmApprovalComment').value='';
+    document.getElementById('tmApprovalHint').textContent=hints[mode]||'';
+    document.getElementById('tmApprovalModalOverlay').classList.add('show');
+  };
+  window.tmCloseApprovalModal=function(){document.getElementById('tmApprovalModalOverlay').classList.remove('show');TM_APPROVAL_MODE=null;};
+  window.tmSubmitApproval=function(e){
+    e.preventDefault();
+    var d=TM_DETAIL;if(!d)return;
+    var comment=document.getElementById('tmApprovalComment').value.trim();
+    var act=TM_APPROVAL_MODE;
+    var url='/api/table-meta/'+d.id;
+    var payload={comment:comment};
+    if(act==='drop'){url+='/submit';payload.action='drop';}
+    else if(act==='submit')url+='/submit';
+    else if(act==='approve')url+='/approve';
+    else if(act==='reject')url+='/reject';
+    else return;
+    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+      .then(tmHandleResp)
+      .then(function(){
+        var okMsg={submit:'已提交审批',approve:'已审批通过',reject:'已驳回',drop:'已提交下线申请'};
+        toast(okMsg[act]||'操作成功','success');
+        tmCloseApprovalModal();
+        tmReloadTable();
+      })
+      .catch(function(err){toast(err.message,'error');});
+  };
+  window.tmExecuteDDL=function(){
+    var d=TM_DETAIL;if(!d)return;
+    showConfirm('确认执行 DDL 在生产环境创建物理表「'+d.tableName+'」吗？',function(){
+      fetch('/api/table-meta/'+d.id+'/execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
+        .then(tmHandleResp)
+        .then(function(){toast('已执行 DDL 建表','success');tmReloadTable();})
+        .catch(function(err){toast(err.message,'error');});
+    });
+  };
+  window.tmExecuteDrop=function(){
+    var d=TM_DETAIL;if(!d)return;
+    showConfirm('确认执行 DROP 删除物理表「'+d.tableName+'」吗？\n⚠️ 此操作不可恢复，表中数据将全部丢失！',function(){
+      fetch('/api/table-meta/'+d.id+'/execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'drop'})})
+        .then(tmHandleResp)
+        .then(function(){toast('物理表已删除','success');tmResetDetail();tmReloadTree();})
+        .catch(function(err){toast(err.message,'error');});
+    });
+  };
+  document.getElementById('tmNodeModalOverlay').addEventListener('click',function(e){if(e.target===this)tmCloseNodeModal();});
+  document.getElementById('tmFieldModalOverlay').addEventListener('click',function(e){if(e.target===this)tmCloseFieldModal();});
+  document.getElementById('tmApprovalModalOverlay').addEventListener('click',function(e){if(e.target===this)tmCloseApprovalModal();});
 
   populateSelects();
   setupFormCache();

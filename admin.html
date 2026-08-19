@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>后台管理 · 运营管理平台</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0b0f19;--bg-card:#141824;--bg-card-hover:#1a2030;--bg-sidebar:#0d111c;--bg-header:#0d111c;
+  --bg-input:#0f1524;
+  --border:#1e293b;--border-light:#334155;
+  --text:#e2e8f0;--text-secondary:#94a3b8;--text-muted:#64748b;
+  --primary:#3b82f6;--primary-glow:rgba(59,130,246,0.15);
+  --success:#10b981;--success-glow:rgba(16,185,129,0.15);
+  --warning:#f59e0b;--warning-glow:rgba(245,158,11,0.15);
+  --danger:#ef4444;--danger-glow:rgba(239,68,68,0.15);
+  --info:#06b6d4;--info-glow:rgba(6,182,212,0.15);
+  --purple:#8b5cf6;--purple-glow:rgba(139,92,246,0.15);
+  --radius:10px;--radius-sm:6px;
+  --shadow:0 4px 20px rgba(0,0,0,0.4);
+  --shadow-card:0 2px 8px rgba(0,0,0,0.3);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;overflow-x:hidden}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#475569}
+
+/* ===== 顶栏 ===== */
+.topbar{position:fixed;top:0;left:0;right:0;height:56px;background:var(--bg-header);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;z-index:100;gap:16px}
+.topbar-brand{display:flex;align-items:center;gap:10px}
+.topbar-brand .logo-icon{width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--primary),#6366f1);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.topbar-brand .logo-text{font-size:15px;font-weight:600;color:var(--text);white-space:nowrap}
+.topbar-spacer{flex:1}
+.btn-back{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;font-size:13px;color:var(--text-secondary);background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;text-decoration:none}
+.btn-back:hover{color:var(--primary);border-color:var(--primary);background:var(--primary-glow)}
+.btn-back svg{width:14px;height:14px}
+.user-area{display:flex;align-items:center;gap:8px;margin-left:8px;padding-left:12px;border-left:1px solid var(--border)}
+.user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#6366f1);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.user-name{font-size:13px;color:var(--text);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-role{font-size:11px;color:var(--text-muted)}
+.btn-logout{height:28px;padding:0 10px;font-size:12px;color:var(--text-secondary);background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .2s}
+.btn-logout:hover{color:var(--danger);border-color:var(--danger)}
+
+/* ===== 内容区 ===== */
+.admin-content{padding:76px 24px 40px;max-width:1400px}
+.page-title{font-size:20px;font-weight:600;margin-bottom:4px}
+.page-subtitle{font-size:13px;color:var(--text-secondary);margin-bottom:20px}
+
+/* ===== 登录页 ===== */
+.login-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 30% 20%,#16213e 0%,#0b0f19 55%,#0b0f19 100%)}
+.login-overlay.hidden{display:none}
+.login-card{width:min(400px,92vw);background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:36px 32px 28px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+.login-brand{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.login-brand .logo-icon{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--primary),#6366f1);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.login-brand .logo-icon svg{width:22px;height:22px}
+.login-title{font-size:20px;font-weight:700;color:var(--text)}
+.login-sub{color:var(--text-muted);font-size:13px;margin:4px 0 24px}
+.login-form{display:flex;flex-direction:column;gap:14px}
+.login-field label{display:block;font-size:12px;color:var(--text-secondary);margin-bottom:6px}
+.login-field input{width:100%;height:42px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:0 14px;color:var(--text);font-size:16px;outline:none;transition:border-color .2s}
+.login-field input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-glow)}
+.login-btn{height:44px;border:none;border-radius:8px;background:linear-gradient(135deg,var(--primary),#6366f1);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s,transform .1s}
+.login-btn:hover{opacity:.9}
+.login-btn:active{transform:scale(.98)}
+.login-btn:disabled{opacity:.6;cursor:not-allowed}
+.login-error{display:none;background:var(--danger-glow);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;font-size:13px;padding:9px 12px;border-radius:8px}
+.login-error.show{display:block}
+.login-tip{color:var(--text-muted);font-size:12px;text-align:center;margin-top:18px;line-height:1.7}
+.login-tip code{background:rgba(59,130,246,0.12);color:#93c5fd;padding:1px 6px;border-radius:4px;font-size:12px}
+
+/* ===== 按钮 ===== */
+.btn-primary{background:linear-gradient(135deg,var(--primary),#4f46e5);color:#fff;border:none;padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;height:36px;transition:all .2s;box-shadow:0 2px 8px rgba(59,130,246,0.2)}
+.btn-primary:hover{box-shadow:0 4px 16px rgba(59,130,246,0.35);transform:translateY(-1px)}
+.btn-secondary{background:transparent;color:var(--text);border:1px solid var(--border);padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;height:36px;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-secondary:hover{background:rgba(255,255,255,0.05);border-color:var(--border-light)}
+.btn-secondary svg{width:14px;height:14px;stroke-linecap:round;stroke-linejoin:round}
+.btn-sm{padding:5px 10px;height:28px;font-size:12px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.btn-danger{background:var(--danger);color:#fff;border:none;padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;height:36px;transition:all .2s}
+.btn-danger:hover{background:#dc2626;box-shadow:0 0 12px rgba(239,68,68,0.3)}
+
+/* ===== 表单 ===== */
+.form-section{margin-bottom:20px}
+.form-section-title{font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid.two{grid-template-columns:1fr 1fr}
+.form-field{display:flex;flex-direction:column;gap:5px}
+.form-field label{font-size:12px;color:var(--text-secondary);font-weight:500}
+.form-field input,.form-field select,.form-field textarea{padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;color:var(--text);background:var(--bg);width:100%;outline:none;transition:all .2s}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+.required{color:var(--danger);margin-left:2px}
+
+/* ===== 弹窗 ===== */
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:1000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+.modal-overlay.show{display:flex}
+.modal-box{background:var(--bg-card);border-radius:var(--radius);width:100%;max-width:560px;margin:20px 0;box-shadow:var(--shadow);border:1px solid var(--border);padding:24px}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:16px}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+
+/* ===== Toast / Confirm ===== */
+.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-20px);background:var(--bg-card);color:var(--text);padding:12px 24px;border-radius:var(--radius-sm);font-size:13px;z-index:2000;opacity:0;transition:all .3s;pointer-events:none;border:1px solid var(--border);box-shadow:var(--shadow)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{border-color:rgba(16,185,129,0.3);color:#34d399}
+.toast.error{border-color:rgba(239,68,68,0.3);color:#f87171}
+.confirm-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:1100;align-items:center;justify-content:center}
+.confirm-overlay.show{display:flex}
+.confirm-box{background:var(--bg-card);border-radius:var(--radius);padding:28px;max-width:380px;width:90%;text-align:center;border:1px solid var(--border);box-shadow:var(--shadow)}
+.confirm-box p{margin-bottom:20px;font-size:14px;color:var(--text-secondary)}
+.confirm-box .confirm-actions{display:flex;gap:10px;justify-content:center}
+
+/* ===== 后台管理 ===== */
+.am-tabs{display:flex;gap:4px;margin:16px 0;padding:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;width:fit-content;flex-wrap:wrap}
+.am-tab{padding:8px 18px;font-size:13px;color:var(--text-secondary);background:transparent;border:none;border-radius:8px;cursor:pointer;transition:all .2s}
+.am-tab:hover{color:var(--text)}
+.am-tab.active{background:linear-gradient(135deg,var(--primary),#6366f1);color:#fff;font-weight:600}
+.am-pane{display:none}
+.am-pane.active{display:block}
+.am-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.am-toolbar input[type="text"],.am-toolbar select{height:34px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:0 10px;color:var(--text);font-size:13px;outline:none;min-width:180px}
+.am-toolbar input:focus,.am-toolbar select:focus{border-color:var(--primary)}
+.am-toolbar .spacer{flex:1}
+.am-table-wrap{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:auto}
+.am-table{width:100%;border-collapse:collapse;font-size:13px;min-width:760px}
+.am-table th{background:rgba(59,130,246,0.08);color:var(--text-secondary);font-weight:600;text-align:left;padding:11px 12px;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1;background-color:var(--bg-card)}
+.am-table td{padding:10px 12px;border-bottom:1px solid rgba(30,41,59,0.6);color:var(--text);vertical-align:middle}
+.am-table tr:hover td{background:var(--bg-card-hover)}
+.am-table .num{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+.am-tag{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;background:rgba(59,130,246,0.12);color:#93c5fd;margin:2px 3px 2px 0}
+.am-tag.green{background:rgba(16,185,129,0.12);color:#6ee7b7}
+.am-tag.gray{background:rgba(100,116,139,0.15);color:var(--text-secondary)}
+.am-tag.orange{background:rgba(245,158,11,0.12);color:#fcd34d}
+.am-status{display:inline-flex;align-items:center;gap:5px;padding:2px 10px;border-radius:20px;font-size:12px}
+.am-status.on{background:rgba(16,185,129,0.12);color:#6ee7b7}
+.am-status.off{background:rgba(100,116,139,0.15);color:var(--text-secondary)}
+.am-actions{white-space:nowrap}
+.am-actions button{margin-right:6px}
+.am-pagination{display:flex;align-items:center;gap:10px;justify-content:flex-end;padding:12px 14px;color:var(--text-secondary);font-size:13px}
+.am-pagination button{min-width:28px;height:28px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;cursor:pointer;padding:0 8px}
+.am-pagination button:hover:not(:disabled){border-color:var(--primary);color:var(--primary)}
+.am-pagination button:disabled{opacity:.4;cursor:not-allowed}
+.am-tree{font-size:13px}
+.am-tree-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;transition:background .15s}
+.am-tree-row:hover{background:var(--bg-card-hover)}
+.am-tree-children{margin-left:26px;padding-left:14px;border-left:1px solid var(--border)}
+.am-tree-arrow{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;color:var(--text-secondary);cursor:pointer;transition:transform .2s;flex-shrink:0;background:none;border:none}
+.am-tree-arrow svg{width:12px;height:12px}
+.am-node.collapsed>.am-tree-children{display:none}
+.am-node.collapsed>.am-tree-row .am-tree-arrow{transform:rotate(-90deg)}
+.am-tree-name{color:var(--text);font-weight:500}
+.am-tree-name .org-type{font-size:11px;color:var(--text-muted);font-weight:400;margin-left:6px}
+.am-perm-table td.name-cell{font-weight:500}
+.am-perm-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;color:var(--text-secondary)}
+.am-empty{padding:40px 0;text-align:center;color:var(--text-muted);font-size:13px}
+.am-lock-tip{font-size:12px;color:var(--text-muted);margin-left:8px}
+.perm-tree-list{list-style:none;padding:0}
+.perm-tree-list ul{list-style:none;padding-left:24px}
+.perm-tree-list label{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text)}
+.perm-tree-list label:hover{background:var(--bg-card-hover)}
+.perm-tree-list label input{width:15px;height:15px;accent-color:var(--primary)}
+.perm-tree-list .perm-code{font-size:11px;color:var(--text-muted);font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.role-check-list{display:flex;flex-wrap:wrap;gap:8px}
+.role-check-list label{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--text);transition:all .15s}
+.role-check-list label:hover{border-color:var(--primary)}
+.role-check-list label input{width:15px;height:15px;accent-color:var(--primary)}
+
+.forbidden-wrap{display:flex;align-items:center;justify-content:center;min-height:60vh;flex-direction:column;gap:12px}
+.forbidden-wrap .icon{width:48px;height:48px;color:var(--danger);opacity:.6}
+.forbidden-wrap h2{font-size:18px;color:var(--text)}
+.forbidden-wrap p{color:var(--text-secondary);font-size:13px}
+
+@media(max-width:768px){
+  .user-name,.user-role{display:none}
+  .am-toolbar input[type="text"]{min-width:140px}
+  .am-tabs{width:100%}
+  .form-grid.two{grid-template-columns:1fr}
+  .admin-content{padding:76px 12px 40px}
+}
+</style>
+</head>
+<body>
+
+<!-- 登录页 -->
+<div class="login-overlay hidden" id="loginOverlay">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+      <div>
+        <div class="login-title">后台管理</div>
+        <div class="login-sub">运营管理平台 · 仅管理员可访问</div>
+      </div>
+    </div>
+    <form class="login-form" id="loginForm" onsubmit="doLogin(event)">
+      <div class="login-error" id="loginError"></div>
+      <div class="login-field">
+        <label for="loginUsername">用户名</label>
+        <input type="text" id="loginUsername" autocomplete="username" placeholder="请输入用户名" required>
+      </div>
+      <div class="login-field">
+        <label for="loginPassword">密码</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" placeholder="请输入密码" required>
+      </div>
+      <button type="submit" class="login-btn" id="loginBtn">登 录</button>
+      <div class="login-tip">初始管理员：<code>admin</code> / <code>Admin@123</code>（登录后请尽快修改密码）</div>
+    </form>
+  </div>
+</div>
+
+<!-- 顶栏 -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="logo-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+    <span class="logo-text">后台管理</span>
+  </div>
+  <span class="topbar-spacer"></span>
+  <a href="/" class="btn-back" title="返回前台">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+    返回前台
+  </a>
+  <div class="user-area" id="userArea" style="display:none">
+    <div class="user-avatar" id="userAvatar">?</div>
+    <div>
+      <div class="user-name" id="userName">-</div>
+      <div class="user-role" id="userRole">-</div>
+    </div>
+    <button class="btn-logout" onclick="logout()" title="退出登录"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>退出</button>
+  </div>
+</div>
+
+<!-- 无权限提示 -->
+<div class="admin-content" id="forbiddenWrap" style="display:none">
+  <div class="forbidden-wrap">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+    <h2>无访问权限</h2>
+    <p>后台管理仅对管理员开放，您的账号无此权限。</p>
+    <a href="/" class="btn-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>返回前台</a>
+  </div>
+</div>
+
+<!-- 后台管理内容 -->
+<div class="admin-content" id="adminContent" style="display:none">
+  <div class="page-title">后台管理</div>
+  <div class="page-subtitle">用户 · 角色 · 权限 · 组织结构 统一管理（仅管理员可见）</div>
+  <div class="am-tabs">
+    <button class="am-tab active" data-am="users" onclick="amSwitch('users')">用户管理</button>
+    <button class="am-tab" data-am="roles" onclick="amSwitch('roles')">角色管理</button>
+    <button class="am-tab" data-am="perms" onclick="amSwitch('perms')">权限管理</button>
+    <button class="am-tab" data-am="orgs" onclick="amSwitch('orgs')">组织结构</button>
+  </div>
+  <!-- 用户管理 -->
+  <div class="am-pane active" id="amPane-users">
+    <div class="am-toolbar">
+      <input type="text" id="amUserKeyword" placeholder="搜索用户名/姓名/邮箱/手机" onkeydown="if(event.key==='Enter')amLoadUsers(1)">
+      <select id="amUserStatus" onchange="amLoadUsers(1)"><option value="">全部状态</option><option value="1">启用</option><option value="0">禁用</option></select>
+      <span class="spacer"></span>
+      <button class="btn-secondary" onclick="amOpenUser()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增用户</button>
+    </div>
+    <div class="am-table-wrap">
+      <table class="am-table" id="amUserTable">
+        <thead><tr><th>ID</th><th>用户名</th><th>姓名</th><th>邮箱</th><th>组织</th><th>角色</th><th>状态</th><th>创建时间</th><th style="min-width:210px">操作</th></tr></thead>
+        <tbody id="amUserTbody"></tbody>
+      </table>
+    </div>
+    <div class="am-pagination" id="amUserPage"></div>
+  </div>
+  <!-- 角色管理 -->
+  <div class="am-pane" id="amPane-roles">
+    <div class="am-toolbar">
+      <span style="color:var(--text-secondary);font-size:13px">角色用于聚合权限并分配给用户，实现基于角色的访问控制（RBAC）</span>
+      <span class="spacer"></span>
+      <button class="btn-secondary" onclick="amOpenRole()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增角色</button>
+    </div>
+    <div class="am-table-wrap">
+      <table class="am-table" id="amRoleTable">
+        <thead><tr><th>ID</th><th>角色名称</th><th>角色编码</th><th>描述</th><th>用户数</th><th>权限数</th><th>状态</th><th style="min-width:220px">操作</th></tr></thead>
+        <tbody id="amRoleTbody"></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- 权限管理 -->
+  <div class="am-pane" id="amPane-perms">
+    <div class="am-toolbar">
+      <span style="color:var(--text-secondary);font-size:13px">菜单/操作权限定义；绑定到角色后控制用户可访问的模块</span>
+      <span class="spacer"></span>
+      <button class="btn-secondary" onclick="amOpenPerm()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增权限</button>
+    </div>
+    <div class="am-table-wrap">
+      <table class="am-table am-perm-table" id="amPermTable">
+        <thead><tr><th>权限名称</th><th>编码</th><th>类型</th><th>排序</th><th style="min-width:120px">操作</th></tr></thead>
+        <tbody id="amPermTbody"></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- 组织结构 -->
+  <div class="am-pane" id="amPane-orgs">
+    <div class="am-toolbar">
+      <span style="color:var(--text-secondary);font-size:13px">公司/部门/团队 树形结构维护；用户归属部门在「用户管理」中设置</span>
+      <span class="spacer"></span>
+      <button class="btn-secondary" onclick="amOpenOrg()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增组织</button>
+    </div>
+    <div class="am-table-wrap" style="padding:8px">
+      <div class="am-tree" id="amOrgTree"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 用户弹窗 -->
+<div class="modal-overlay" id="amUserModalOverlay">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-title" id="amUserModalTitle">新增用户</div>
+    <form onsubmit="amSubmitUser(event)">
+      <div class="form-section">
+        <div class="form-section-title">账号信息</div>
+        <div class="form-grid two">
+          <div class="form-field"><label>用户名<span class="required">*</span></label><input type="text" id="amUUsername" maxlength="32" placeholder="2-32 位字母/数字/下划线" required></div>
+          <div class="form-field"><label>姓名</label><input type="text" id="amURealName" maxlength="50"></div>
+          <div class="form-field" id="amUPwdWrap"><label>初始密码<span class="required">*</span></label><input type="password" id="amUPassword" minlength="6" placeholder="至少 6 位"></div>
+          <div class="form-field"><label>邮箱</label><input type="email" id="amUEmail" maxlength="100"></div>
+          <div class="form-field"><label>手机号</label><input type="text" id="amUPhone" maxlength="20"></div>
+          <div class="form-field"><label>所属组织</label><select id="amUOrg"></select></div>
+          <div class="form-field"><label>状态</label><select id="amUStatus"><option value="1">启用</option><option value="0">禁用</option></select></div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">角色分配</div>
+        <div id="amURoles" class="role-check-list"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="amCloseUser()">取消</button>
+        <button type="submit" class="btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- 角色弹窗 -->
+<div class="modal-overlay" id="amRoleModalOverlay">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-title" id="amRoleModalTitle">新增角色</div>
+    <form onsubmit="amSubmitRole(event)">
+      <div class="form-grid two">
+        <div class="form-field"><label>角色名称<span class="required">*</span></label><input type="text" id="amRName" maxlength="50" placeholder="如：数据录入员" required></div>
+        <div class="form-field"><label>角色编码<span class="required">*</span></label><input type="text" id="amRCode" maxlength="32" placeholder="如：data_operator" required></div>
+      </div>
+      <div class="form-field" style="margin-top:12px"><label>描述</label><input type="text" id="amRDesc" maxlength="200"></div>
+      <div class="form-field" style="margin-top:12px"><label>状态</label><select id="amRStatus"><option value="1">启用</option><option value="0">禁用</option></select></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="amCloseRole()">取消</button>
+        <button type="submit" class="btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- 权限弹窗 -->
+<div class="modal-overlay" id="amPermModalOverlay">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-title" id="amPermModalTitle">新增权限</div>
+    <form onsubmit="amSubmitPerm(event)">
+      <div class="form-grid two">
+        <div class="form-field"><label>权限名称<span class="required">*</span></label><input type="text" id="amPName" maxlength="50" placeholder="如：合同管理" required></div>
+        <div class="form-field"><label>权限编码<span class="required">*</span></label><input type="text" id="amPCode" maxlength="100" placeholder="如：contract:view" required></div>
+        <div class="form-field"><label>类型</label><select id="amPType"><option value="menu">菜单</option><option value="button">按钮</option></select></div>
+        <div class="form-field"><label>排序</label><input type="number" id="amPSort" value="0" min="0"></div>
+      </div>
+      <div class="form-field" style="margin-top:12px"><label>父级权限</label><select id="amPParent"><option value="">（顶级）</option></select></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="amClosePerm()">取消</button>
+        <button type="submit" class="btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- 分配用户弹窗 -->
+<div class="modal-overlay" id="amRoleUsersOverlay">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-title" id="amRoleUsersTitle">分配用户</div>
+    <div class="am-lock-tip" style="margin:4px 0 12px;color:var(--text-secondary)" id="amRoleUsersTip"></div>
+    <div id="amRoleUsersList" class="role-check-list"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" onclick="amCloseRoleUsers()">取消</button>
+      <button class="btn-primary" onclick="amSaveRoleUsers()">保存</button>
+    </div>
+  </div>
+</div>
+<!-- 绑定权限弹窗 -->
+<div class="modal-overlay" id="amRolePermsOverlay">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-title" id="amRolePermsTitle">绑定权限</div>
+    <div class="am-lock-tip" style="margin:4px 0 12px;color:var(--text-secondary)" id="amRolePermsTip"></div>
+    <div style="max-height:400px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:10px">
+      <ul class="perm-tree-list" id="amRolePermsList"></ul>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" onclick="amCloseRolePerms()">取消</button>
+      <button class="btn-primary" onclick="amSaveRolePerms()">保存</button>
+    </div>
+  </div>
+</div>
+<!-- 组织弹窗 -->
+<div class="modal-overlay" id="amOrgModalOverlay">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-title" id="amOrgModalTitle">新增组织</div>
+    <form onsubmit="amSubmitOrg(event)">
+      <div class="form-field"><label>组织名称<span class="required">*</span></label><input type="text" id="amOName" maxlength="100" placeholder="如：数据平台部" required></div>
+      <div class="form-grid two" style="margin-top:12px">
+        <div class="form-field"><label>上级组织</label><select id="amOParent"><option value="">（顶级）</option></select></div>
+        <div class="form-field"><label>类型</label><select id="amOType"><option value="company">公司</option><option value="dept" selected>部门</option><option value="team">团队</option></select></div>
+      </div>
+      <div class="form-field" style="margin-top:12px"><label>排序</label><input type="number" id="amOSort" value="0" min="0"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="amCloseOrg()">取消</button>
+        <button type="submit" class="btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- 重置密码弹窗 -->
+<div class="modal-overlay" id="amPwdModalOverlay">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-title">重置密码</div>
+    <div class="am-lock-tip" style="margin:4px 0 12px;color:var(--text-secondary)" id="amPwdTip"></div>
+    <form onsubmit="amSubmitPwd(event)">
+      <div class="form-field"><label>新密码<span class="required">*</span></label><input type="password" id="amPwdNew" minlength="6" maxlength="64" placeholder="至少 6 位" required></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="amClosePwd()">取消</button>
+        <button type="submit" class="btn-primary">重置密码</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 确认弹窗 -->
+<div class="confirm-overlay" id="confirmOverlay"><div class="confirm-box"><p id="confirmMsg">确认操作？</p><div class="confirm-actions"><button class="btn-secondary" onclick="hideConfirm()">取消</button><button class="btn-danger" id="confirmBtn">确认</button></div></div></div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ================= 登录与会话管理 (RBAC) ================= */
+  var SYS_TOKEN = localStorage.getItem('wb_ops_token') || '';
+  var SYS_USER = null;
+  var SYS_ROLES = [];
+  var SYS_PERMS = [];
+  var ROLE_NAME_MAP = { 'admin': '管理员', 'user': '普通用户' };
+
+  // 覆写全局 fetch: 自动注入 Authorization 头 + 统一 401 处理
+  var _origFetch = window.fetch;
+  window.fetch = function(url, opts){
+    opts = opts || {};
+    opts.method = opts.method || 'GET';
+    opts.headers = opts.headers || {};
+    if (!opts.headers.Authorization && SYS_TOKEN) opts.headers.Authorization = 'Bearer ' + SYS_TOKEN;
+    return _origFetch(url, opts).then(function(resp){
+      if (resp.status === 401) {
+        var p = String(url);
+        if (p.indexOf('/api/auth/login') < 0 && p.indexOf('/api/auth/me') < 0) {
+          clearSession();
+          showLoginPage();
+        }
+      }
+      return resp;
+    });
+  };
+
+  function saveSession(token, user, roles, perms){
+    SYS_TOKEN = token; SYS_USER = user; SYS_ROLES = roles || []; SYS_PERMS = perms || [];
+    localStorage.setItem('wb_ops_token', token);
+    localStorage.setItem('wb_ops_user', JSON.stringify({ user: user, roles: SYS_ROLES, perms: SYS_PERMS }));
+  }
+  function clearSession(){
+    SYS_TOKEN = ''; SYS_USER = null; SYS_ROLES = []; SYS_PERMS = [];
+    localStorage.removeItem('wb_ops_token');
+    localStorage.removeItem('wb_ops_user');
+  }
+  function showLoginPage(){
+    document.getElementById('loginOverlay').classList.remove('hidden');
+    document.getElementById('userArea').style.display = 'none';
+    document.getElementById('adminContent').style.display = 'none';
+  }
+  function hideLoginPage(){
+    document.getElementById('loginOverlay').classList.add('hidden');
+    document.getElementById('userArea').style.display = 'flex';
+    document.getElementById('adminContent').style.display = '';
+    document.getElementById('userAvatar').textContent = (SYS_USER && SYS_USER.username) ? SYS_USER.username.charAt(0).toUpperCase() : '?';
+    document.getElementById('userName').textContent = SYS_USER ? (SYS_USER.realName || SYS_USER.username) : '-';
+    document.getElementById('userRole').textContent = SYS_ROLES.map(function(r){ return ROLE_NAME_MAP[r] || r; }).join(' / ') || '无角色';
+  }
+  function isAdmin(){ return SYS_PERMS.indexOf('system:admin') >= 0; }
+  function showForbidden(){
+    document.getElementById('loginOverlay').classList.add('hidden');
+    document.getElementById('userArea').style.display = 'none';
+    document.getElementById('adminContent').style.display = 'none';
+    document.getElementById('forbiddenWrap').style.display = '';
+  }
+
+  window.doLogin = function(e){
+    if (e) e.preventDefault();
+    var username = document.getElementById('loginUsername').value.trim();
+    var password = document.getElementById('loginPassword').value;
+    var errBox = document.getElementById('loginError');
+    var btn = document.getElementById('loginBtn');
+    if (!username || !password) {
+      errBox.textContent = '请输入用户名和密码'; errBox.classList.add('show'); return;
+    }
+    btn.disabled = true; btn.textContent = '登录中...';
+    errBox.classList.remove('show');
+    _origFetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username: username, password: password }) })
+      .then(function(res){ return res.json().then(function(d){ return { ok: res.ok, status: res.status, data: d }; }); })
+      .then(function(r){
+        if (!r.ok || !r.data.token) throw new Error((r.data && r.data.error) || '登录失败');
+        saveSession(r.data.token, r.data.user, r.data.roles, r.data.perms);
+        errBox.classList.remove('show');
+        afterAuth();
+        toast('欢迎回来，' + (SYS_USER.realName || SYS_USER.username), 'success');
+      })
+      .catch(function(err){
+        errBox.textContent = err.message || '登录失败，请重试';
+        errBox.classList.add('show');
+      })
+      .finally(function(){
+        btn.disabled = false; btn.textContent = '登 录';
+      });
+  };
+  window.logout = function(){
+    showConfirm('确认退出登录吗？', function(){
+      _origFetch('/api/auth/logout', { method:'POST' }).catch(function(){});
+      clearSession();
+      showLoginPage();
+      document.getElementById('loginPassword').value = '';
+      toast('已退出登录');
+    });
+  };
+
+  // 登录/校验成功后: 检查 admin 权限
+  function afterAuth(){
+    if (!isAdmin()) {
+      showForbidden();
+      toast('您的账号无后台管理权限', 'error');
+      return;
+    }
+    hideLoginPage();
+    amInit();
+  }
+
+  // 启动时校验会话
+  (function(){
+    if (!SYS_TOKEN) { showLoginPage(); return; }
+    try {
+      var cached = JSON.parse(localStorage.getItem('wb_ops_user') || 'null');
+      if (cached && cached.user) { SYS_USER = cached.user; SYS_ROLES = cached.roles || []; SYS_PERMS = cached.perms || []; }
+    } catch(e) {}
+    _origFetch('/api/auth/me')
+      .then(function(res){ return res.json(); })
+      .then(function(d){
+        if (d && d.user) {
+          SYS_USER = d.user; SYS_ROLES = d.roles || []; SYS_PERMS = d.perms || [];
+          localStorage.setItem('wb_ops_user', JSON.stringify({ user: SYS_USER, roles: SYS_ROLES, perms: SYS_PERMS }));
+          afterAuth();
+        } else {
+          clearSession(); showLoginPage();
+        }
+      })
+      .catch(function(){
+        if (SYS_USER && isAdmin()) { hideLoginPage(); amInit(); }
+        else if (SYS_USER) { showForbidden(); }
+        else { showLoginPage(); }
+      });
+  })();
+
+  /* ================= Toast / Confirm ================= */
+  window.toast=function(msg,type){
+    var t=document.getElementById('toast');
+    t.textContent=msg;t.className='toast show'+(type?' '+type:'');
+    setTimeout(function(){t.className='toast';},2500);
+  };
+  var CONFIRM_CALLBACK=null;
+  window.showConfirm=function(msg,cb){
+    document.getElementById('confirmMsg').textContent=msg;
+    document.getElementById('confirmOverlay').classList.add('show');
+    CONFIRM_CALLBACK=cb;
+  };
+  window.hideConfirm=function(){
+    document.getElementById('confirmOverlay').classList.remove('show');
+    CONFIRM_CALLBACK=null;
+  };
+  document.getElementById('confirmBtn').onclick=function(){
+    var cb=CONFIRM_CALLBACK;
+    window.hideConfirm();
+    if(cb)cb();
+  };
+  document.getElementById('confirmOverlay').addEventListener('click',function(e){
+    if(e.target===this) window.hideConfirm();
+  });
+
+  /* ================= 后台管理 (用户/角色/权限/组织) ================= */
+  var AM_CUR='users';
+  var AM_USER_PAGE=1, AM_USER_TOTAL=0;
+  var AM_USER_EDIT_ID=null, AM_ROLE_EDIT_ID=null, AM_PERM_EDIT_ID=null, AM_ORG_EDIT_ID=null;
+  var AM_ROLE_USERS_ID=null, AM_ROLE_PERMS_ID=null, AM_PWD_USER_ID=null;
+  var AM_ROLES_CACHE=[], AM_ORGS_CACHE=[], AM_PERMS_CACHE=[], AM_ALL_USERS=[];
+  var AM_USERS_CACHE=[];
+  var AM_INITED=false;
+
+  function amEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function amFetch(url, opts){
+    return fetch(url, opts).then(function(res){
+      return res.json().then(function(d){
+        if (!res.ok) { var e = new Error((d && d.error) || ('HTTP ' + res.status)); e.status = res.status; throw e; }
+        return d;
+      });
+    });
+  }
+
+  window.amSwitch = function(t){
+    AM_CUR = t;
+    var btns = document.querySelectorAll('.am-tab');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].getAttribute('data-am') === t);
+    var panes = document.querySelectorAll('.am-pane');
+    for (var j = 0; j < panes.length; j++) panes[j].classList.toggle('active', panes[j].id === 'amPane-' + t);
+    if (t === 'users') amLoadUsers(1);
+    else if (t === 'roles') amLoadRoles();
+    else if (t === 'perms') amLoadPerms();
+    else if (t === 'orgs') amLoadOrgs();
+  };
+
+  window.amInit = function(){
+    if (!AM_INITED) {
+      AM_INITED = true;
+      amFetch('/api/admin/roles').then(function(list){ AM_ROLES_CACHE = list; amFillRoleChecks(); }).catch(function(){});
+      amFetch('/api/admin/orgs').then(function(d){ AM_ORGS_CACHE = d.tree; amFillOrgSelects(); }).catch(function(){});
+      amFetch('/api/admin/permissions').then(function(tree){ AM_PERMS_CACHE = tree; }).catch(function(){});
+    }
+    amSwitch(AM_CUR);
+  };
+
+  /* ---- 用户管理 ---- */
+  window.amLoadUsers = function(page){
+    AM_USER_PAGE = page || 1;
+    var kw = encodeURIComponent(document.getElementById('amUserKeyword').value.trim());
+    var st = document.getElementById('amUserStatus').value;
+    var url = '/api/admin/users?page=' + AM_USER_PAGE + '&size=10&keyword=' + kw + '&status=' + st;
+    amFetch(url).then(function(d){
+      AM_USER_TOTAL = d.total;
+      AM_USERS_CACHE = d.list;
+      var tb = document.getElementById('amUserTbody');
+      if (!d.list.length) { tb.innerHTML = '<tr><td colspan="9" class="am-empty">暂无用户数据</td></tr>'; }
+      else {
+        tb.innerHTML = d.list.map(function(u){
+          var roleTags = (u.roles && u.roles.length) ? u.roles.map(function(r){ return '<span class="am-tag">' + amEsc(r) + '</span>'; }).join('') : '<span class="am-tag gray">未分配</span>';
+          var stHtml = u.status === 1 ? '<span class="am-status on">● 启用</span>' : '<span class="am-status off">● 禁用</span>';
+          var self = (SYS_USER && u.id === SYS_USER.id);
+          return '<tr><td class="num">' + u.id + '</td>' +
+            '<td>' + amEsc(u.username) + (self ? ' <span class="am-tag green">当前登录</span>' : '') + '</td>' +
+            '<td>' + amEsc(u.realName || '-') + '</td>' +
+            '<td>' + amEsc(u.email || '-') + '</td>' +
+            '<td>' + amEsc(u.orgName || '-') + '</td>' +
+            '<td>' + roleTags + '</td>' +
+            '<td>' + stHtml + '</td>' +
+            '<td class="num">' + amEsc(u.createdAt || '') + '</td>' +
+            '<td class="am-actions">' +
+              '<button class="btn-secondary btn-sm" onclick="amOpenUser(' + u.id + ')">编辑</button>' +
+              '<button class="btn-secondary btn-sm" onclick="amOpenPwd(' + u.id + ')">重置密码</button>' +
+              (u.status === 1
+                ? '<button class="btn-secondary btn-sm" onclick="amToggleUser(' + u.id + ',0)">禁用</button>'
+                : '<button class="btn-secondary btn-sm" style="color:#6ee7b7" onclick="amToggleUser(' + u.id + ',1)">启用</button>') +
+              (self ? '' : '<button class="btn-secondary btn-sm btn-danger" onclick="amDeleteUser(' + u.id + ')">删除</button>') +
+            '</td></tr>';
+        }).join('');
+      }
+      var totalPages = Math.max(Math.ceil(AM_USER_TOTAL / 10), 1);
+      var pg = '<span>共 ' + AM_USER_TOTAL + ' 条</span>';
+      pg += '<button ' + (AM_USER_PAGE <= 1 ? 'disabled' : '') + ' onclick="amLoadUsers(' + (AM_USER_PAGE - 1) + ')">上一页</button>';
+      pg += '<span>' + AM_USER_PAGE + ' / ' + totalPages + '</span>';
+      pg += '<button ' + (AM_USER_PAGE >= totalPages ? 'disabled' : '') + ' onclick="amLoadUsers(' + (AM_USER_PAGE + 1) + ')">下一页</button>';
+      document.getElementById('amUserPage').innerHTML = pg;
+    }).catch(function(err){ toast(err.message, 'error'); });
+  }
+  function amFillRoleChecks(){
+    var box = document.getElementById('amURoles');
+    if (!box) return;
+    if (!AM_ROLES_CACHE.length) { box.innerHTML = '<span style="color:var(--text-muted);font-size:12px">暂无角色，请先在「角色管理」中创建</span>'; return; }
+    box.innerHTML = AM_ROLES_CACHE.filter(function(r){ return r.status === 1; }).map(function(r){
+      return '<label><input type="checkbox" name="amUserRole" value="' + r.id + '"> ' + amEsc(r.name) + ' <span class="perm-code">' + amEsc(r.code) + '</span></label>';
+    }).join('');
+  }
+  function amFillOrgSelects(){
+    function flat(nodes, depth, out){
+      (nodes || []).forEach(function(n){
+        out.push({ id: n.id, name: n.name, depth: depth });
+        flat(n.children, depth + 1, out);
+      });
+      return out;
+    }
+    var list = flat(AM_ORGS_CACHE, 0, []);
+    var opts = '<option value="">（未分配）</option>' + list.map(function(o){ return '<option value="' + o.id + '">' + new Array(o.depth + 1).join('　') + amEsc(o.name) + '</option>'; }).join('');
+    var selU = document.getElementById('amUOrg');
+    var selO = document.getElementById('amOParent');
+    if (selU) selU.innerHTML = opts;
+    if (selO) selO.innerHTML = '<option value="">（顶级）</option>' + list.map(function(o){ return '<option value="' + o.id + '">' + new Array(o.depth + 1).join('　') + amEsc(o.name) + '</option>'; }).join('');
+  }
+  window.amOpenUser = function(id){
+    AM_USER_EDIT_ID = id || null;
+    document.getElementById('amUserModalTitle').textContent = id ? '编辑用户' : '新增用户';
+    var form = document.querySelector('#amUserModalOverlay form');
+    form.reset();
+    document.getElementById('amUPwdWrap').style.display = id ? 'none' : '';
+    document.getElementById('amUPassword').required = !id;
+    amFillRoleChecks();
+    amFillOrgSelects();
+    var u = null;
+    for (var i = 0; i < AM_USERS_CACHE.length; i++) { if (AM_USERS_CACHE[i].id === id) { u = AM_USERS_CACHE[i]; break; } }
+    if (u) {
+      document.getElementById('amUUsername').value = u.username;
+      document.getElementById('amURealName').value = u.realName || '';
+      document.getElementById('amUEmail').value = u.email || '';
+      document.getElementById('amUPhone').value = u.phone || '';
+      document.getElementById('amUStatus').value = String(u.status);
+      if (u.orgId) document.getElementById('amUOrg').value = String(u.orgId);
+      (u.roleCodes || []).forEach(function(c){
+        AM_ROLES_CACHE.forEach(function(r){
+          if (r.code === c) { var cb = document.querySelector('#amURoles input[value="' + r.id + '"]'); if (cb) cb.checked = true; }
+        });
+      });
+    } else if (id) {
+      toast('未找到用户详情', 'error');
+      return;
+    }
+    document.getElementById('amUserModalOverlay').classList.add('show');
+  };
+  window.amCloseUser = function(){ document.getElementById('amUserModalOverlay').classList.remove('show'); };
+  window.amSubmitUser = function(e){
+    e.preventDefault();
+    var username = document.getElementById('amUUsername').value.trim();
+    var password = document.getElementById('amUPassword').value;
+    var payload = {
+      username: username,
+      realName: document.getElementById('amURealName').value.trim(),
+      email: document.getElementById('amUEmail').value.trim(),
+      phone: document.getElementById('amUPhone').value.trim(),
+      orgId: document.getElementById('amUOrg').value ? parseInt(document.getElementById('amUOrg').value, 10) : null,
+      status: parseInt(document.getElementById('amUStatus').value, 10),
+      roleIds: Array.prototype.map.call(document.querySelectorAll('#amURoles input:checked'), function(c){ return parseInt(c.value, 10); })
+    };
+    if (AM_USER_EDIT_ID) {
+      amFetch('/api/admin/users/' + AM_USER_EDIT_ID, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+        .then(function(){ toast('用户已更新', 'success'); amCloseUser(); amLoadUsers(AM_USER_PAGE); })
+        .catch(function(err){ toast(err.message, 'error'); });
+    } else {
+      if (!password) { toast('请输入初始密码', 'error'); return; }
+      payload.password = password;
+      amFetch('/api/admin/users', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+        .then(function(){ toast('用户已创建', 'success'); amCloseUser(); amLoadUsers(1); })
+        .catch(function(err){ toast(err.message, 'error'); });
+    }
+  };
+  window.amToggleUser = function(id, status){
+    showConfirm(status === 0 ? '确认禁用该用户吗？禁用后将无法登录。' : '确认启用该用户吗？', function(){
+      amFetch('/api/admin/users/' + id + '/status', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: status }) })
+        .then(function(){ toast(status === 0 ? '已禁用' : '已启用', 'success'); amLoadUsers(AM_USER_PAGE); })
+        .catch(function(err){ toast(err.message, 'error'); });
+    });
+  };
+  window.amDeleteUser = function(id){
+    showConfirm('确认删除该用户吗？删除后不可恢复。', function(){
+      amFetch('/api/admin/users/' + id, { method:'DELETE' })
+        .then(function(){ toast('用户已删除', 'success'); amLoadUsers(AM_USER_PAGE); })
+        .catch(function(err){ toast(err.message, 'error'); });
+    });
+  };
+  window.amOpenPwd = function(id){
+    AM_PWD_USER_ID = id;
+    document.getElementById('amPwdTip').textContent = '为 ID=' + id + ' 的用户设置新密码（重置后该用户需重新登录）';
+    document.getElementById('amPwdModalOverlay').classList.add('show');
+    document.getElementById('amPwdNew').value = '';
+  };
+  window.amClosePwd = function(){ document.getElementById('amPwdModalOverlay').classList.remove('show'); };
+  window.amSubmitPwd = function(e){
+    e.preventDefault();
+    var pwd = document.getElementById('amPwdNew').value;
+    if (pwd.length < 6) { toast('密码至少 6 位', 'error'); return; }
+    amFetch('/api/admin/users/' + AM_PWD_USER_ID + '/password', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ password: pwd }) })
+      .then(function(){ toast('密码已重置', 'success'); amClosePwd(); })
+      .catch(function(err){ toast(err.message, 'error'); });
+  };
+
+  /* ---- 角色管理 ---- */
+  function amLoadRoles(){
+    amFetch('/api/admin/roles').then(function(list){
+      AM_ROLES_CACHE = list;
+      amFillRoleChecks();
+      var tb = document.getElementById('amRoleTbody');
+      if (!list.length) { tb.innerHTML = '<tr><td colspan="8" class="am-empty">暂无角色数据</td></tr>'; return; }
+      tb.innerHTML = list.map(function(r){
+        var stHtml = r.status === 1 ? '<span class="am-status on">● 启用</span>' : '<span class="am-status off">● 禁用</span>';
+        var builtin = (r.code === 'admin' || r.code === 'user');
+        return '<tr><td class="num">' + r.id + '</td>' +
+          '<td>' + amEsc(r.name) + (builtin ? ' <span class="am-tag gray">内置</span>' : '') + '</td>' +
+          '<td><span class="am-perm-code">' + amEsc(r.code) + '</span></td>' +
+          '<td>' + amEsc(r.description || '-') + '</td>' +
+          '<td class="num">' + r.userCount + '</td>' +
+          '<td class="num">' + r.permCount + '</td>' +
+          '<td>' + stHtml + '</td>' +
+          '<td class="am-actions">' +
+            '<button class="btn-secondary btn-sm" onclick="amOpenRole(' + r.id + ')">编辑</button>' +
+            '<button class="btn-secondary btn-sm" onclick="amOpenRolePerms(' + r.id + ')">绑定权限</button>' +
+            '<button class="btn-secondary btn-sm" onclick="amOpenRoleUsers(' + r.id + ')">分配用户</button>' +
+            (builtin ? '' : '<button class="btn-secondary btn-sm btn-danger" onclick="amDeleteRole(' + r.id + ')">删除</button>') +
+          '</td></tr>';
+      }).join('');
+    }).catch(function(err){ toast(err.message, 'error'); });
+  }
+  window.amOpenRole = function(id){
+    AM_ROLE_EDIT_ID = id || null;
+    document.getElementById('amRoleModalTitle').textContent = id ? '编辑角色' : '新增角色';
+    document.getElementById('amRName').value = '';
+    document.getElementById('amRCode').value = '';
+    document.getElementById('amRDesc').value = '';
+    document.getElementById('amRStatus').value = '1';
+    if (id) {
+      for (var i = 0; i < AM_ROLES_CACHE.length; i++) {
+        var r = AM_ROLES_CACHE[i];
+        if (r.id === id) {
+          document.getElementById('amRName').value = r.name;
+          document.getElementById('amRCode').value = r.code;
+          document.getElementById('amRDesc').value = r.description || '';
+          document.getElementById('amRStatus').value = String(r.status);
+          break;
+        }
+      }
+    }
+    document.getElementById('amRoleModalOverlay').classList.add('show');
+  };
+  window.amCloseRole = function(){ document.getElementById('amRoleModalOverlay').classList.remove('show'); };
+  window.amSubmitRole = function(e){
+    e.preventDefault();
+    var payload = {
+      name: document.getElementById('amRName').value.trim(),
+      code: document.getElementById('amRCode').value.trim(),
+      description: document.getElementById('amRDesc').value.trim(),
+      status: parseInt(document.getElementById('amRStatus').value, 10)
+    };
+    if (!payload.name || !payload.code) { toast('角色名称和编码必填', 'error'); return; }
+    if (!/^[a-zA-Z0-9_]{2,32}$/.test(payload.code)) { toast('角色编码需为 2-32 位字母/数字/下划线', 'error'); return; }
+    var req = AM_ROLE_EDIT_ID
+      ? amFetch('/api/admin/roles/' + AM_ROLE_EDIT_ID, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      : amFetch('/api/admin/roles', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    req.then(function(){ toast(AM_ROLE_EDIT_ID ? '角色已更新' : '角色已创建', 'success'); amCloseRole(); amLoadRoles(); })
+      .catch(function(err){ toast(err.message, 'error'); });
+  };
+  window.amDeleteRole = function(id){
+    showConfirm('确认删除该角色吗？', function(){
+      amFetch('/api/admin/roles/' + id, { method:'DELETE' })
+        .then(function(){ toast('角色已删除', 'success'); amLoadRoles(); })
+        .catch(function(err){ toast(err.message, 'error'); });
+    });
+  };
+  window.amOpenRoleUsers = function(id){
+    AM_ROLE_USERS_ID = id;
+    var role = null;
+    for (var i = 0; i < AM_ROLES_CACHE.length; i++) if (AM_ROLES_CACHE[i].id === id) role = AM_ROLES_CACHE[i];
+    document.getElementById('amRoleUsersTitle').textContent = '分配用户 - ' + (role ? role.name : ('#' + id));
+    document.getElementById('amRoleUsersTip').textContent = '勾选拥有该角色的用户（用户可拥有多个角色）';
+    var box = document.getElementById('amRoleUsersList');
+    box.innerHTML = '<div class="am-empty">加载中...</div>';
+    document.getElementById('amRoleUsersOverlay').classList.add('show');
+    Promise.all([
+      amFetch('/api/admin/users?page=1&size=500'),
+      amFetch('/api/admin/roles/' + id + '/users')
+    ]).then(function(res){
+      var users = res[0].list, assigned = res[1].map(function(u){ return u.id; });
+      AM_ALL_USERS = users;
+      if (!users.length) { box.innerHTML = '<div class="am-empty">暂无用户</div>'; return; }
+      box.innerHTML = users.map(function(u){
+        var checked = assigned.indexOf(u.id) >= 0 ? ' checked' : '';
+        return '<label><input type="checkbox" name="amRoleUser" value="' + u.id + '"' + checked + '> ' + amEsc(u.realName || u.username) + ' <span class="perm-code">@' + amEsc(u.username) + '</span></label>';
+      }).join('');
+    }).catch(function(err){ box.innerHTML = '<div class="am-empty">' + amEsc(err.message) + '</div>'; });
+  };
+  window.amCloseRoleUsers = function(){ document.getElementById('amRoleUsersOverlay').classList.remove('show'); };
+  window.amSaveRoleUsers = function(){
+    var ids = Array.prototype.map.call(document.querySelectorAll('#amRoleUsersList input:checked'), function(c){ return parseInt(c.value, 10); });
+    amFetch('/api/admin/roles/' + AM_ROLE_USERS_ID + '/users', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ userIds: ids }) })
+      .then(function(){ toast('用户分配已保存', 'success'); amCloseRoleUsers(); amLoadRoles(); })
+      .catch(function(err){ toast(err.message, 'error'); });
+  };
+  window.amOpenRolePerms = function(id){
+    AM_ROLE_PERMS_ID = id;
+    var role = null;
+    for (var i = 0; i < AM_ROLES_CACHE.length; i++) if (AM_ROLES_CACHE[i].id === id) role = AM_ROLES_CACHE[i];
+    document.getElementById('amRolePermsTitle').textContent = '绑定权限 - ' + (role ? role.name : ('#' + id));
+    document.getElementById('amRolePermsTip').textContent = '勾选该角色可访问的菜单/操作权限';
+    var box = document.getElementById('amRolePermsList');
+    box.innerHTML = '<div class="am-empty">加载中...</div>';
+    document.getElementById('amRolePermsOverlay').classList.add('show');
+    Promise.all([
+      amFetch('/api/admin/permissions'),
+      amFetch('/api/admin/roles/' + id + '/permissions')
+    ]).then(function(res){
+      var tree = res[0], selIds = res[1].permIds;
+      box.innerHTML = amPermTreeHtml(tree, selIds);
+      box.querySelectorAll('input[type=checkbox]').forEach(function(cb){
+        cb.addEventListener('change', function(){
+          if (cb.checked) {
+            var p = cb.getAttribute('data-parent');
+            while (p) {
+              var pc = box.querySelector('input[value="' + p + '"]');
+              if (pc) pc.checked = true;
+              p = pc ? pc.getAttribute('data-parent') : null;
+            }
+          } else {
+            var scope = cb.closest('li');
+            if (scope) scope.querySelectorAll('input[type=checkbox]').forEach(function(c){ c.checked = false; });
+          }
+        });
+      });
+    }).catch(function(err){ box.innerHTML = '<div class="am-empty">' + amEsc(err.message) + '</div>'; });
+  };
+  function amPermTreeHtml(nodes, selIds){
+    if (!nodes || !nodes.length) return '<li class="am-empty">暂无权限数据</li>';
+    return nodes.map(function(n){
+      var checked = selIds.indexOf(n.id) >= 0 ? ' checked' : '';
+      var kids = (n.children && n.children.length) ? '<ul>' + amPermTreeHtml(n.children, selIds) + '</ul>' : '';
+      return '<li><label><input type="checkbox" value="' + n.id + '"' + checked + (n.parentId ? ' data-parent="' + n.parentId + '"' : '') + '> ' + amEsc(n.name) + ' <span class="perm-code">' + amEsc(n.code) + '</span></label>' + kids + '</li>';
+    }).join('');
+  }
+  window.amCloseRolePerms = function(){ document.getElementById('amRolePermsOverlay').classList.remove('show'); };
+  window.amSaveRolePerms = function(){
+    var ids = Array.prototype.map.call(document.querySelectorAll('#amRolePermsList input:checked'), function(c){ return parseInt(c.value, 10); });
+    amFetch('/api/admin/roles/' + AM_ROLE_PERMS_ID + '/permissions', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ permIds: ids }) })
+      .then(function(){ toast('权限绑定已保存', 'success'); amCloseRolePerms(); amLoadRoles(); })
+      .catch(function(err){ toast(err.message, 'error'); });
+  };
+
+  /* ---- 权限管理 ---- */
+  function amRenderPerms(){
+    var tb = document.getElementById('amPermTbody');
+    if (!tb) return;
+    if (!AM_PERMS_CACHE.length) { tb.innerHTML = '<tr><td colspan="5" class="am-empty">暂无权限数据</td></tr>'; return; }
+    tb.innerHTML = amPermRowsHtml(AM_PERMS_CACHE, 0);
+  }
+  function amPermRowsHtml(nodes, depth){
+    return nodes.map(function(n){
+      var pad = new Array(depth * 3 + 1).join('&nbsp;');
+      var typeTag = n.type === 'button' ? '<span class="am-tag orange">按钮</span>' : '<span class="am-tag">菜单</span>';
+      var kids = (n.children && n.children.length) ? amPermRowsHtml(n.children, depth + 1) : '';
+      return '<tr><td class="name-cell">' + pad + amEsc(n.name) + '</td>' +
+        '<td><span class="am-perm-code">' + amEsc(n.code) + '</span></td>' +
+        '<td>' + typeTag + '</td>' +
+        '<td class="num">' + n.sort + '</td>' +
+        '<td class="am-actions">' +
+          '<button class="btn-secondary btn-sm" onclick="amOpenPerm(' + n.id + ')">编辑</button>' +
+          '<button class="btn-secondary btn-sm btn-danger" onclick="amDeletePerm(' + n.id + ')">删除</button>' +
+        '</td></tr>' + kids;
+    }).join('');
+  }
+  function amLoadPerms(){
+    amFetch('/api/admin/permissions').then(function(tree){
+      AM_PERMS_CACHE = tree;
+      amRenderPerms();
+    }).catch(function(err){ toast(err.message, 'error'); });
+  }
+  window.amOpenPerm = function(id){
+    AM_PERM_EDIT_ID = id || null;
+    document.getElementById('amPermModalTitle').textContent = id ? '编辑权限' : '新增权限';
+    document.getElementById('amPName').value = '';
+    document.getElementById('amPCode').value = '';
+    document.getElementById('amPType').value = 'menu';
+    document.getElementById('amPSort').value = '0';
+    var opts = '<option value="">（顶级）</option>';
+    (function flat(nodes, depth){
+      nodes.forEach(function(n){
+        if (!id || n.id !== id) opts += '<option value="' + n.id + '">' + new Array(depth + 1).join('　') + amEsc(n.name) + '</option>';
+        flat(n.children || [], depth + 1);
+      });
+    })(AM_PERMS_CACHE, 0);
+    document.getElementById('amPParent').innerHTML = opts;
+    if (id) {
+      var found = null;
+      (function find(nodes){
+        for (var i = 0; i < nodes.length; i++) {
+          if (nodes[i].id === id) { found = nodes[i]; break; }
+          find(nodes[i].children || []);
+        }
+      })(AM_PERMS_CACHE);
+      if (found) {
+        document.getElementById('amPName').value = found.name;
+        document.getElementById('amPCode').value = found.code;
+        document.getElementById('amPType').value = found.type;
+        document.getElementById('amPSort').value = String(found.sort || 0);
+        if (found.parentId) document.getElementById('amPParent').value = String(found.parentId);
+      }
+    }
+    document.getElementById('amPermModalOverlay').classList.add('show');
+  };
+  window.amClosePerm = function(){ document.getElementById('amPermModalOverlay').classList.remove('show'); };
+  window.amSubmitPerm = function(e){
+    e.preventDefault();
+    var payload = {
+      name: document.getElementById('amPName').value.trim(),
+      code: document.getElementById('amPCode').value.trim(),
+      type: document.getElementById('amPType').value,
+      sort: parseInt(document.getElementById('amPSort').value, 10) || 0,
+      parentId: document.getElementById('amPParent').value ? parseInt(document.getElementById('amPParent').value, 10) : null
+    };
+    if (!payload.name || !payload.code) { toast('权限名称和编码必填', 'error'); return; }
+    var req = AM_PERM_EDIT_ID
+      ? amFetch('/api/admin/permissions/' + AM_PERM_EDIT_ID, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      : amFetch('/api/admin/permissions', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    req.then(function(){ toast(AM_PERM_EDIT_ID ? '权限已更新' : '权限已创建', 'success'); amClosePerm(); amLoadPerms(); })
+      .catch(function(err){ toast(err.message, 'error'); });
+  };
+  window.amDeletePerm = function(id){
+    showConfirm('确认删除该权限吗？已绑定该权限的角色将失去此权限。', function(){
+      amFetch('/api/admin/permissions/' + id, { method:'DELETE' })
+        .then(function(){ toast('权限已删除', 'success'); amLoadPerms(); })
+        .catch(function(err){ toast(err.message, 'error'); });
+    });
+  };
+
+  /* ---- 组织结构管理 ---- */
+  function amLoadOrgs(){
+    amFetch('/api/admin/orgs').then(function(d){
+      AM_ORGS_CACHE = d.tree;
+      amFillOrgSelects();
+      var box = document.getElementById('amOrgTree');
+      if (!d.tree.length) { box.innerHTML = '<div class="am-empty">暂无组织数据，点击右上角「新增组织」创建</div>'; return; }
+      box.innerHTML = amOrgTreeHtml(d.tree);
+    }).catch(function(err){ toast(err.message, 'error'); });
+  }
+  function amOrgTreeHtml(nodes){
+    return nodes.map(function(n){
+      var typeName = n.type === 'company' ? '公司' : (n.type === 'team' ? '团队' : '部门');
+      var kids = (n.children && n.children.length) ? '<div class="am-tree-children">' + amOrgTreeHtml(n.children) + '</div>' : '';
+      return '<div class="am-node' + (n.children && n.children.length ? '' : ' collapsed') + '">' +
+        '<div class="am-tree-row">' +
+          (n.children && n.children.length
+            ? '<button class="am-tree-arrow" onclick="event.stopPropagation();this.closest(\'.am-node\').classList.toggle(\'collapsed\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>'
+            : '<span class="am-tree-arrow"></span>') +
+          '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="' + (n.type === 'company' ? '#8b5cf6' : '#3b82f6') + '" stroke-width="2" style="flex-shrink:0"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>' +
+          '<span class="am-tree-name">' + amEsc(n.name) + '<span class="org-type">' + typeName + '</span></span>' +
+          '<span class="spacer" style="flex:1"></span>' +
+          '<span class="am-actions">' +
+            '<button class="btn-secondary btn-sm" onclick="amOpenOrg(' + n.id + ')">新增子组织</button>' +
+            '<button class="btn-secondary btn-sm" onclick="amOpenOrg(null,' + n.id + ')">编辑</button>' +
+            '<button class="btn-secondary btn-sm btn-danger" onclick="amDeleteOrg(' + n.id + ')">删除</button>' +
+          '</span>' +
+        '</div>' + kids + '</div>';
+    }).join('');
+  }
+  window.amOpenOrg = function(parentId, editId){
+    AM_ORG_EDIT_ID = editId || null;
+    var isNew = !AM_ORG_EDIT_ID;
+    document.getElementById('amOrgModalTitle').textContent = isNew ? '新增组织' : '编辑组织';
+    var form = document.querySelector('#amOrgModalOverlay form');
+    form.reset();
+    document.getElementById('amOType').value = 'dept';
+    document.getElementById('amOSort').value = '0';
+    amFillOrgSelects();
+    if (parentId) document.getElementById('amOParent').value = String(parentId);
+    if (AM_ORG_EDIT_ID) {
+      var found = null;
+      (function find(nodes){
+        for (var i = 0; i < nodes.length; i++) {
+          if (nodes[i].id === AM_ORG_EDIT_ID) { found = nodes[i]; break; }
+          find(nodes[i].children || []);
+        }
+      })(AM_ORGS_CACHE);
+      if (found) {
+        document.getElementById('amOName').value = found.name;
+        document.getElementById('amOType').value = found.type;
+        document.getElementById('amOSort').value = String(found.sort || 0);
+        if (found.parentId) document.getElementById('amOParent').value = String(found.parentId);
+      }
+    }
+    document.getElementById('amOrgModalOverlay').classList.add('show');
+  };
+  window.amCloseOrg = function(){ document.getElementById('amOrgModalOverlay').classList.remove('show'); };
+  window.amSubmitOrg = function(e){
+    e.preventDefault();
+    var payload = {
+      name: document.getElementById('amOName').value.trim(),
+      type: document.getElementById('amOType').value,
+      sort: parseInt(document.getElementById('amOSort').value, 10) || 0,
+      parentId: document.getElementById('amOParent').value ? parseInt(document.getElementById('amOParent').value, 10) : null
+    };
+    if (!payload.name) { toast('组织名称必填', 'error'); return; }
+    var req = AM_ORG_EDIT_ID
+      ? amFetch('/api/admin/orgs/' + AM_ORG_EDIT_ID, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      : amFetch('/api/admin/orgs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    req.then(function(){ toast(AM_ORG_EDIT_ID ? '组织已更新' : '组织已创建', 'success'); amCloseOrg(); amLoadOrgs(); })
+      .catch(function(err){ toast(err.message, 'error'); });
+  };
+  window.amDeleteOrg = function(id){
+    showConfirm('确认删除该组织吗？', function(){
+      amFetch('/api/admin/orgs/' + id, { method:'DELETE' })
+        .then(function(){ toast('组织已删除', 'success'); amLoadOrgs(); })
+        .catch(function(err){ toast(err.message, 'error'); });
+    });
+  };
+
+  // 弹窗遮罩点击关闭
+  ['amUserModalOverlay','amRoleModalOverlay','amPermModalOverlay','amRoleUsersOverlay','amRolePermsOverlay','amOrgModalOverlay','amPwdModalOverlay'].forEach(function(oid){
+    var el = document.getElementById(oid);
+    if (el) el.addEventListener('click', function(e){ if (e.target === this) this.classList.remove('show'); });
+  });
+
+})();
+</script>
+</body>
+</html>

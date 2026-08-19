@@ -97,6 +97,89 @@ const TARGET_MONEY_COLS = new Set([
   'q1_tgt', 'q2_tgt', 'q3_tgt', 'q4_tgt', 'h1_tgt', 'h2_tgt', 'ytd_tgt'
 ]);
 
+/* ---------- 系统管理表: 用户/角色/权限/组织结构/会话 (RBAC) ---------- */
+const CREATE_SYS_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS sys_user (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(50) NOT NULL,
+  password VARCHAR(64) NOT NULL,
+  salt VARCHAR(16) NOT NULL,
+  real_name VARCHAR(50) DEFAULT '',
+  email VARCHAR(100) DEFAULT '',
+  phone VARCHAR(20) DEFAULT '',
+  org_id INT DEFAULT NULL,
+  status TINYINT DEFAULT 1 COMMENT '1启用 0禁用',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS sys_role (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL,
+  code VARCHAR(50) NOT NULL,
+  description VARCHAR(200) DEFAULT '',
+  status TINYINT DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_role_code (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS sys_permission (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL,
+  code VARCHAR(100) NOT NULL,
+  type VARCHAR(20) DEFAULT 'menu' COMMENT 'menu/button',
+  parent_id INT DEFAULT NULL,
+  sort INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_perm_code (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS sys_user_role (
+  user_id INT NOT NULL,
+  role_id INT NOT NULL,
+  PRIMARY KEY (user_id, role_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS sys_role_permission (
+  role_id INT NOT NULL,
+  permission_id INT NOT NULL,
+  PRIMARY KEY (role_id, permission_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS sys_org (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  parent_id INT DEFAULT NULL,
+  type VARCHAR(20) DEFAULT 'dept' COMMENT 'company/dept/team',
+  sort INT DEFAULT 0,
+  status TINYINT DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS sys_session (
+  token VARCHAR(64) PRIMARY KEY,
+  user_id INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  expires_at DATETIME NOT NULL,
+  KEY idx_session_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`;
+
+/* ---------- 系统管理种子数据: 初始管理员/角色/权限/组织 ---------- */
+const SYS_PERMS = [
+  ['经营看板', 'dashboard:view', 'menu', null, 1],
+  ['经营预测', 'forecast:view', 'menu', null, 2],
+  ['预测录入', 'forecast:write', 'button', null, 3],
+  ['运营看板', 'opsboard:view', 'menu', null, 4],
+  ['运营指标', 'ops:view', 'menu', null, 5],
+  ['数据表管理', 'tablemeta:view', 'menu', null, 6],
+  ['数据表审批', 'tablemeta:approve', 'button', null, 7],
+  ['数据工具', 'data:view', 'menu', null, 8],
+  ['后台管理', 'system:admin', 'menu', null, 9]
+];
+const SYS_ORGS = [
+  ['运营管理平台', 'company', null, 1],
+  ['经营管理部', 'dept', 1, 1],
+  ['项目管理部', 'dept', 1, 2],
+  ['数据平台部', 'dept', 1, 3],
+  ['综合管理部', 'dept', 1, 4]
+];
+
 const CREATE_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS ops_records (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -228,6 +311,87 @@ CREATE TABLE IF NOT EXISTS ops_actual (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uk_actual_bu_ym (bu, year, month)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+/* ---------- 数据表管理: 元数据表 (业务分类树 + 表定义 + 字段 + 审批 + 日志) ----------
+ * ops_table_meta: 树节点(type='category' 分类 | 'table' 业务表), parent_id 多层级树
+ * ops_table_field: 字段定义 (主键/唯一/普通索引/外键)
+ * ops_table_approval: 审批记录 (submit→pending, approve/reject 结束)
+ * ops_table_log: 操作日志 */
+const CREATE_TABLE_META_SQL = `
+CREATE TABLE IF NOT EXISTS ops_table_meta (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL COMMENT '节点名称(分类名或表显示名)',
+  type VARCHAR(20) NOT NULL DEFAULT 'table' COMMENT 'category=分类 | table=业务表',
+  parent_id INT DEFAULT NULL COMMENT '父分类ID(null=根)',
+  table_name VARCHAR(100) DEFAULT NULL COMMENT '物理表名(仅 table)',
+  description VARCHAR(500) DEFAULT '' COMMENT '表注释/说明',
+  status VARCHAR(20) DEFAULT 'draft' COMMENT 'draft草稿/pending审批中/approved已通过/rejected已驳回',
+  created_by VARCHAR(50) DEFAULT 'admin',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_tm_parent (parent_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+const CREATE_TABLE_FIELD_SQL = `
+CREATE TABLE IF NOT EXISTS ops_table_field (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  table_meta_id INT NOT NULL COMMENT '所属表元数据ID',
+  field_name VARCHAR(100) NOT NULL COMMENT '字段名',
+  display_name VARCHAR(100) DEFAULT '' COMMENT '字段显示名',
+  data_type VARCHAR(30) NOT NULL COMMENT '数据类型',
+  length INT DEFAULT NULL COMMENT '长度/精度',
+  nullable TINYINT(1) DEFAULT 1 COMMENT '是否允许为空',
+  default_value VARCHAR(200) DEFAULT NULL COMMENT '默认值',
+  comment VARCHAR(200) DEFAULT '' COMMENT '字段注释',
+  is_pk TINYINT(1) DEFAULT 0 COMMENT '主键',
+  is_unique TINYINT(1) DEFAULT 0 COMMENT '唯一索引',
+  is_index TINYINT(1) DEFAULT 0 COMMENT '普通索引',
+  fk_table VARCHAR(100) DEFAULT NULL COMMENT '外键关联表',
+  fk_field VARCHAR(100) DEFAULT NULL COMMENT '外键关联字段',
+  field_order INT DEFAULT 0 COMMENT '排序',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_tf_meta (table_meta_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+const CREATE_TABLE_APPROVAL_SQL = `
+CREATE TABLE IF NOT EXISTS ops_table_approval (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  table_meta_id INT NOT NULL COMMENT '所属表元数据ID',
+  action VARCHAR(20) NOT NULL DEFAULT 'create' COMMENT 'create/alter/drop',
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT 'pending/approved/rejected',
+  applicant VARCHAR(50) DEFAULT 'admin' COMMENT '申请人',
+  approver VARCHAR(50) DEFAULT NULL COMMENT '审批人',
+  comment TEXT COMMENT '审批意见',
+  snapshot TEXT COMMENT '表结构快照(JSON)',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  resolved_at TIMESTAMP NULL DEFAULT NULL COMMENT '审批完成时间',
+  KEY idx_ta_meta (table_meta_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+const CREATE_TABLE_LOG_SQL = `
+CREATE TABLE IF NOT EXISTS ops_table_log (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  table_meta_id INT NOT NULL COMMENT '所属表元数据ID',
+  action VARCHAR(30) NOT NULL COMMENT '操作类型',
+  detail TEXT COMMENT '操作详情',
+  operator VARCHAR(50) DEFAULT 'admin' COMMENT '操作人',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_tl_meta (table_meta_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+/* 数据表管理预置分类树: 一级分类(经营预测/运营指标/自定义) + 现有业务表注册 */
+const SEED_TABLE_META = [
+  { name: '经营预测', type: 'category', parent_id: null, table_name: null, description: '经营预测相关业务表' },
+  { name: '运营指标', type: 'category', parent_id: null, table_name: null, description: '运营指标相关业务表' },
+  { name: '自定义', type: 'category', parent_id: null, table_name: null, description: '用户自定义业务表' }
+];
+const SEED_TABLE_META_TABLES = [
+  { name: '预算管理', type: 'table', table_name: 'ops_budget', description: '月度预算(BU×月)' },
+  { name: '预测管理', type: 'table', table_name: 'ops_forecast', description: '经营预测(批次×版本×BU×月)' },
+  { name: '实际回填', type: 'table', table_name: 'ops_actual', description: '月度实际(BU×月)' },
+  { name: '目标拆分', type: 'table', table_name: 'ops_target_split', description: '预算目标拆分(指标×BU)' },
+  { name: '项目合同', type: 'table', table_name: 'ops_records', description: '合同/项目/验收/回款主表' }
+];
 
 /* 预算目标拆分表: 指标(收入/贡献利润/现金流) × BU(软工/硬工/云/智能汽车/汇总) 唯一,
  * 存实际值(7月)与2026年目标-V1, 偏差/达成率由前端计算 */
@@ -442,13 +606,100 @@ function send(res, code, obj) {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
   });
   res.end(body);
 }
 
+/* ---------- 系统管理辅助: 密码哈希 / 会话 / 鉴权 (RBAC) ---------- */
+const crypto = require('crypto');
+const SESSION_DAYS = 7;   // 登录会话有效期(天)
+function hashPassword(pwd, salt) { return crypto.createHash('sha256').update(salt + ':' + pwd).digest('hex'); }
+function genSalt() { return crypto.randomBytes(8).toString('hex'); }
+function genToken() { return crypto.randomBytes(32).toString('hex'); }
+// 从请求提取登录用户: 校验 Authorization: Bearer <token> -> sys_session -> sys_user
+async function requireAuth(req) {
+  const h = req.headers['authorization'] || '';
+  const m = h.match(/^Bearer\s+([0-9a-f]{64})$/i);
+  if (!m) return null;
+  const [[row]] = await pool.query(
+    `SELECT u.id, u.username, u.real_name, u.email, u.phone, u.org_id, u.status
+     FROM sys_session s JOIN sys_user u ON u.id = s.user_id
+     WHERE s.token=? AND s.expires_at > NOW()`, [m[1]]);
+  if (!row || row.status !== 1) return null;
+  return row;
+}
+// 查询用户权限码集合 (通过 用户->角色->权限)
+async function getUserPermCodes(userId) {
+  const [rows] = await pool.query(
+    `SELECT DISTINCT p.code FROM sys_permission p
+     JOIN sys_role_permission rp ON rp.permission_id = p.id
+     JOIN sys_user_role ur ON ur.role_id = rp.role_id
+     WHERE ur.user_id=? AND p.code<>''`, [userId]);
+  return rows.map(r => r.code);
+}
+// 查询用户角色列表
+async function getUserRoles(userId) {
+  const [rows] = await pool.query(
+    `SELECT r.id, r.name, r.code FROM sys_role r
+     JOIN sys_user_role ur ON ur.role_id = r.id WHERE ur.user_id=? ORDER BY r.id`, [userId]);
+  return rows;
+}
+// admin 校验: 拥有 system:admin 权限视为管理员
+async function isAdminUser(userId) {
+  const codes = await getUserPermCodes(userId);
+  return codes.indexOf('system:admin') >= 0;
+}
+async function requireAdmin(req, res) {
+  const auth = await requireAuth(req);
+  if (!auth) return send(res, 401, { error: '未登录或会话已过期' });
+  if (!(await isAdminUser(auth.id))) return send(res, 403, { error: '无权限：仅管理员可访问后台管理' });
+  return auth;
+}
+
 /* ---------- API 路由 ---------- */
 async function handleApi(req, res, pathname, method) {
+  // ---- 认证: 登录放行, 其余 API 全部要求登录 ----
+  if (pathname === '/api/auth/login' && method === 'POST') {
+    const body = await readBody(req);
+    const username = String(body.username || '').trim();
+    const password = String(body.password || '');
+    if (!username || !password) return send(res, 400, { error: '请输入用户名和密码' });
+    const [[user]] = await pool.query('SELECT * FROM sys_user WHERE username=?', [username]);
+    if (!user || user.status !== 1) return send(res, 401, { error: '用户名或密码错误' });
+    if (hashPassword(password, user.salt) !== user.password) return send(res, 401, { error: '用户名或密码错误' });
+    const token = genToken();
+    const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 3600 * 1000);
+    await pool.query('INSERT INTO sys_session (token, user_id, expires_at) VALUES (?,?,?)', [token, user.id, expiresAt]);
+    // 清理过期会话
+    await pool.query('DELETE FROM sys_session WHERE expires_at <= NOW()').catch(() => {});
+    const roles = await getUserRoles(user.id);
+    const perms = await getUserPermCodes(user.id);
+    return send(res, 200, {
+      token,
+      user: { id: user.id, username: user.username, realName: user.real_name, email: user.email, phone: user.phone, orgId: user.org_id },
+      roles: roles.map(r => r.code),
+      perms
+    });
+  }
+  if (pathname === '/api/auth/logout' && method === 'POST') {
+    const h = req.headers['authorization'] || '';
+    const m = h.match(/^Bearer\s+([0-9a-f]{64})$/i);
+    if (m) await pool.query('DELETE FROM sys_session WHERE token=?', [m[1]]).catch(() => {});
+    return send(res, 200, { ok: true });
+  }
+  if (pathname === '/api/auth/me' && method === 'GET') {
+    const auth = await requireAuth(req);
+    if (!auth) return send(res, 401, { error: '未登录或会话已过期' });
+    const roles = await getUserRoles(auth.id);
+    const perms = await getUserPermCodes(auth.id);
+    return send(res, 200, { user: auth, roles: roles.map(r => r.code), perms });
+  }
+  // 其余所有 /api/* 均需登录
+  const auth = await requireAuth(req);
+  if (!auth) return send(res, 401, { error: '未登录或会话已过期' });
+  req.auth = auth;
+
   if (pathname === '/api/records') {
     if (method === 'GET') {
       const [rows] = await pool.query('SELECT * FROM ops_records ORDER BY sign_date DESC, id DESC');
@@ -902,10 +1153,632 @@ async function handleApi(req, res, pathname, method) {
       return send(res, 200, { ok: true });
     }
   }
+  /* ================= 数据表管理 API ================= */
+  // 树形结构: 分类 + 业务表 (含字段数/审批状态)
+  if (pathname === '/api/table-meta/tree' && method === 'GET') {
+    const [metas] = await pool.query('SELECT * FROM ops_table_meta ORDER BY type ASC, id ASC');
+    const [fcnt] = await pool.query('SELECT table_meta_id, COUNT(*) AS c FROM ops_table_field GROUP BY table_meta_id');
+    const fcntMap = {};
+    fcnt.forEach(r => { fcntMap[r.table_meta_id] = r.c; });
+    const nodes = {};
+    metas.forEach(m => {
+      nodes[m.id] = {
+        id: m.id, name: m.name, type: m.type, parentId: m.parent_id, tableName: m.table_name,
+        description: m.description, status: m.status, fieldCount: m.type === 'table' ? (fcntMap[m.id] || 0) : 0, children: []
+      };
+    });
+    const roots = [];
+    metas.forEach(m => {
+      const node = nodes[m.id];
+      if (node.parentId && nodes[node.parentId]) nodes[node.parentId].children.push(node);
+      else roots.push(node);
+    });
+    return send(res, 200, roots);
+  }
+  // 创建分类或业务表: {name, type, parentId, tableName?, description?}
+  if (pathname === '/api/table-meta' && method === 'POST') {
+    const body = await readBody(req);
+    const name = String(body.name || '').trim();
+    const type = String(body.type || 'table');
+    const parentId = body.parentId ? parseInt(body.parentId, 10) : null;
+    const tableName = type === 'table' ? String(body.tableName || '').trim() : null;
+    if (!name) return send(res, 400, { error: 'name required' });
+    if (type === 'table' && !tableName) return send(res, 400, { error: 'tableName required for table' });
+    // 同级重名校验
+    const [dup] = await pool.query('SELECT id FROM ops_table_meta WHERE name=? AND ((parent_id=? ) OR (parent_id IS NULL AND ? IS NULL))', [name, parentId, parentId]);
+    if (dup.length > 0) return send(res, 400, { error: '同级已存在同名节点: ' + name });
+    if (type === 'table') {
+      const [dupT] = await pool.query('SELECT id FROM ops_table_meta WHERE table_name=?', [tableName]);
+      if (dupT.length > 0) return send(res, 400, { error: '物理表名已被占用: ' + tableName });
+    }
+    const [r] = await pool.query(
+      'INSERT INTO ops_table_meta (name, type, parent_id, table_name, description, status, created_by) VALUES (?,?,?,?,?,?,?)',
+      [name, type, parentId, tableName, String(body.description || ''), type === 'table' ? 'draft' : 'active', 'admin']
+    );
+    if (type === 'table') await addTableLog(r.insertId, 'create', '创建业务表定义: ' + name + ' (物理表 ' + tableName + ')');
+    else await addTableLog(r.insertId, 'create_category', '创建分类: ' + name);
+    return send(res, 201, { _id: String(r.insertId) });
+  }
+  const tmm = pathname.match(/^\/api\/table-meta\/(\d+)$/);
+  if (tmm) {
+    const id = parseInt(tmm[1], 10);
+    const [[meta]] = await pool.query('SELECT * FROM ops_table_meta WHERE id=?', [id]);
+    if (!meta) return send(res, 404, { error: 'not found' });
+    if (method === 'GET') {
+      const [fields] = await pool.query('SELECT * FROM ops_table_field WHERE table_meta_id=? ORDER BY field_order ASC, id ASC', [id]);
+      return send(res, 200, {
+        id: meta.id, name: meta.name, type: meta.type, parentId: meta.parent_id,
+        tableName: meta.table_name, description: meta.description, status: meta.status,
+        createdBy: meta.created_by, createdAt: meta.created_at, updatedAt: meta.updated_at,
+        fields: fields.map(f => ({
+          id: f.id, fieldName: f.field_name, displayName: f.display_name, dataType: f.data_type,
+          length: f.length, nullable: !!f.nullable, defaultValue: f.default_value, comment: f.comment,
+          isPk: !!f.is_pk, isUnique: !!f.is_unique, isIndex: !!f.is_index,
+          fkTable: f.fk_table, fkField: f.fk_field, fieldOrder: f.field_order
+        }))
+      });
+    }
+    if (method === 'PUT') {
+      const body = await readBody(req);
+      if (meta.status === 'pending' || meta.status === 'approved') return send(res, 400, { error: '审批中/已通过的表不可编辑' });
+      const name = String(body.name || meta.name).trim();
+      const tableName = meta.type === 'table' ? String(body.tableName || meta.table_name || '').trim() : meta.table_name;
+      const [dup] = await pool.query('SELECT id FROM ops_table_meta WHERE id<>? AND name=? AND ((parent_id=? ) OR (parent_id IS NULL AND ? IS NULL))', [id, name, meta.parent_id, meta.parent_id]);
+      if (dup.length > 0) return send(res, 400, { error: '同级已存在同名节点: ' + name });
+      if (meta.type === 'table' && tableName && tableName !== meta.table_name) {
+        const [dupT] = await pool.query('SELECT id FROM ops_table_meta WHERE id<>? AND table_name=?', [id, tableName]);
+        if (dupT.length > 0) return send(res, 400, { error: '物理表名已被占用: ' + tableName });
+      }
+      await pool.query(
+        'UPDATE ops_table_meta SET name=?, table_name=?, description=?, status=? WHERE id=?',
+        [name, tableName, String(body.description !== undefined ? body.description : meta.description), body.status || meta.status, id]
+      );
+      await addTableLog(id, 'update', '更新表定义: ' + name);
+      return send(res, 200, { ok: true });
+    }
+    if (method === 'DELETE') {
+      if (meta.type === 'table' && (meta.status === 'approved' || meta.status === 'pending_drop')) return send(res, 400, { error: '已审批通过的表不可直接删除, 请走「下线审批」流程' });
+      // 级联删除: 收集该节点及其所有后代
+      const allIds = [id];
+      let frontier = [id];
+      while (frontier.length > 0) {
+        const [kids] = await pool.query('SELECT id FROM ops_table_meta WHERE parent_id IN (?)', [frontier]);
+        frontier = kids.map(k => k.id);
+        allIds.push(...frontier);
+      }
+      const ids = allIds.filter((v, i) => allIds.indexOf(v) === i);
+      const ph = ids.map(() => '?').join(',');
+      await pool.query('DELETE FROM ops_table_meta WHERE id IN (' + ph + ')', ids);
+      await pool.query('DELETE FROM ops_table_field WHERE table_meta_id IN (' + ph + ')', ids);
+      await pool.query('DELETE FROM ops_table_approval WHERE table_meta_id IN (' + ph + ')', ids);
+      await pool.query('DELETE FROM ops_table_log WHERE table_meta_id IN (' + ph + ')', ids);
+      return send(res, 200, { ok: true, deleted: ids.length });
+    }
+  }
+  // 字段管理
+  const tfm = pathname.match(/^\/api\/table-meta\/(\d+)\/fields(?:\/(\d+))?$/);
+  if (tfm) {
+    const id = parseInt(tfm[1], 10);
+    const fid = tfm[2] ? parseInt(tfm[2], 10) : null;
+    const [[meta]] = await pool.query('SELECT * FROM ops_table_meta WHERE id=?', [id]);
+    if (!meta || meta.type !== 'table') return send(res, 404, { error: 'table meta not found' });
+    if (method === 'POST') {
+      if (meta.status === 'pending' || meta.status === 'approved') return send(res, 400, { error: '审批中/已通过的表不可编辑字段' });
+      const body = await readBody(req);
+      const fieldName = String(body.fieldName || '').trim();
+      const dataType = String(body.dataType || '');
+      if (!fieldName || !dataType) return send(res, 400, { error: 'fieldName and dataType required' });
+      const [dup] = await pool.query('SELECT id FROM ops_table_field WHERE table_meta_id=? AND field_name=?', [id, fieldName]);
+      if (dup.length > 0) return send(res, 400, { error: '字段已存在: ' + fieldName });
+      const [r] = await pool.query(
+        'INSERT INTO ops_table_field (table_meta_id, field_name, display_name, data_type, length, nullable, default_value, comment, is_pk, is_unique, is_index, fk_table, fk_field, field_order) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        [id, fieldName, String(body.displayName || ''), dataType, body.length != null ? parseInt(body.length, 10) : null,
+         body.nullable ? 1 : 0, body.defaultValue != null ? String(body.defaultValue) : null, String(body.comment || ''),
+         body.isPk ? 1 : 0, body.isUnique ? 1 : 0, body.isIndex ? 1 : 0,
+         body.fkTable ? String(body.fkTable) : null, body.fkField ? String(body.fkField) : null,
+         body.fieldOrder != null ? parseInt(body.fieldOrder, 10) : 0]
+      );
+      await addTableLog(id, 'add_field', '新增字段: ' + fieldName + ' ' + dataType + (body.length ? '(' + body.length + ')' : ''));
+      return send(res, 201, { _id: String(r.insertId) });
+    }
+    if (fid && method === 'PUT') {
+      if (meta.status === 'pending' || meta.status === 'approved') return send(res, 400, { error: '审批中/已通过的表不可编辑字段' });
+      const body = await readBody(req);
+      const [[f]] = await pool.query('SELECT * FROM ops_table_field WHERE id=? AND table_meta_id=?', [fid, id]);
+      if (!f) return send(res, 404, { error: 'field not found' });
+      const fieldName = String(body.fieldName || f.field_name).trim();
+      const [dup] = await pool.query('SELECT id FROM ops_table_field WHERE table_meta_id=? AND field_name=? AND id<>?', [id, fieldName, fid]);
+      if (dup.length > 0) return send(res, 400, { error: '字段已存在: ' + fieldName });
+      await pool.query(
+        'UPDATE ops_table_field SET field_name=?, display_name=?, data_type=?, length=?, nullable=?, default_value=?, comment=?, is_pk=?, is_unique=?, is_index=?, fk_table=?, fk_field=?, field_order=? WHERE id=?',
+        [fieldName, String(body.displayName !== undefined ? body.displayName : f.display_name),
+         String(body.dataType || f.data_type), body.length != null ? parseInt(body.length, 10) : f.length,
+         body.nullable !== undefined ? (body.nullable ? 1 : 0) : f.nullable,
+         body.defaultValue !== undefined ? (body.defaultValue != null ? String(body.defaultValue) : null) : f.default_value,
+         String(body.comment !== undefined ? body.comment : f.comment),
+         body.isPk !== undefined ? (body.isPk ? 1 : 0) : f.is_pk,
+         body.isUnique !== undefined ? (body.isUnique ? 1 : 0) : f.is_unique,
+         body.isIndex !== undefined ? (body.isIndex ? 1 : 0) : f.is_index,
+         body.fkTable !== undefined ? (body.fkTable ? String(body.fkTable) : null) : f.fk_table,
+         body.fkField !== undefined ? (body.fkField ? String(body.fkField) : null) : f.fk_field,
+         body.fieldOrder != null ? parseInt(body.fieldOrder, 10) : f.field_order,
+         fid]
+      );
+      await addTableLog(id, 'update_field', '修改字段: ' + fieldName);
+      return send(res, 200, { ok: true });
+    }
+    if (fid && method === 'DELETE') {
+      if (meta.status === 'pending' || meta.status === 'approved') return send(res, 400, { error: '审批中/已通过的表不可编辑字段' });
+      const [[f]] = await pool.query('SELECT * FROM ops_table_field WHERE id=? AND table_meta_id=?', [fid, id]);
+      if (!f) return send(res, 404, { error: 'field not found' });
+      await pool.query('DELETE FROM ops_table_field WHERE id=?', [fid]);
+      await addTableLog(id, 'delete_field', '删除字段: ' + f.field_name);
+      return send(res, 200, { ok: true });
+    }
+  }
+  // 审批流程
+  const tsub = pathname.match(/^\/api\/table-meta\/(\d+)\/(submit|approve|reject|ddl|execute)$/);
+  if (tsub) {
+    const id = parseInt(tsub[1], 10);
+    const action = tsub[2];
+    const [[meta]] = await pool.query('SELECT * FROM ops_table_meta WHERE id=?', [id]);
+    if (!meta || meta.type !== 'table') return send(res, 404, { error: 'table meta not found' });
+    if (method === 'POST') {
+      const body = await readBody(req);
+      const comment = String(body.comment || '');
+      if (action === 'submit') {
+        if (meta.status === 'pending') return send(res, 400, { error: '已提交审批, 请等待审批结果' });
+        const dropReq = body.action === 'drop';
+        if (dropReq) {
+          // 下线申请: 仅已审批通过(物理表已建)的表可申请
+          if (meta.status !== 'approved') return send(res, 400, { error: '仅已审批通过的表可申请下线删除' });
+          const [pending] = await pool.query("SELECT id FROM ops_table_approval WHERE table_meta_id=? AND status='pending'", [id]);
+          if (pending.length > 0) return send(res, 400, { error: '存在未完成的审批单' });
+          await pool.query('UPDATE ops_table_meta SET status=? WHERE id=?', ['pending', id]);
+          await pool.query('INSERT INTO ops_table_approval (table_meta_id, action, status, applicant, comment, snapshot) VALUES (?,?,?,?,?,?)',
+            [id, 'drop', 'pending', 'admin', comment, JSON.stringify({ tableName: meta.table_name, name: meta.name, drop: true })]);
+          await addTableLog(id, 'submit_drop', '申请下线删除: ' + meta.name);
+          return send(res, 200, { ok: true, status: 'pending', action: 'drop' });
+        }
+        const [fields] = await pool.query('SELECT * FROM ops_table_field WHERE table_meta_id=? ORDER BY field_order ASC, id ASC', [id]);
+        if (fields.length === 0) return send(res, 400, { error: '至少需要一个字段才能提交审批' });
+        const [pending] = await pool.query("SELECT id FROM ops_table_approval WHERE table_meta_id=? AND status='pending'", [id]);
+        if (pending.length > 0) return send(res, 400, { error: '存在未完成的审批单' });
+        await pool.query('UPDATE ops_table_meta SET status=? WHERE id=?', ['pending', id]);
+        await pool.query('INSERT INTO ops_table_approval (table_meta_id, action, status, applicant, comment, snapshot) VALUES (?,?,?,?,?,?)',
+          [id, 'create', 'pending', 'admin', comment, JSON.stringify({ tableName: meta.table_name, name: meta.name, fields: fields.map(f => ({ field_name: f.field_name, data_type: f.data_type, length: f.length })) })]);
+        await addTableLog(id, 'submit', '提交审批: ' + meta.name);
+        return send(res, 200, { ok: true, status: 'pending' });
+      }
+      if (action === 'approve') {
+        if (meta.status !== 'pending') return send(res, 400, { error: '当前状态不可审批 (仅审批中可审批)' });
+        const [[ap]] = await pool.query("SELECT action FROM ops_table_approval WHERE table_meta_id=? AND status='pending' ORDER BY id DESC LIMIT 1", [id]);
+        const apAction = ap ? ap.action : 'create';
+        await pool.query("UPDATE ops_table_approval SET status='approved', approver=?, comment=CONCAT(IFNULL(comment,''), IF(?<>'', CONCAT('\n审批意见: ', ?), '')), resolved_at=NOW() WHERE table_meta_id=? AND status='pending'",
+          ['admin', comment, comment, id]);
+        await pool.query("UPDATE ops_table_meta SET status=? WHERE id=?", [apAction === 'drop' ? 'pending_drop' : 'approved', id]);
+        await addTableLog(id, 'approve', (apAction === 'drop' ? '下线审批通过: ' : '审批通过: ') + meta.name + (comment ? ' (' + comment + ')' : ''));
+        return send(res, 200, { ok: true, status: apAction === 'drop' ? 'pending_drop' : 'approved', action: apAction });
+      }
+      if (action === 'reject') {
+        if (meta.status !== 'pending') return send(res, 400, { error: '当前状态不可审批 (仅审批中可审批)' });
+        const [[ap]] = await pool.query("SELECT action FROM ops_table_approval WHERE table_meta_id=? AND status='pending' ORDER BY id DESC LIMIT 1", [id]);
+        const apAction = ap ? ap.action : 'create';
+        await pool.query("UPDATE ops_table_approval SET status='rejected', approver=?, comment=CONCAT(IFNULL(comment,''), IF(?<>'', CONCAT('\n审批意见: ', ?), '')), resolved_at=NOW() WHERE table_meta_id=? AND status='pending'",
+          ['admin', comment, comment, id]);
+        await pool.query("UPDATE ops_table_meta SET status=? WHERE id=?", [apAction === 'drop' ? 'approved' : 'rejected', id]);
+        await addTableLog(id, 'reject', (apAction === 'drop' ? '下线审批驳回: ' : '审批驳回: ') + meta.name + (comment ? ' (' + comment + ')' : ''));
+        return send(res, 200, { ok: true, status: apAction === 'drop' ? 'approved' : 'rejected' });
+      }
+      if (action === 'execute') {
+        const dropReq = body.action === 'drop';
+        if (dropReq) {
+          if (meta.status !== 'pending_drop') return send(res, 400, { error: '下线审批通过后才可执行删除' });
+          await pool.query('DROP TABLE IF EXISTS `' + meta.table_name + '`');
+          await addTableLog(id, 'execute_drop', '已执行 DROP 删除物理表: ' + meta.table_name);
+          await pool.query('DELETE FROM ops_table_meta WHERE id=?', [id]);
+          return send(res, 200, { ok: true, dropped: true });
+        }
+        if (meta.status !== 'approved') return send(res, 400, { error: '审批通过后才可执行 DDL 建表' });
+        const [fields] = await pool.query('SELECT * FROM ops_table_field WHERE table_meta_id=? ORDER BY field_order ASC, id ASC', [id]);
+        const ddl = genTableDDL(meta, fields);
+        await pool.query(ddl);
+        await addTableLog(id, 'execute', '已执行 DDL 创建物理表: ' + meta.table_name);
+        return send(res, 200, { ok: true, executed: true, ddl });
+      }
+    }
+    if (action === 'ddl' && method === 'GET') {
+      const [fields] = await pool.query('SELECT * FROM ops_table_field WHERE table_meta_id=? ORDER BY field_order ASC, id ASC', [id]);
+      const ddl = genTableDDL(meta, fields);
+      return send(res, 200, { ddl });
+    }
+  }
+  // 审批历史 + 操作日志
+  const tlog = pathname.match(/^\/api\/table-meta\/(\d+)\/(approvals|logs)$/);
+  if (tlog && method === 'GET') {
+    const id = parseInt(tlog[1], 10);
+    if (tlog[2] === 'approvals') {
+      const [rows] = await pool.query('SELECT * FROM ops_table_approval WHERE table_meta_id=? ORDER BY id DESC', [id]);
+      return send(res, 200, rows.map(r => ({
+        id: r.id, action: r.action, status: r.status, applicant: r.applicant, approver: r.approver,
+        comment: r.comment, snapshot: r.snapshot, createdAt: r.created_at, resolvedAt: r.resolved_at
+      })));
+    }
+    const [rows] = await pool.query('SELECT * FROM ops_table_log WHERE table_meta_id=? ORDER BY id DESC', [id]);
+    return send(res, 200, rows.map(r => ({
+      id: r.id, action: r.action, detail: r.detail, operator: r.operator, createdAt: r.created_at
+    })));
+  }
+  /* ================= 后台管理 (仅 admin) ================= */
+  if (pathname.startsWith('/api/admin/')) {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;   // requireAdmin 已输出 401/403
+
+    /* ---- 用户管理 ---- */
+    if (pathname === '/api/admin/users' && method === 'GET') {
+      const q = new URL(req.url, 'http://x');
+      const page = Math.max(parseInt(q.searchParams.get('page'), 10) || 1, 1);
+      const size = Math.min(Math.max(parseInt(q.searchParams.get('size'), 10) || 10, 1), 100);
+      const keyword = String(q.searchParams.get('keyword') || '').trim();
+      const status = q.searchParams.get('status');
+      let where = ' WHERE 1=1';
+      const params = [];
+      if (keyword) { where += ' AND (u.username LIKE ? OR u.real_name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)'; const k = '%' + keyword + '%'; params.push(k, k, k, k); }
+      if (status === '0' || status === '1') { where += ' AND u.status=?'; params.push(parseInt(status, 10)); }
+      const [[{ total }]] = await pool.query('SELECT COUNT(*) AS total FROM sys_user u' + where, params);
+      const [rows] = await pool.query(
+        `SELECT u.id, u.username, u.real_name, u.email, u.phone, u.org_id, u.status, u.created_at,
+                o.name AS org_name FROM sys_user u LEFT JOIN sys_org o ON o.id = u.org_id` + where +
+        ' ORDER BY u.id ASC LIMIT ? OFFSET ?',
+        params.concat([size, (page - 1) * size]));
+      const list = [];
+      for (const r of rows) {
+        const roles = await getUserRoles(r.id);
+        list.push({
+          id: r.id, username: r.username, realName: r.real_name, email: r.email, phone: r.phone,
+          orgId: r.org_id, orgName: r.org_name, status: r.status, createdAt: r.created_at,
+          roles: roles.map(x => x.name), roleCodes: roles.map(x => x.code)
+        });
+      }
+      return send(res, 200, { total, page, size, list });
+    }
+    if (pathname === '/api/admin/users' && method === 'POST') {
+      const body = await readBody(req);
+      const username = String(body.username || '').trim();
+      const password = String(body.password || '');
+      const realName = String(body.realName || '').trim();
+      const email = String(body.email || '').trim();
+      const phone = String(body.phone || '').trim();
+      const orgId = body.orgId ? parseInt(body.orgId, 10) : null;
+      if (!username || !/^[a-zA-Z0-9_]{2,32}$/.test(username)) return send(res, 400, { error: '用户名需为 2-32 位字母/数字/下划线' });
+      if (!password || password.length < 6) return send(res, 400, { error: '密码至少 6 位' });
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { error: '邮箱格式不正确' });
+      const [dup] = await pool.query('SELECT id FROM sys_user WHERE username=?', [username]);
+      if (dup.length > 0) return send(res, 400, { error: '用户名已存在: ' + username });
+      const salt = genSalt();
+      const [r] = await pool.query(
+        'INSERT INTO sys_user (username, password, salt, real_name, email, phone, org_id, status) VALUES (?,?,?,?,?,?,?,1)',
+        [username, hashPassword(password, salt), salt, realName, email, phone, orgId]);
+      const roleIds = Array.isArray(body.roleIds) ? body.roleIds.map(x => parseInt(x, 10)).filter(x => x) : [];
+      for (const rid of roleIds) await pool.query('INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES (?,?)', [r.insertId, rid]);
+      return send(res, 201, { _id: String(r.insertId) });
+    }
+    const uIdm = pathname.match(/^\/api\/admin\/users\/(\d+)$/);
+    if (uIdm) {
+      const uid = parseInt(uIdm[1], 10);
+      const [[user]] = await pool.query('SELECT * FROM sys_user WHERE id=?', [uid]);
+      if (!user) return send(res, 404, { error: '用户不存在' });
+      if (method === 'PUT') {
+        const body = await readBody(req);
+        if (uid === admin.id && body.status === 0) return send(res, 400, { error: '不能禁用当前登录账号' });
+        const realName = String(body.realName != null ? body.realName : user.real_name).trim();
+        const email = String(body.email != null ? body.email : user.email).trim();
+        const phone = String(body.phone != null ? body.phone : user.phone).trim();
+        const orgId = body.orgId != null ? (parseInt(body.orgId, 10) || null) : user.org_id;
+        const status = body.status != null ? (parseInt(body.status, 10) === 0 ? 0 : 1) : user.status;
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { error: '邮箱格式不正确' });
+        await pool.query('UPDATE sys_user SET real_name=?, email=?, phone=?, org_id=?, status=? WHERE id=?', [realName, email, phone, orgId, status, uid]);
+        if (Array.isArray(body.roleIds)) {
+          const roleIds = body.roleIds.map(x => parseInt(x, 10)).filter(x => x);
+          await pool.query('DELETE FROM sys_user_role WHERE user_id=?', [uid]);
+          for (const rid of roleIds) await pool.query('INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES (?,?)', [uid, rid]);
+        }
+        return send(res, 200, { ok: true });
+      }
+      if (method === 'DELETE') {
+        if (uid === admin.id) return send(res, 400, { error: '不能删除当前登录账号' });
+        await pool.query('DELETE FROM sys_session WHERE user_id=?', [uid]);
+        await pool.query('DELETE FROM sys_user_role WHERE user_id=?', [uid]);
+        await pool.query('DELETE FROM sys_user WHERE id=?', [uid]);
+        return send(res, 200, { ok: true });
+      }
+    }
+    const uStatusM = pathname.match(/^\/api\/admin\/users\/(\d+)\/status$/);
+    if (uStatusM && method === 'PUT') {
+      const uid = parseInt(uStatusM[1], 10);
+      const body = await readBody(req);
+      const status = parseInt(body.status, 10) === 0 ? 0 : 1;
+      if (uid === admin.id && status === 0) return send(res, 400, { error: '不能禁用当前登录账号' });
+      const [r] = await pool.query('UPDATE sys_user SET status=? WHERE id=?', [status, uid]);
+      if (r.affectedRows === 0) return send(res, 404, { error: '用户不存在' });
+      if (status === 0) await pool.query('DELETE FROM sys_session WHERE user_id=?', [uid]);
+      return send(res, 200, { ok: true });
+    }
+    const uPwdM = pathname.match(/^\/api\/admin\/users\/(\d+)\/password$/);
+    if (uPwdM && method === 'PUT') {
+      const uid = parseInt(uPwdM[1], 10);
+      const body = await readBody(req);
+      const pwd = String(body.password || '');
+      if (pwd.length < 6) return send(res, 400, { error: '密码至少 6 位' });
+      const salt = genSalt();
+      const [r] = await pool.query('UPDATE sys_user SET password=?, salt=? WHERE id=?', [hashPassword(pwd, salt), salt, uid]);
+      if (r.affectedRows === 0) return send(res, 404, { error: '用户不存在' });
+      await pool.query('DELETE FROM sys_session WHERE user_id=?', [uid]);
+      return send(res, 200, { ok: true });
+    }
+    const uRoleM = pathname.match(/^\/api\/admin\/users\/(\d+)\/roles$/);
+    if (uRoleM) {
+      const uid = parseInt(uRoleM[1], 10);
+      if (method === 'GET') {
+        const roles = await getUserRoles(uid);
+        return send(res, 200, { roleIds: roles.map(r => r.id), roles });
+      }
+      if (method === 'PUT') {
+        const body = await readBody(req);
+        const roleIds = Array.isArray(body.roleIds) ? body.roleIds.map(x => parseInt(x, 10)).filter(x => x) : [];
+        await pool.query('DELETE FROM sys_user_role WHERE user_id=?', [uid]);
+        for (const rid of roleIds) await pool.query('INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES (?,?)', [uid, rid]);
+        return send(res, 200, { ok: true });
+      }
+    }
+
+    /* ---- 角色管理 ---- */
+    if (pathname === '/api/admin/roles' && method === 'GET') {
+      const [rows] = await pool.query('SELECT * FROM sys_role ORDER BY id ASC');
+      const list = [];
+      for (const r of rows) {
+        const [[{ c }]] = await pool.query('SELECT COUNT(*) AS c FROM sys_user_role WHERE role_id=?', [r.id]);
+        const [[{ pc }]] = await pool.query('SELECT COUNT(*) AS c FROM sys_role_permission WHERE role_id=?', [r.id]);
+        list.push({ id: r.id, name: r.name, code: r.code, description: r.description, status: r.status, userCount: c, permCount: pc });
+      }
+      return send(res, 200, list);
+    }
+    if (pathname === '/api/admin/roles' && method === 'POST') {
+      const body = await readBody(req);
+      const name = String(body.name || '').trim();
+      const code = String(body.code || '').trim();
+      if (!name || !code) return send(res, 400, { error: '角色名称和编码必填' });
+      if (!/^[a-zA-Z0-9_]{2,32}$/.test(code)) return send(res, 400, { error: '角色编码需为 2-32 位字母/数字/下划线' });
+      const [dup] = await pool.query('SELECT id FROM sys_role WHERE code=?', [code]);
+      if (dup.length > 0) return send(res, 400, { error: '角色编码已存在: ' + code });
+      const [r] = await pool.query('INSERT INTO sys_role (name, code, description) VALUES (?,?,?)', [name, code, String(body.description || '')]);
+      if (Array.isArray(body.permIds)) {
+        for (const pid of body.permIds.map(x => parseInt(x, 10)).filter(x => x)) await pool.query('INSERT IGNORE INTO sys_role_permission (role_id, permission_id) VALUES (?,?)', [r.insertId, pid]);
+      }
+      return send(res, 201, { _id: String(r.insertId) });
+    }
+    const rIdm = pathname.match(/^\/api\/admin\/roles\/(\d+)$/);
+    if (rIdm) {
+      const rid = parseInt(rIdm[1], 10);
+      const [[role]] = await pool.query('SELECT * FROM sys_role WHERE id=?', [rid]);
+      if (!role) return send(res, 404, { error: '角色不存在' });
+      if (method === 'PUT') {
+        const body = await readBody(req);
+        const name = String(body.name != null ? body.name : role.name).trim();
+        const code = String(body.code != null ? body.code : role.code).trim();
+        if (!name || !code) return send(res, 400, { error: '角色名称和编码必填' });
+        const [dup] = await pool.query('SELECT id FROM sys_role WHERE code=? AND id<>?', [code, rid]);
+        if (dup.length > 0) return send(res, 400, { error: '角色编码已存在: ' + code });
+        await pool.query('UPDATE sys_role SET name=?, code=?, description=?, status=? WHERE id=?', [name, code, String(body.description != null ? body.description : role.description), body.status != null ? (parseInt(body.status, 10) === 0 ? 0 : 1) : role.status, rid]);
+        if (Array.isArray(body.permIds)) {
+          const permIds = body.permIds.map(x => parseInt(x, 10)).filter(x => x);
+          await pool.query('DELETE FROM sys_role_permission WHERE role_id=?', [rid]);
+          for (const pid of permIds) await pool.query('INSERT IGNORE INTO sys_role_permission (role_id, permission_id) VALUES (?,?)', [rid, pid]);
+        }
+        return send(res, 200, { ok: true });
+      }
+      if (method === 'DELETE') {
+        const [[{ c }]] = await pool.query('SELECT COUNT(*) AS c FROM sys_user_role WHERE role_id=?', [rid]);
+        if (c > 0) return send(res, 400, { error: '该角色已分配给 ' + c + ' 个用户，请先解除分配' });
+        if (role.code === 'admin') return send(res, 400, { error: '内置管理员角色不可删除' });
+        await pool.query('DELETE FROM sys_role_permission WHERE role_id=?', [rid]);
+        await pool.query('DELETE FROM sys_role WHERE id=?', [rid]);
+        return send(res, 200, { ok: true });
+      }
+    }
+    const rPermM = pathname.match(/^\/api\/admin\/roles\/(\d+)\/permissions$/);
+    if (rPermM) {
+      const rid = parseInt(rPermM[1], 10);
+      if (method === 'GET') {
+        const [rows] = await pool.query('SELECT permission_id FROM sys_role_permission WHERE role_id=?', [rid]);
+        return send(res, 200, { permIds: rows.map(r => r.permission_id) });
+      }
+      if (method === 'PUT') {
+        const body = await readBody(req);
+        const permIds = Array.isArray(body.permIds) ? body.permIds.map(x => parseInt(x, 10)).filter(x => x) : [];
+        await pool.query('DELETE FROM sys_role_permission WHERE role_id=?', [rid]);
+        for (const pid of permIds) await pool.query('INSERT IGNORE INTO sys_role_permission (role_id, permission_id) VALUES (?,?)', [rid, pid]);
+        return send(res, 200, { ok: true });
+      }
+    }
+    const rUserM = pathname.match(/^\/api\/admin\/roles\/(\d+)\/users$/);
+    if (rUserM) {
+      const rid = parseInt(rUserM[1], 10);
+      if (method === 'GET') {
+        const [rows] = await pool.query(
+          `SELECT u.id, u.username, u.real_name, u.status FROM sys_user u JOIN sys_user_role ur ON ur.user_id = u.id WHERE ur.role_id=? ORDER BY u.id`, [rid]);
+        return send(res, 200, rows.map(r => ({ id: r.id, username: r.username, realName: r.real_name, status: r.status })));
+      }
+      if (method === 'PUT') {
+        // 设置角色的用户集合: {userIds:[...]} (勾选=加入, 未勾选=移除)
+        const body = await readBody(req);
+        const userIds = Array.isArray(body.userIds) ? body.userIds.map(x => parseInt(x, 10)).filter(x => x) : [];
+        await pool.query('DELETE FROM sys_user_role WHERE role_id=?', [rid]);
+        for (const uid of userIds) await pool.query('INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES (?,?)', [uid, rid]);
+        return send(res, 200, { ok: true, count: userIds.length });
+      }
+    }
+
+    /* ---- 权限管理 ---- */
+    if (pathname === '/api/admin/permissions' && method === 'GET') {
+      const [rows] = await pool.query('SELECT * FROM sys_permission ORDER BY sort ASC, id ASC');
+      const nodes = {};
+      rows.forEach(r => { nodes[r.id] = { id: r.id, name: r.name, code: r.code, type: r.type, parentId: r.parent_id, sort: r.sort }; });
+      const roots = [];
+      rows.forEach(r => {
+        const node = nodes[r.id];
+        node.children = nodes[r.id].children || [];
+        if (r.parent_id && nodes[r.parent_id]) { nodes[r.parent_id].children = nodes[r.parent_id].children || []; nodes[r.parent_id].children.push(node); }
+        else roots.push(node);
+      });
+      return send(res, 200, roots);
+    }
+    if (pathname === '/api/admin/permissions' && method === 'POST') {
+      const body = await readBody(req);
+      const name = String(body.name || '').trim();
+      const code = String(body.code || '').trim();
+      const type = String(body.type || 'menu');
+      if (!name || !code) return send(res, 400, { error: '权限名称和编码必填' });
+      const parentId = body.parentId ? parseInt(body.parentId, 10) : null;
+      const [dup] = await pool.query('SELECT id FROM sys_permission WHERE code=?', [code]);
+      if (dup.length > 0) return send(res, 400, { error: '权限编码已存在: ' + code });
+      const [r] = await pool.query('INSERT INTO sys_permission (name, code, type, parent_id, sort) VALUES (?,?,?,?,?)',
+        [name, code, type, parentId, parseInt(body.sort, 10) || 0]);
+      return send(res, 201, { _id: String(r.insertId) });
+    }
+    const pIdm = pathname.match(/^\/api\/admin\/permissions\/(\d+)$/);
+    if (pIdm) {
+      const pid = parseInt(pIdm[1], 10);
+      const [[perm]] = await pool.query('SELECT * FROM sys_permission WHERE id=?', [pid]);
+      if (!perm) return send(res, 404, { error: '权限不存在' });
+      if (method === 'PUT') {
+        const body = await readBody(req);
+        const name = String(body.name != null ? body.name : perm.name).trim();
+        const code = String(body.code != null ? body.code : perm.code).trim();
+        if (!name || !code) return send(res, 400, { error: '权限名称和编码必填' });
+        const [dup] = await pool.query('SELECT id FROM sys_permission WHERE code=? AND id<>?', [code, pid]);
+        if (dup.length > 0) return send(res, 400, { error: '权限编码已存在: ' + code });
+        await pool.query('UPDATE sys_permission SET name=?, code=?, type=?, parent_id=?, sort=? WHERE id=?',
+          [name, code, String(body.type != null ? body.type : perm.type), body.parentId != null ? (parseInt(body.parentId, 10) || null) : perm.parent_id, body.sort != null ? (parseInt(body.sort, 10) || 0) : perm.sort, pid]);
+        return send(res, 200, { ok: true });
+      }
+      if (method === 'DELETE') {
+        const [[{ c }]] = await pool.query('SELECT COUNT(*) AS c FROM sys_permission WHERE parent_id=?', [pid]);
+        if (c > 0) return send(res, 400, { error: '存在子权限，请先删除子权限' });
+        await pool.query('DELETE FROM sys_role_permission WHERE permission_id=?', [pid]);
+        await pool.query('DELETE FROM sys_permission WHERE id=?', [pid]);
+        return send(res, 200, { ok: true });
+      }
+    }
+
+    /* ---- 组织结构管理 ---- */
+    if (pathname === '/api/admin/orgs' && method === 'GET') {
+      const [rows] = await pool.query('SELECT * FROM sys_org ORDER BY sort ASC, id ASC');
+      const nodes = {};
+      rows.forEach(r => { nodes[r.id] = { id: r.id, name: r.name, parentId: r.parent_id, type: r.type, sort: r.sort, status: r.status }; });
+      const roots = [];
+      rows.forEach(r => {
+        const node = nodes[r.id];
+        node.children = nodes[r.id].children || [];
+        if (r.parent_id && nodes[r.parent_id]) { nodes[r.parent_id].children = nodes[r.parent_id].children || []; nodes[r.parent_id].children.push(node); }
+        else roots.push(node);
+      });
+      const [[{ uc }]] = await pool.query('SELECT COUNT(*) AS uc FROM sys_user WHERE org_id IS NOT NULL');
+      return send(res, 200, { tree: roots, userCount: uc });
+    }
+    if (pathname === '/api/admin/orgs' && method === 'POST') {
+      const body = await readBody(req);
+      const name = String(body.name || '').trim();
+      if (!name) return send(res, 400, { error: '组织名称必填' });
+      const parentId = body.parentId ? parseInt(body.parentId, 10) : null;
+      const [dup] = await pool.query('SELECT id FROM sys_org WHERE name=? AND ((parent_id=? ) OR (parent_id IS NULL AND ? IS NULL))', [name, parentId, parentId]);
+      if (dup.length > 0) return send(res, 400, { error: '同级已存在同名组织: ' + name });
+      const [r] = await pool.query('INSERT INTO sys_org (name, parent_id, type, sort) VALUES (?,?,?,?)',
+        [name, parentId, String(body.type || 'dept'), parseInt(body.sort, 10) || 0]);
+      return send(res, 201, { _id: String(r.insertId) });
+    }
+    const oIdm = pathname.match(/^\/api\/admin\/orgs\/(\d+)$/);
+    if (oIdm) {
+      const oid = parseInt(oIdm[1], 10);
+      const [[org]] = await pool.query('SELECT * FROM sys_org WHERE id=?', [oid]);
+      if (!org) return send(res, 404, { error: '组织不存在' });
+      if (method === 'PUT') {
+        const body = await readBody(req);
+        const name = String(body.name != null ? body.name : org.name).trim();
+        if (!name) return send(res, 400, { error: '组织名称必填' });
+        const parentId = body.parentId != null ? (parseInt(body.parentId, 10) || null) : org.parent_id;
+        if (parentId === oid) return send(res, 400, { error: '不能将组织挂在自身之下' });
+        const [dup] = await pool.query('SELECT id FROM sys_org WHERE id<>? AND name=? AND ((parent_id=? ) OR (parent_id IS NULL AND ? IS NULL))', [oid, name, parentId, parentId]);
+        if (dup.length > 0) return send(res, 400, { error: '同级已存在同名组织: ' + name });
+        await pool.query('UPDATE sys_org SET name=?, parent_id=?, type=?, sort=? WHERE id=?',
+          [name, parentId, String(body.type != null ? body.type : org.type), body.sort != null ? (parseInt(body.sort, 10) || 0) : org.sort, oid]);
+        return send(res, 200, { ok: true });
+      }
+      if (method === 'DELETE') {
+        const [[{ c }]] = await pool.query('SELECT COUNT(*) AS c FROM sys_org WHERE parent_id=?', [oid]);
+        if (c > 0) return send(res, 400, { error: '存在子组织，请先删除子组织' });
+        const [[{ uc }]] = await pool.query('SELECT COUNT(*) AS c FROM sys_user WHERE org_id=?', [oid]);
+        if (uc > 0) return send(res, 400, { error: '该组织下还有 ' + uc + ' 个用户，请先调整用户归属' });
+        await pool.query('DELETE FROM sys_org WHERE id=?', [oid]);
+        return send(res, 200, { ok: true });
+      }
+    }
+  }
+
   return send(res, 404, { error: 'api not found' });
 }
 
-/* ---------- 静态文件 ---------- */
+/* ---------- 数据表管理辅助函数 ---------- */
+async function addTableLog(tableMetaId, action, detail) {
+  try {
+    await pool.query('INSERT INTO ops_table_log (table_meta_id, action, detail, operator) VALUES (?,?,?,?)',
+      [tableMetaId, action, detail, 'admin']);
+  } catch (e) { console.error('[table-log]', e.message); }
+}
+
+function genTableDDL(meta, fields) {
+  const cols = [];
+  const pks = [];
+  const uniqs = [];
+  const idxs = [];
+  const fks = [];
+  let hasAutoPk = true;
+  fields.forEach(f => {
+    let type = String(f.data_type || 'VARCHAR').toUpperCase();
+    if (f.length != null && (type === 'VARCHAR' || type === 'CHAR')) type += '(' + parseInt(f.length, 10) + ')';
+    else if (f.length != null && type === 'DECIMAL') type += '(' + parseInt(f.length, 10) + ',2)';
+    let def = f.default_value;
+    if (def != null && def !== '') {
+      if (type === 'TEXT' || type === 'JSON' || type === 'DATETIME' || type === 'DATE' || type === 'TIMESTAMP') def = "'" + String(def).replace(/'/g, "''") + "'";
+      else if (!/^[0-9.\-]+$/.test(String(def))) def = "'" + String(def).replace(/'/g, "''") + "'";
+      def = ' DEFAULT ' + def;
+    } else def = '';
+    const nullStr = f.nullable ? '' : ' NOT NULL';
+    const cmt = f.comment ? " COMMENT '" + String(f.comment).replace(/'/g, "''") + "'" : '';
+    let col = '`' + f.field_name + '` ' + type + nullStr + def + cmt;
+    if (f.is_pk) {
+      pks.push('`' + f.field_name + '`');
+      if (type.indexOf('INT') === 0) col += ' AUTO_INCREMENT';
+      hasAutoPk = false;
+    }
+    if (f.is_unique) uniqs.push('`' + f.field_name + '`');
+    if (f.is_index) idxs.push('`' + f.field_name + '`');
+    if (f.fk_table && f.fk_field) fks.push('FOREIGN KEY (`' + f.field_name + '`) REFERENCES `' + f.fk_table + '` (`' + f.fk_field + '`)');
+    cols.push(col);
+  });
+  if (pks.length === 0 && hasAutoPk) {
+    cols.unshift('`id` INT AUTO_INCREMENT');
+    pks.push('`id`');
+  }
+  let sql = 'CREATE TABLE IF NOT EXISTS `' + meta.table_name + '` (\n  ' + cols.join(',\n  ');
+  if (pks.length > 0) sql += ',\n  PRIMARY KEY (' + pks.join(', ') + ')';
+  uniqs.forEach(u => { sql += ',\n  UNIQUE KEY uk_' + u.replace(/`/g, '') + ' (' + u + ')'; });
+  idxs.forEach(i => { sql += ',\n  KEY idx_' + i.replace(/`/g, '') + ' (' + i + ')'; });
+  if (fks.length > 0) sql += ',\n  ' + fks.join(',\n  ');
+  sql += '\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+  if (meta.description) sql += " COMMENT='" + String(meta.description).replace(/'/g, "''") + "'";
+  return sql;
+}
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
@@ -959,6 +1832,97 @@ async function seedActualIfEmpty() {
     }
   }
   console.log('[init] 已写入 ' + count + ' 条月度实际数据(' + year + '年 BU×12月, 预置自目标拆分实际值)');
+}
+
+/* ---------- 数据表管理预置: 分类树 + 现有业务表注册 (仅当元数据表为空时) ---------- */
+async function seedTableMetaIfEmpty() {
+  const [[c]] = await pool.query('SELECT COUNT(*) AS c FROM ops_table_meta');
+  if (c.c > 0) return;
+  const catIds = {};
+  for (const cat of SEED_TABLE_META) {
+    const [r] = await pool.query(
+      'INSERT INTO ops_table_meta (name, type, parent_id, table_name, description, status) VALUES (?,?,?,?,?,?)',
+      [cat.name, cat.type, cat.parent_id, cat.table_name, cat.description, 'active']
+    );
+    catIds[cat.name] = r.insertId;
+  }
+  // 预算/预测/实际/目标拆分 → 经营预测; 项目合同 → 运营指标
+  const catMap = { '预算管理': '经营预测', '预测管理': '经营预测', '实际回填': '经营预测', '目标拆分': '经营预测', '项目合同': '运营指标' };
+  for (const t of SEED_TABLE_META_TABLES) {
+    const parentId = catIds[catMap[t.name]] || null;
+    await pool.query(
+      'INSERT INTO ops_table_meta (name, type, parent_id, table_name, description, status) VALUES (?,?,?,?,?,?)',
+      [t.name, t.type, parentId, t.table_name, t.description, 'approved']
+    );
+  }
+  console.log('[init] 数据表管理预置完成: ' + SEED_TABLE_META.length + ' 个分类 + ' + SEED_TABLE_META_TABLES.length + ' 张业务表');
+}
+
+/* ---------- 系统管理种子数据: 管理员/角色/权限/组织 (仅空表时写入) ---------- */
+async function seedSysDataIfEmpty() {
+  // 角色
+  const [[rcnt]] = await pool.query('SELECT COUNT(*) AS c FROM sys_role');
+  let adminRoleId = null, userRoleId = null;
+  if (rcnt.c === 0) {
+    const [r1] = await pool.query('INSERT INTO sys_role (name, code, description) VALUES (?,?,?)', ['管理员', 'admin', '系统管理员，拥有全部权限（含后台管理）']);
+    const [r2] = await pool.query('INSERT INTO sys_role (name, code, description) VALUES (?,?,?)', ['普通用户', 'user', '业务操作人员，可访问经营与运营业务模块']);
+    adminRoleId = r1.insertId; userRoleId = r2.insertId;
+  } else {
+    const [[ar]] = await pool.query('SELECT id FROM sys_role WHERE code=?', ['admin']);
+    const [[ur]] = await pool.query('SELECT id FROM sys_role WHERE code=?', ['user']);
+    adminRoleId = ar ? ar.id : null; userRoleId = ur ? ur.id : null;
+  }
+  // 权限
+  const [[pcnt]] = await pool.query('SELECT COUNT(*) AS c FROM sys_permission');
+  const permIds = {};
+  if (pcnt.c === 0) {
+    for (const [name, code, type, parentId, sort] of SYS_PERMS) {
+      const [r] = await pool.query('INSERT INTO sys_permission (name, code, type, parent_id, sort) VALUES (?,?,?,?,?)', [name, code, type, parentId, sort]);
+      permIds[code] = r.insertId;
+    }
+  } else {
+    const [rows] = await pool.query('SELECT id, code FROM sys_permission');
+    rows.forEach(r => { permIds[r.code] = r.id; });
+  }
+  // admin 角色绑定全部权限; user 角色绑定业务权限(不含后台管理)
+  if (adminRoleId) {
+    const [[cnt]] = await pool.query('SELECT COUNT(*) AS c FROM sys_role_permission WHERE role_id=?', [adminRoleId]);
+    if (cnt.c === 0) {
+      for (const code of Object.keys(permIds)) await pool.query('INSERT IGNORE INTO sys_role_permission (role_id, permission_id) VALUES (?,?)', [adminRoleId, permIds[code]]);
+    }
+  }
+  if (userRoleId) {
+    const [[cnt]] = await pool.query('SELECT COUNT(*) AS c FROM sys_role_permission WHERE role_id=?', [userRoleId]);
+    if (cnt.c === 0) {
+      for (const code of Object.keys(permIds)) {
+        if (code === 'system:admin' || code === 'tablemeta:approve') continue;
+        await pool.query('INSERT IGNORE INTO sys_role_permission (role_id, permission_id) VALUES (?,?)', [userRoleId, permIds[code]]);
+      }
+    }
+  }
+  // 组织
+  const [[ocnt]] = await pool.query('SELECT COUNT(*) AS c FROM sys_org');
+  const orgIds = {};
+  if (ocnt.c === 0) {
+    for (const [name, type, parentId, sort] of SYS_ORGS) {
+      const [r] = await pool.query('INSERT INTO sys_org (name, type, parent_id, sort) VALUES (?,?,?,?)', [name, type, parentId, sort]);
+      orgIds[name] = r.insertId;
+    }
+  } else {
+    const [rows] = await pool.query('SELECT id, name FROM sys_org');
+    rows.forEach(r => { orgIds[r.name] = r.id; });
+  }
+  // 初始管理员: admin / Admin@123 (仅当无任何用户时)
+  const [[ucnt]] = await pool.query('SELECT COUNT(*) AS c FROM sys_user');
+  if (ucnt.c === 0) {
+    const salt = genSalt();
+    const orgId = orgIds['经营管理部'] || null;
+    const [r] = await pool.query(
+      'INSERT INTO sys_user (username, password, salt, real_name, email, phone, org_id, status) VALUES (?,?,?,?,?,?,?,1)',
+      [ 'admin', hashPassword('Admin@123', salt), salt, '系统管理员', 'admin@ops.local', '', orgId ]);
+    if (adminRoleId) await pool.query('INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES (?,?)', [r.insertId, adminRoleId]);
+    console.log('[init] 系统管理预置完成: 初始管理员 admin / Admin@123 (请尽快修改密码)');
+  }
 }
 
 /* ---------- 启动初始化: 建表 + 种子数据 ---------- */
@@ -1032,7 +1996,24 @@ async function init() {
   await pool.query(CREATE_ACTUAL_TABLE_SQL);
   await seedActualIfEmpty();
   const [[actcnt]] = await pool.query('SELECT COUNT(*) AS c FROM ops_actual');
-  console.log('[init] MySQL 数据库就绪: ' + DB.database + ' (records=' + cnt.c + ', forecast=' + fccnt.c + ', budget=' + bdcnt.c + ', target=' + tgtcnt.c + ', actual=' + actcnt.c + ')');
+  // 数据表管理: 元数据表 + 预置分类树
+  await pool.query(CREATE_TABLE_META_SQL);
+  await pool.query(CREATE_TABLE_FIELD_SQL);
+  await pool.query(CREATE_TABLE_APPROVAL_SQL);
+  await pool.query(CREATE_TABLE_LOG_SQL);
+  await seedTableMetaIfEmpty();
+  const [[tmtcnt]] = await pool.query('SELECT COUNT(*) AS c FROM ops_table_meta');
+  // 系统管理: 用户/角色/权限/组织/会话 (多语句拆分执行, 连接池未开启 multipleStatements)
+  for (const stmt of CREATE_SYS_TABLE_SQL.split(';')) {
+    const s = String(stmt).trim();
+    if (s) await pool.query(s);
+  }
+  await seedSysDataIfEmpty();
+  const [[sysucnt]] = await pool.query('SELECT COUNT(*) AS c FROM sys_user');
+  const [[sysrcnt]] = await pool.query('SELECT COUNT(*) AS c FROM sys_role');
+  const [[syspcnt]] = await pool.query('SELECT COUNT(*) AS c FROM sys_permission');
+  const [[sysocnt]] = await pool.query('SELECT COUNT(*) AS c FROM sys_org');
+  console.log('[init] MySQL 数据库就绪: ' + DB.database + ' (records=' + cnt.c + ', forecast=' + fccnt.c + ', budget=' + bdcnt.c + ', target=' + tgtcnt.c + ', actual=' + actcnt.c + ', table_meta=' + tmtcnt.c + ', sys_user=' + sysucnt.c + ', sys_role=' + sysrcnt.c + ', sys_perm=' + syspcnt.c + ', sys_org=' + sysocnt.c + ')');
 }
 
 /* ---------- 启动服务 ---------- */
@@ -1041,7 +2022,7 @@ const server = http.createServer(async (req, res) => {
   const pathname = url.pathname;
   try {
     if (req.method === 'OPTIONS') {
-      res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' });
+      res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' });
       return res.end();
     }
     if (pathname.startsWith('/api/')) return await handleApi(req, res, pathname, req.method);

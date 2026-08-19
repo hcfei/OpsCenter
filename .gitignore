@@ -12,7 +12,11 @@ _verify_finance2.js
 _verify_bu.js
 _verify_bu_all.js
 _verify_share.js
+_verify_menu_pages.js
 _fill_budget_bu.py
+_fix_rbac_data.py
+_verify_rbac.js
+_verify_table_mgmt.js
 _shot_fc.png
 
 # 浏览器临时 profile
