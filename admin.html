@@ -27,26 +27,60 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:#475569}
 
-/* ===== 顶栏 ===== */
-.topbar{position:fixed;top:0;left:0;right:0;height:56px;background:var(--bg-header);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;z-index:100;gap:16px}
-.topbar-brand{display:flex;align-items:center;gap:10px}
-.topbar-brand .logo-icon{width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--primary),#6366f1);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.topbar-brand .logo-text{font-size:15px;font-weight:600;color:var(--text);white-space:nowrap}
-.topbar-spacer{flex:1}
-.btn-back{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;font-size:13px;color:var(--text-secondary);background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;text-decoration:none}
-.btn-back:hover{color:var(--primary);border-color:var(--primary);background:var(--primary-glow)}
-.btn-back svg{width:14px;height:14px}
-.user-area{display:flex;align-items:center;gap:8px;margin-left:8px;padding-left:12px;border-left:1px solid var(--border)}
-.user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#6366f1);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
-.user-name{font-size:13px;color:var(--text);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.user-role{font-size:11px;color:var(--text-muted)}
-.btn-logout{height:28px;padding:0 10px;font-size:12px;color:var(--text-secondary);background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .2s}
-.btn-logout:hover{color:var(--danger);border-color:var(--danger)}
+/* ===== 侧边栏 ===== */
+.sidebar{width:220px;background:var(--bg-sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:200;transition:width .3s}
+.sidebar.collapsed{width:60px}
+.sidebar-header{height:56px;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid var(--border);gap:10px;flex-shrink:0}
+.sidebar-header .logo-icon{width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--primary),#6366f1);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sidebar-header .logo-text{font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;transition:opacity .3s}
+.sidebar.collapsed .logo-text{opacity:0;width:0}
+.sidebar-toggle{position:absolute;right:-12px;top:20px;width:24px;height:24px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-secondary);z-index:10;transition:all .2s}
+.sidebar-toggle:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+.sidebar-toggle svg{width:12px;height:12px}
+.sidebar-nav{flex:1;padding:12px 10px;overflow-y:auto}
+.sidebar-nav .nav-section-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;padding:12px 12px 6px;white-space:nowrap;overflow:hidden;transition:opacity .3s}
+.sidebar.collapsed .nav-section-label{opacity:0;height:0;padding:0;margin:0;overflow:hidden}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-sm);cursor:pointer;color:var(--text-secondary);font-size:13px;transition:all .2s;margin-bottom:2px;white-space:nowrap;overflow:hidden;border:none;background:none;width:100%;text-align:left;text-decoration:none}
+.nav-item:hover{background:rgba(59,130,246,0.08);color:var(--text)}
+.nav-item.active{background:linear-gradient(90deg,rgba(59,130,246,0.15),transparent);color:var(--primary);border-left:3px solid var(--primary);margin-left:-3px;padding-left:15px}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+.nav-item .nav-text{white-space:nowrap;transition:opacity .3s}
+.sidebar.collapsed .nav-item{padding:9px 12px;justify-content:center}
+.sidebar.collapsed .nav-item.active{padding-left:12px;margin-left:0;border-left:none;border-radius:var(--radius-sm)}
+.sidebar.collapsed .nav-text{opacity:0;width:0;display:none}
+.sidebar-footer{padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0}
+.sidebar-footer .user-info{display:flex;align-items:center;gap:8px;padding:6px 4px;white-space:nowrap;overflow:hidden}
+.sidebar-footer .user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#6366f1);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.sidebar-footer .user-name{font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis}
+.sidebar-footer .user-role{font-size:11px;color:var(--text-muted)}
+.sidebar.collapsed .sidebar-footer .user-info{justify-content:center}
+.sidebar.collapsed .sidebar-footer .user-name,.sidebar.collapsed .sidebar-footer .user-role,.sidebar.collapsed .sidebar-footer .footer-actions{display:none}
+.sidebar-footer .footer-actions{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.sidebar-footer .btn-back{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;font-size:12px;color:var(--text-secondary);background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;text-decoration:none;width:100%;justify-content:center}
+.sidebar-footer .btn-back:hover{color:var(--primary);border-color:var(--primary);background:var(--primary-glow)}
+.sidebar-footer .btn-back svg{width:14px;height:14px}
+.sidebar-footer .btn-logout{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;font-size:12px;color:var(--text-secondary);background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;width:100%;justify-content:center}
+.sidebar-footer .btn-logout:hover{color:var(--danger);border-color:var(--danger)}
+.sidebar-footer .btn-logout svg{width:13px;height:13px}
 
-/* ===== 内容区 ===== */
-.admin-content{padding:76px 24px 40px;max-width:1400px}
+/* ===== 主内容区 ===== */
+.main-content{flex:1;margin-left:220px;transition:margin-left .3s;display:flex;flex-direction:column;min-height:100vh}
+.sidebar.collapsed+.main-content{margin-left:60px}
+.topbar{position:fixed;top:0;left:220px;right:0;height:56px;background:var(--bg-header);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;z-index:100;gap:16px;transition:left .3s}
+.sidebar.collapsed+.main-content .topbar{left:60px}
+.topbar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;color:var(--text-secondary);cursor:pointer;border-radius:6px;transition:all .2s}
+.topbar-toggle:hover{background:rgba(59,130,246,0.08);color:var(--text)}
+.topbar-toggle svg{width:18px;height:18px}
+.topbar-title{font-size:16px;font-weight:600;color:var(--text)}
+.topbar-subtitle{font-size:12px;color:var(--text-muted);margin-left:4px}
+.topbar-spacer{flex:1}
+.admin-body{margin-top:56px;padding:24px;flex:1}
 .page-title{font-size:20px;font-weight:600;margin-bottom:4px}
 .page-subtitle{font-size:13px;color:var(--text-secondary);margin-bottom:20px}
+
+/* 移动端遮罩 */
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199}
+.sidebar-overlay.show{display:block}
 
 /* ===== 登录页 ===== */
 .login-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 30% 20%,#16213e 0%,#0b0f19 55%,#0b0f19 100%)}
@@ -69,6 +103,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 .login-error.show{display:block}
 .login-tip{color:var(--text-muted);font-size:12px;text-align:center;margin-top:18px;line-height:1.7}
 .login-tip code{background:rgba(59,130,246,0.12);color:#93c5fd;padding:1px 6px;border-radius:4px;font-size:12px}
+
+/* ===== 无权限 ===== */
+.forbidden-wrap{display:flex;align-items:center;justify-content:center;min-height:60vh;flex-direction:column;gap:12px}
+.forbidden-wrap .icon{width:48px;height:48px;color:var(--danger);opacity:.6}
+.forbidden-wrap h2{font-size:18px;color:var(--text)}
+.forbidden-wrap p{color:var(--text-secondary);font-size:13px}
 
 /* ===== 按钮 ===== */
 .btn-primary{background:linear-gradient(135deg,var(--primary),#4f46e5);color:#fff;border:none;padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;height:36px;transition:all .2s;box-shadow:0 2px 8px rgba(59,130,246,0.2)}
@@ -109,11 +149,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 .confirm-box p{margin-bottom:20px;font-size:14px;color:var(--text-secondary)}
 .confirm-box .confirm-actions{display:flex;gap:10px;justify-content:center}
 
-/* ===== 后台管理 ===== */
-.am-tabs{display:flex;gap:4px;margin:16px 0;padding:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;width:fit-content;flex-wrap:wrap}
-.am-tab{padding:8px 18px;font-size:13px;color:var(--text-secondary);background:transparent;border:none;border-radius:8px;cursor:pointer;transition:all .2s}
-.am-tab:hover{color:var(--text)}
-.am-tab.active{background:linear-gradient(135deg,var(--primary),#6366f1);color:#fff;font-weight:600}
+/* ===== 管理面板 ===== */
 .am-pane{display:none}
 .am-pane.active{display:block}
 .am-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
@@ -164,17 +200,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 .role-check-list label:hover{border-color:var(--primary)}
 .role-check-list label input{width:15px;height:15px;accent-color:var(--primary)}
 
-.forbidden-wrap{display:flex;align-items:center;justify-content:center;min-height:60vh;flex-direction:column;gap:12px}
-.forbidden-wrap .icon{width:48px;height:48px;color:var(--danger);opacity:.6}
-.forbidden-wrap h2{font-size:18px;color:var(--text)}
-.forbidden-wrap p{color:var(--text-secondary);font-size:13px}
+/* 移动端底部导航 */
+.mobile-tabbar{display:none;position:fixed;bottom:0;left:0;right:0;height:52px;background:var(--bg-sidebar);border-top:1px solid var(--border);z-index:200;justify-content:space-around;align-items:center;padding-bottom:env(safe-area-inset-bottom)}
+.mobile-tabbar .mt-item{display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;color:var(--text-muted);font-size:10px;cursor:pointer;padding:4px 8px;transition:color .2s}
+.mobile-tabbar .mt-item svg{width:20px;height:20px}
+.mobile-tabbar .mt-item.active{color:var(--primary)}
 
 @media(max-width:768px){
-  .user-name,.user-role{display:none}
+  .sidebar{display:none}
+  .sidebar.mobile-open{display:flex;position:fixed;width:220px;box-shadow:var(--shadow)}
+  .main-content{margin-left:0}
+  .topbar{left:0}
+  .admin-body{padding:16px 12px 68px}
   .am-toolbar input[type="text"]{min-width:140px}
-  .am-tabs{width:100%}
   .form-grid.two{grid-template-columns:1fr}
-  .admin-content{padding:76px 12px 40px}
+  .mobile-tabbar{display:flex}
+  .topbar-subtitle{display:none}
 }
 </style>
 </head>
@@ -206,102 +247,176 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   </div>
 </div>
 
-<!-- 顶栏 -->
-<div class="topbar">
-  <div class="topbar-brand">
+<!-- 移动端遮罩 -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<!-- 侧边栏 -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
     <div class="logo-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
     <span class="logo-text">后台管理</span>
   </div>
-  <span class="topbar-spacer"></span>
-  <a href="/" class="btn-back" title="返回前台">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
-    返回前台
+  <button class="sidebar-toggle" onclick="toggleSidebar()" title="收起/展开">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <nav class="sidebar-nav" id="sidebarNav">
+    <div class="nav-section-label">系统管理</div>
+    <button class="nav-item active" data-am="orglevels" onclick="amSwitch('orglevels')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span class="nav-text">组织层级</span>
+    </button>
+    <button class="nav-item" data-am="orgs" onclick="amSwitch('orgs')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>
+      <span class="nav-text">组织结构</span>
+    </button>
+    <button class="nav-item" data-am="roles" onclick="amSwitch('roles')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+      <span class="nav-text">角色管理</span>
+    </button>
+    <button class="nav-item" data-am="perms" onclick="amSwitch('perms')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      <span class="nav-text">权限管理</span>
+    </button>
+    <button class="nav-item" data-am="users" onclick="amSwitch('users')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      <span class="nav-text">用户管理</span>
+    </button>
+  </nav>
+  <div class="sidebar-footer" id="sidebarFooter" style="display:none">
+    <div class="user-info">
+      <div class="user-avatar" id="userAvatar">?</div>
+      <div>
+        <div class="user-name" id="userName">-</div>
+        <div class="user-role" id="userRole">-</div>
+      </div>
+    </div>
+    <div class="footer-actions">
+      <a href="/" class="btn-back" title="返回前台">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+        <span>返回前台</span>
+      </a>
+      <button class="btn-logout" onclick="logout()" title="退出登录">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span>退出登录</span>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<!-- 主内容区 -->
+<div class="main-content" id="mainContent">
+  <div class="topbar">
+    <button class="topbar-toggle" onclick="toggleSidebar()" title="收起/展开菜单">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <span class="topbar-title" id="topbarTitle">组织层级</span>
+    <span class="topbar-subtitle" id="topbarSubtitle">组织层级概览与统计</span>
+    <span class="topbar-spacer"></span>
+  </div>
+
+  <!-- 无权限提示 -->
+  <div class="admin-body" id="forbiddenWrap" style="display:none">
+    <div class="forbidden-wrap">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+      <h2>无访问权限</h2>
+      <p>后台管理仅对管理员开放，您的账号无此权限。</p>
+      <a href="/" class="btn-back" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px;font-size:13px;color:var(--text-secondary);border:1px solid var(--border);border-radius:6px;text-decoration:none"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>返回前台</a>
+    </div>
+  </div>
+
+  <!-- 后台管理内容 -->
+  <div class="admin-body" id="adminContent" style="display:none">
+    <!-- 用户管理 -->
+    <div class="am-pane" id="amPane-users">
+      <div class="am-toolbar">
+        <input type="text" id="amUserKeyword" placeholder="搜索用户名/姓名/邮箱/手机" onkeydown="if(event.key==='Enter')amLoadUsers(1)">
+        <select id="amUserStatus" onchange="amLoadUsers(1)"><option value="">全部状态</option><option value="1">启用</option><option value="0">禁用</option></select>
+        <span class="spacer"></span>
+        <button class="btn-secondary" onclick="amOpenUser()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增用户</button>
+      </div>
+      <div class="am-table-wrap">
+        <table class="am-table" id="amUserTable">
+          <thead><tr><th>ID</th><th>用户名</th><th>姓名</th><th>邮箱</th><th>组织</th><th>角色</th><th>状态</th><th>创建时间</th><th style="min-width:210px">操作</th></tr></thead>
+          <tbody id="amUserTbody"></tbody>
+        </table>
+      </div>
+      <div class="am-pagination" id="amUserPage"></div>
+    </div>
+    <!-- 角色管理 -->
+    <div class="am-pane" id="amPane-roles">
+      <div class="am-toolbar">
+        <span style="color:var(--text-secondary);font-size:13px">角色用于聚合权限并分配给用户，实现基于角色的访问控制（RBAC）</span>
+        <span class="spacer"></span>
+        <button class="btn-secondary" onclick="amOpenRole()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增角色</button>
+      </div>
+      <div class="am-table-wrap">
+        <table class="am-table" id="amRoleTable">
+          <thead><tr><th>ID</th><th>角色名称</th><th>角色编码</th><th>描述</th><th>用户数</th><th>权限数</th><th>状态</th><th style="min-width:220px">操作</th></tr></thead>
+          <tbody id="amRoleTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- 权限管理 -->
+    <div class="am-pane" id="amPane-perms">
+      <div class="am-toolbar">
+        <span style="color:var(--text-secondary);font-size:13px">菜单/操作权限定义；绑定到角色后控制用户可访问的模块</span>
+        <span class="spacer"></span>
+        <button class="btn-secondary" onclick="amOpenPerm()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增权限</button>
+      </div>
+      <div class="am-table-wrap">
+        <table class="am-table am-perm-table" id="amPermTable">
+          <thead><tr><th>权限名称</th><th>编码</th><th>类型</th><th>排序</th><th style="min-width:120px">操作</th></tr></thead>
+          <tbody id="amPermTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- 组织层级 -->
+    <div class="am-pane active" id="amPane-orglevels">
+      <div class="am-toolbar">
+        <span style="color:var(--text-secondary);font-size:13px">组织层级定义：按树型排列的层级名称，如 集团→BG→BD→领域→BU→PDU→项目组</span>
+        <span class="spacer"></span>
+        <button class="btn-secondary" onclick="amAddLevel()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增层级</button>
+      </div>
+      <div class="am-table-wrap" style="padding:20px">
+        <div id="orgLevelsView" style="min-height:200px"></div>
+      </div>
+    </div>
+    <!-- 组织结构 -->
+    <div class="am-pane" id="amPane-orgs">
+      <div class="am-toolbar">
+        <span style="color:var(--text-secondary);font-size:13px">公司/部门/团队 树形结构维护；用户归属部门在「用户管理」中设置</span>
+        <span class="spacer"></span>
+        <button class="btn-secondary" onclick="amOpenOrg()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增组织</button>
+      </div>
+      <div class="am-table-wrap" style="padding:8px">
+        <div class="am-tree" id="amOrgTree"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 移动端底部导航 -->
+<div class="mobile-tabbar" id="mobileTabbar" style="display:none">
+  <button class="mt-item active" data-am="orglevels" onclick="amSwitch('orglevels')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    层级
+  </button>
+  <button class="mt-item" data-am="orgs" onclick="amSwitch('orgs')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+    组织
+  </button>
+  <button class="mt-item" data-am="roles" onclick="amSwitch('roles')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    角色
+  </button>
+  <button class="mt-item" data-am="users" onclick="amSwitch('users')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+    用户
+  </button>
+  <a class="mt-item" href="/" style="text-decoration:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    前台
   </a>
-  <div class="user-area" id="userArea" style="display:none">
-    <div class="user-avatar" id="userAvatar">?</div>
-    <div>
-      <div class="user-name" id="userName">-</div>
-      <div class="user-role" id="userRole">-</div>
-    </div>
-    <button class="btn-logout" onclick="logout()" title="退出登录"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>退出</button>
-  </div>
-</div>
-
-<!-- 无权限提示 -->
-<div class="admin-content" id="forbiddenWrap" style="display:none">
-  <div class="forbidden-wrap">
-    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
-    <h2>无访问权限</h2>
-    <p>后台管理仅对管理员开放，您的账号无此权限。</p>
-    <a href="/" class="btn-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>返回前台</a>
-  </div>
-</div>
-
-<!-- 后台管理内容 -->
-<div class="admin-content" id="adminContent" style="display:none">
-  <div class="page-title">后台管理</div>
-  <div class="page-subtitle">用户 · 角色 · 权限 · 组织结构 统一管理（仅管理员可见）</div>
-  <div class="am-tabs">
-    <button class="am-tab active" data-am="users" onclick="amSwitch('users')">用户管理</button>
-    <button class="am-tab" data-am="roles" onclick="amSwitch('roles')">角色管理</button>
-    <button class="am-tab" data-am="perms" onclick="amSwitch('perms')">权限管理</button>
-    <button class="am-tab" data-am="orgs" onclick="amSwitch('orgs')">组织结构</button>
-  </div>
-  <!-- 用户管理 -->
-  <div class="am-pane active" id="amPane-users">
-    <div class="am-toolbar">
-      <input type="text" id="amUserKeyword" placeholder="搜索用户名/姓名/邮箱/手机" onkeydown="if(event.key==='Enter')amLoadUsers(1)">
-      <select id="amUserStatus" onchange="amLoadUsers(1)"><option value="">全部状态</option><option value="1">启用</option><option value="0">禁用</option></select>
-      <span class="spacer"></span>
-      <button class="btn-secondary" onclick="amOpenUser()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增用户</button>
-    </div>
-    <div class="am-table-wrap">
-      <table class="am-table" id="amUserTable">
-        <thead><tr><th>ID</th><th>用户名</th><th>姓名</th><th>邮箱</th><th>组织</th><th>角色</th><th>状态</th><th>创建时间</th><th style="min-width:210px">操作</th></tr></thead>
-        <tbody id="amUserTbody"></tbody>
-      </table>
-    </div>
-    <div class="am-pagination" id="amUserPage"></div>
-  </div>
-  <!-- 角色管理 -->
-  <div class="am-pane" id="amPane-roles">
-    <div class="am-toolbar">
-      <span style="color:var(--text-secondary);font-size:13px">角色用于聚合权限并分配给用户，实现基于角色的访问控制（RBAC）</span>
-      <span class="spacer"></span>
-      <button class="btn-secondary" onclick="amOpenRole()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增角色</button>
-    </div>
-    <div class="am-table-wrap">
-      <table class="am-table" id="amRoleTable">
-        <thead><tr><th>ID</th><th>角色名称</th><th>角色编码</th><th>描述</th><th>用户数</th><th>权限数</th><th>状态</th><th style="min-width:220px">操作</th></tr></thead>
-        <tbody id="amRoleTbody"></tbody>
-      </table>
-    </div>
-  </div>
-  <!-- 权限管理 -->
-  <div class="am-pane" id="amPane-perms">
-    <div class="am-toolbar">
-      <span style="color:var(--text-secondary);font-size:13px">菜单/操作权限定义；绑定到角色后控制用户可访问的模块</span>
-      <span class="spacer"></span>
-      <button class="btn-secondary" onclick="amOpenPerm()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增权限</button>
-    </div>
-    <div class="am-table-wrap">
-      <table class="am-table am-perm-table" id="amPermTable">
-        <thead><tr><th>权限名称</th><th>编码</th><th>类型</th><th>排序</th><th style="min-width:120px">操作</th></tr></thead>
-        <tbody id="amPermTbody"></tbody>
-      </table>
-    </div>
-  </div>
-  <!-- 组织结构 -->
-  <div class="am-pane" id="amPane-orgs">
-    <div class="am-toolbar">
-      <span style="color:var(--text-secondary);font-size:13px">公司/部门/团队 树形结构维护；用户归属部门在「用户管理」中设置</span>
-      <span class="spacer"></span>
-      <button class="btn-secondary" onclick="amOpenOrg()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增组织</button>
-    </div>
-    <div class="am-table-wrap" style="padding:8px">
-      <div class="am-tree" id="amOrgTree"></div>
-    </div>
-  </div>
 </div>
 
 <!-- 用户弹窗 -->
@@ -444,6 +559,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   var SYS_ROLES = [];
   var SYS_PERMS = [];
   var ROLE_NAME_MAP = { 'admin': '管理员', 'user': '普通用户' };
+  var AM_TITLES = {
+    orglevels: { title: '组织层级', sub: '组织层级概览与统计' },
+    orgs: { title: '组织结构', sub: '公司/部门/团队 树形维护' },
+    roles: { title: '角色管理', sub: '角色与权限聚合管理' },
+    perms: { title: '权限管理', sub: '菜单/操作权限定义' },
+    users: { title: '用户管理', sub: '系统用户账号管理' }
+  };
 
   // 覆写全局 fetch: 自动注入 Authorization 头 + 统一 401 处理
   var _origFetch = window.fetch;
@@ -476,22 +598,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   }
   function showLoginPage(){
     document.getElementById('loginOverlay').classList.remove('hidden');
-    document.getElementById('userArea').style.display = 'none';
+    document.getElementById('sidebarFooter').style.display = 'none';
     document.getElementById('adminContent').style.display = 'none';
+    document.getElementById('mobileTabbar').style.display = 'none';
   }
   function hideLoginPage(){
     document.getElementById('loginOverlay').classList.add('hidden');
-    document.getElementById('userArea').style.display = 'flex';
+    document.getElementById('sidebarFooter').style.display = '';
     document.getElementById('adminContent').style.display = '';
+    document.getElementById('mobileTabbar').style.display = '';
     document.getElementById('userAvatar').textContent = (SYS_USER && SYS_USER.username) ? SYS_USER.username.charAt(0).toUpperCase() : '?';
     document.getElementById('userName').textContent = SYS_USER ? (SYS_USER.realName || SYS_USER.username) : '-';
     document.getElementById('userRole').textContent = SYS_ROLES.map(function(r){ return ROLE_NAME_MAP[r] || r; }).join(' / ') || '无角色';
+    // 移动端检测
+    if (window.innerWidth <= 768) {
+      document.getElementById('mobileTabbar').style.display = 'flex';
+    } else {
+      document.getElementById('mobileTabbar').style.display = 'none';
+    }
   }
   function isAdmin(){ return SYS_PERMS.indexOf('system:admin') >= 0; }
   function showForbidden(){
     document.getElementById('loginOverlay').classList.add('hidden');
-    document.getElementById('userArea').style.display = 'none';
+    document.getElementById('sidebarFooter').style.display = 'none';
     document.getElementById('adminContent').style.display = 'none';
+    document.getElementById('mobileTabbar').style.display = 'none';
     document.getElementById('forbiddenWrap').style.display = '';
   }
 
@@ -531,6 +662,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       document.getElementById('loginPassword').value = '';
       toast('已退出登录');
     });
+  };
+
+  // 侧边栏收起/展开
+  window.toggleSidebar = function(){
+    var sb = document.getElementById('sidebar');
+    var overlay = document.getElementById('sidebarOverlay');
+    if (window.innerWidth <= 768) {
+      sb.classList.toggle('mobile-open');
+      overlay.classList.toggle('show');
+    } else {
+      sb.classList.toggle('collapsed');
+    }
   };
 
   // 登录/校验成功后: 检查 admin 权限
@@ -595,7 +738,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   });
 
   /* ================= 后台管理 (用户/角色/权限/组织) ================= */
-  var AM_CUR='users';
+  var AM_CUR='orglevels';
   var AM_USER_PAGE=1, AM_USER_TOTAL=0;
   var AM_USER_EDIT_ID=null, AM_ROLE_EDIT_ID=null, AM_PERM_EDIT_ID=null, AM_ORG_EDIT_ID=null;
   var AM_ROLE_USERS_ID=null, AM_ROLE_PERMS_ID=null, AM_PWD_USER_ID=null;
@@ -615,11 +758,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 
   window.amSwitch = function(t){
     AM_CUR = t;
-    var btns = document.querySelectorAll('.am-tab');
-    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].getAttribute('data-am') === t);
+    // 更新侧边栏导航激活态
+    var navItems = document.querySelectorAll('.sidebar-nav .nav-item');
+    for (var i = 0; i < navItems.length; i++) navItems[i].classList.toggle('active', navItems[i].getAttribute('data-am') === t);
+    // 更新移动端底部导航激活态
+    var mtItems = document.querySelectorAll('.mobile-tabbar .mt-item');
+    for (var j = 0; j < mtItems.length; j++) mtItems[j].classList.toggle('active', mtItems[j].getAttribute('data-am') === t);
+    // 更新顶栏标题
+    var info = AM_TITLES[t] || { title: t, sub: '' };
+    document.getElementById('topbarTitle').textContent = info.title;
+    document.getElementById('topbarSubtitle').textContent = info.sub;
+    // 切换面板
     var panes = document.querySelectorAll('.am-pane');
-    for (var j = 0; j < panes.length; j++) panes[j].classList.toggle('active', panes[j].id === 'amPane-' + t);
-    if (t === 'users') amLoadUsers(1);
+    for (var k = 0; k < panes.length; k++) panes[k].classList.toggle('active', panes[k].id === 'amPane-' + t);
+    // 移动端关闭侧边栏
+    if (window.innerWidth <= 768) {
+      document.getElementById('sidebar').classList.remove('mobile-open');
+      document.getElementById('sidebarOverlay').classList.remove('show');
+    }
+    if (t === 'orglevels') amLoadOrgLevels();
+    else if (t === 'users') amLoadUsers(1);
     else if (t === 'roles') amLoadRoles();
     else if (t === 'perms') amLoadPerms();
     else if (t === 'orgs') amLoadOrgs();
@@ -1016,6 +1174,92 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       amFetch('/api/admin/permissions/' + id, { method:'DELETE' })
         .then(function(){ toast('权限已删除', 'success'); amLoadPerms(); })
         .catch(function(err){ toast(err.message, 'error'); });
+    });
+  };
+
+  /* ---- 组织层级 ---- */
+  var DEFAULT_ORG_LEVELS = ['集团', 'BG', 'BD', '领域', 'BU', 'PDU', '项目组'];
+  var LEVEL_COLORS = ['#8b5cf6', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
+  function amGetLevels(){
+    try { var v = JSON.parse(localStorage.getItem('wb_ops_org_levels') || 'null'); return (v && v.length) ? v : DEFAULT_ORG_LEVELS.slice(); }
+    catch(e) { return DEFAULT_ORG_LEVELS.slice(); }
+  }
+  function amSaveLevels(arr){ localStorage.setItem('wb_ops_org_levels', JSON.stringify(arr)); }
+  function amLoadOrgLevels(){
+    var levels = amGetLevels();
+    var view = document.getElementById('orgLevelsView');
+    if (!levels.length) { view.innerHTML = '<div class="am-empty">暂无层级，点击右上角「新增层级」添加</div>'; return; }
+    // 树型排列：每行一个层级，用竖线连接
+    var html = '<div style="display:inline-block;min-width:300px">';
+    for (var i = 0; i < levels.length; i++) {
+      var isLast = (i === levels.length - 1);
+      var color = LEVEL_COLORS[i % LEVEL_COLORS.length];
+      var hasDown = !isLast;
+      // 节点行
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;margin-left:0;transition:border-color .2s" onmouseover="this.style.borderColor=\'' + color + '\'" onmouseout="this.style.borderColor=\'var(--border)\'">';
+      // 序号圆
+      html += '<span style="width:28px;height:28px;border-radius:50%;background:' + color + '22;color:' + color + ';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">' + (i + 1) + '</span>';
+      // 层级名称
+      html += '<span style="font-weight:600;color:var(--text);font-size:14px;min-width:80px">' + amEsc(levels[i]) + '</span>';
+      // 层级标签
+      html += '<span style="font-size:11px;color:' + color + ';background:' + color + '15;padding:2px 10px;border-radius:10px">L' + (i + 1) + '</span>';
+      html += '<span class="spacer" style="flex:1"></span>';
+      // 操作按钮
+      html += '<button class="btn-secondary btn-sm" onclick="amEditLevel(' + i + ')" title="编辑">编辑</button>';
+      if (i > 0) html += '<button class="btn-secondary btn-sm" onclick="amMoveLevel(' + i + ',-1)" title="上移">↑</button>';
+      if (i < levels.length - 1) html += '<button class="btn-secondary btn-sm" onclick="amMoveLevel(' + i + ',1)" title="下移">↓</button>';
+      html += '<button class="btn-secondary btn-sm btn-danger" onclick="amDeleteLevel(' + i + ')" title="删除">删除</button>';
+      html += '</div>';
+      // 连接线
+      if (hasDown) {
+        html += '<div style="display:flex;justify-content:flex-start;padding-left:28px;height:20px">';
+        html += '<div style="width:2px;height:100%;background:' + color + '44;border-radius:1px"></div>';
+        html += '</div>';
+      }
+    }
+    html += '</div>';
+    view.innerHTML = html;
+  }
+  window.amAddLevel = function(){
+    var name = prompt('请输入层级名称：', '');
+    if (!name || !name.trim()) return;
+    name = name.trim();
+    var levels = amGetLevels();
+    if (levels.indexOf(name) >= 0) { toast('该层级名称已存在', 'error'); return; }
+    levels.push(name);
+    amSaveLevels(levels);
+    toast('层级「' + name + '」已添加', 'success');
+    amLoadOrgLevels();
+  };
+  window.amEditLevel = function(idx){
+    var levels = amGetLevels();
+    var old = levels[idx];
+    var name = prompt('请修改层级名称：', old);
+    if (name === null) return;
+    name = name.trim();
+    if (!name) { toast('层级名称不能为空', 'error'); return; }
+    if (name !== old && levels.indexOf(name) >= 0) { toast('该层级名称已存在', 'error'); return; }
+    levels[idx] = name;
+    amSaveLevels(levels);
+    toast('层级已更新', 'success');
+    amLoadOrgLevels();
+  };
+  window.amMoveLevel = function(idx, dir){
+    var levels = amGetLevels();
+    var ni = idx + dir;
+    if (ni < 0 || ni >= levels.length) return;
+    var tmp = levels[idx]; levels[idx] = levels[ni]; levels[ni] = tmp;
+    amSaveLevels(levels);
+    amLoadOrgLevels();
+  };
+  window.amDeleteLevel = function(idx){
+    var levels = amGetLevels();
+    var name = levels[idx];
+    showConfirm('确认删除层级「' + name + '」吗？', function(){
+      levels.splice(idx, 1);
+      amSaveLevels(levels);
+      toast('层级「' + name + '」已删除', 'success');
+      amLoadOrgLevels();
     });
   };
 
