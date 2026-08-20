@@ -637,17 +637,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
         <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <div class="nav-sub">
-        <button class="nav-item" data-tab="budget" onclick="switchTab('budget')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-          <span class="nav-text">预算管理</span>
-        </button>
         <button class="nav-item" data-tab="forecast" onclick="switchTab('forecast')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <svg viewBox="0 0 24 24" fill="none"  stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           <span class="nav-text">预测管理</span>
         </button>
         <button class="nav-item" data-tab="actual" onclick="switchTab('actual')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           <span class="nav-text">实际回填</span>
+        </button>
+      </div>
+    </div>
+    <!-- 预算管理 -->
+    <div class="nav-group" id="navg-budget">
+      <button class="nav-group-header" onclick="toggleNavGroup(this)" title="预算管理">
+        <svg class="nav-group-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        <span class="nav-group-label">预算管理</span>
+        <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="nav-sub">
+        <button class="nav-item" data-bp="board" onclick="gotoBudgetSub('board')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          <span class="nav-text">预算看板</span>
+        </button>
+        <button class="nav-item" data-bp="collect" onclick="gotoBudgetSub('collect')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+          <span class="nav-text">预算汇集</span>
+        </button>
+        <button class="nav-item" data-bp="allocate" onclick="gotoBudgetSub('allocate')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="nav-text">预算分解</span>
         </button>
       </div>
     </div>
@@ -870,13 +888,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   <div class="page-title">预算管理</div>
   <div class="page-subtitle">BD→领域→BU 三级预算编制 · 从下到上汇集 / 从上到下分解（金额单位：万元）</div>
 
-  <!-- 子 Tab 切换 -->
   <div class="fc-status-bar" style="margin-bottom:14px">
-    <div class="sub-tab-bar">
-      <button class="sub-tab active" data-subtab="bflow" onclick="switchBudgetSubTab('bflow')">📊 预算看板</button>
-      <button class="sub-tab" data-subtab="bcollect" onclick="switchBudgetSubTab('bcollect')">⬆️ 从下到上汇集</button>
-      <button class="sub-tab" data-subtab="ballocate" onclick="switchBudgetSubTab('ballocate')">⬇️ 从上到下分解</button>
-    </div>
     <div class="tab-actions" style="margin-left:auto">
       <label class="filter-label">部门</label>
       <select class="filter-select" id="bfDeptSel" style="min-width:240px" onchange="onBfDeptChange()"></select>
@@ -899,8 +911,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     </div>
   </div>
 
-  <!-- 子 Tab 1: 预算看板（部门视角） -->
-  <div id="bflow-subtab" class="sub-tab-content">
+  <!-- 子页面 1: 预算看板（部门视角，只读） -->
+  <div id="bp-board" class="sub-tab-content">
     <div class="dash-card full" style="margin-bottom:14px">
       <div class="chart-section-title">📊 <span id="bfDeptKpiName"></span> · <span id="bfDeptKpiYear"></span> 年 <span id="bfDeptKpiVersion"></span> 年度预算</div>
       <div class="kpi-row" id="bfDeptKpiRow" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px">
@@ -923,8 +935,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     </div>
   </div>
 
-  <!-- 子 Tab 2: 从下到上汇集 -->
-  <div id="bcollect-subtab" class="sub-tab-content" style="display:none">
+  <!-- 子页面 2: 预算汇集（从下到上汇集） -->
+  <div id="bp-collect" class="sub-tab-content" style="display:none">
     <div class="dash-card full">
       <div class="chart-section-title">⬆️ 从下到上汇集预算</div>
       <div class="form-section" style="padding:12px 0;border-bottom:1px solid var(--border);margin-bottom:14px">
@@ -962,8 +974,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     </div>
   </div>
 
-  <!-- 子 Tab 3: 从上到下分解 -->
-  <div id="ballocate-subtab" class="sub-tab-content" style="display:none">
+  <!-- 将页面 3: 预算分解（从上到下分解） -->
+  <div id="bp-allocate" class="sub-tab-content" style="display:none">
     <div class="dash-card full">
       <div class="chart-section-title">⬇️ 从上到下分解预算</div>
       <div class="form-section" style="padding:12px 0;border-bottom:1px solid var(--border);margin-bottom:14px">
@@ -1790,20 +1802,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     BF_VERSION='V1';
     loadBudgetFlowVersions();
   };
-  window.onBfPeriodChange=function(){BF_PERIOD=document.getElementById('bfPeriodSel').value;loadBudgetFlowTree();};
-  window.switchBudgetSubTab=function(sub){
-    document.querySelectorAll('.sub-tab').forEach(function(el){el.classList.toggle('active',el.dataset.subtab===sub);});
-    document.querySelectorAll('.sub-tab-content').forEach(function(el){el.style.display='none';});
-    document.getElementById(sub+'-subtab').style.display='';
-    if(sub==='bflow' && BF_DEPT_ID)loadBudgetDeptDetail();
+  // 预算管理三子页切换（预算管理父菜单 → 看板/汇集/分解）
+  window.gotoBudgetSub=function(name){
+    switchTab('budget');
+    ['board','collect','allocate'].forEach(function(n){
+      var el=document.getElementById('bp-'+n);
+      if(el)el.style.display=(n===name)?'':'none';
+    });
+    document.querySelectorAll('.navg-budget .nav-item').forEach(function(el){
+      el.classList.toggle('active', el.getAttribute('data-bp')===name);
+    });
+    var titles={board:'预算看板',collect:'预算汇集',allocate:'预算分解'};
+    document.getElementById('breadcrumb').innerHTML='<span class="current">预算管理 · '+titles[name]+'</span>';
+    if(name==='board'){ if(BF_DEPT_ID)loadBudgetDeptDetail(); }
+    else if(name==='collect'){ loadBudgetFlowTree(function(){populateCollectTarget();}); }
+    else if(name==='allocate'){ calcAllocation(); }
   };
-  function loadBudgetFlowTree(){
+  function loadBudgetFlowTree(cb){
     fetch('/api/budget-flow/tree?year='+BF_YEAR+'&version='+BF_VERSION+'&version_type='+BF_VERSION_TYPE+'&period='+BF_PERIOD,{method:'GET',headers:{'Authorization':'Bearer '+localStorage.getItem('wb_ops_token')}})
     .then(function(r){return r.json();})
     .then(function(d){
       BF_TREE=d.tree||[];
       renderBudgetFlowKpi(d);
       renderBudgetFlowTree();
+      if(typeof cb==='function')cb();
     }).catch(function(e){console.error(e);});
   }
   function renderBudgetFlowKpi(d){
