@@ -323,13 +323,17 @@ async function migrateBudgetTable() {
   }
 }
 
-/* 预算流程表迁移: 补 version 列 */
+/* 预算流程表迁移: 补 version 列 + YTD→全年 */
 async function migrateBudgetFlowTable() {
   const [vcols] = await pool.query("SHOW COLUMNS FROM ops_budget_flow LIKE 'version'");
   if (vcols.length === 0) {
     await pool.query("ALTER TABLE ops_budget_flow ADD COLUMN version VARCHAR(20) NOT NULL DEFAULT 'V1' AFTER year");
     console.log('[migrate] ops_budget_flow 已升级: 新增 version 列');
   }
+  // 统一全年周期标识：YTD → 全年
+  try {
+    await pool.query("UPDATE ops_budget_flow SET period='全年' WHERE period='YTD'");
+  } catch (e) { /* ignore */ }
 }
 
 async function migrateBudgetVersionTable() {
@@ -1141,6 +1145,17 @@ async function handleApi(req, res, pathname, method) {
   }
 
   /* ---------- 预算流程 API: BD→领域→BU 三级预算编制 ---------- */
+  // 预算周期定义（顺序即展示顺序）：月度 + 季度 + 半年度 + 全年
+  const BUDGET_PERIODS = [
+    { code: '1月', label: '1月' }, { code: '2月', label: '2月' }, { code: '3月', label: '3月' },
+    { code: '4月', label: '4月' }, { code: '5月', label: '5月' }, { code: '6月', label: '6月' },
+    { code: '7月', label: '7月' }, { code: '8月', label: '8月' }, { code: '9月', label: '9月' },
+    { code: '10月', label: '10月' }, { code: '11月', label: '11月' }, { code: '12月', label: '12月' },
+    { code: 'Q1', label: 'Q1' }, { code: 'Q2', label: 'Q2' }, { code: 'Q3', label: 'Q3' }, { code: 'Q4', label: 'Q4' },
+    { code: 'H1', label: 'H1' }, { code: 'H2', label: 'H2' }, { code: '全年', label: '全年' }
+  ];
+  const budgetLevelOf = (depth) => depth === 1 ? '集团' : (depth === 2 ? 'BG' : (depth === 3 ? 'BD' : (depth === 4 ? '领域' : 'BU')));
+
   // 获取预算编制状态树
   if (pathname === '/api/budget-flow/tree' && method === 'GET') {
     const q = new URL(req.url, 'http://x');
@@ -1213,6 +1228,62 @@ async function handleApi(req, res, pathname, method) {
     };
     calcTotal(budgetTree);
     return send(res, 200, { year, version, versionList, period, totalRevenue, totalProfit, totalCash, tree: budgetTree });
+  }
+
+  // 扁平组织列表（供部门选择器使用）
+  if (pathname === '/api/budget-flow/orgs' && method === 'GET') {
+    const [orgRows] = await pool.query('SELECT id, name, parent_id, depth FROM sys_org WHERE status=1 ORDER BY sort ASC, id ASC');
+    const nodes = {};
+    orgRows.forEach(r => { nodes[r.id] = { id: r.id, name: r.name, parentId: r.parent_id, depth: 0, children: [] }; });
+    const roots = [];
+    orgRows.forEach(r => {
+      if (r.parent_id && nodes[r.parent_id]) nodes[r.parent_id].children.push(nodes[r.id]);
+      else roots.push(nodes[r.id]);
+    });
+    const calcDepth = (list, d) => { list.forEach(n => { n.depth = d; calcDepth(n.children, d + 1); }); };
+    calcDepth(roots, 1);
+    const flat = [];
+    const walk = (list, prefix) => {
+      list.forEach(n => {
+        const indentName = (prefix ? prefix + ' / ' : '') + n.name;
+        flat.push({ id: n.id, name: n.name, fullName: indentName, parentId: n.parentId, depth: n.depth, level: budgetLevelOf(n.depth) });
+        walk(n.children, indentName);
+      });
+    };
+    walk(roots, '');
+    return send(res, 200, flat);
+  }
+
+  // 部门预算明细（部门自身 + 直接子部门，全周期）
+  if (pathname === '/api/budget-flow/dept' && method === 'GET') {
+    const q = new URL(req.url, 'http://x');
+    const year = parseInt(q.searchParams.get('year') || new Date().getFullYear(), 10);
+    const version = q.searchParams.get('version') || 'V1';
+    const versionType = q.searchParams.get('version_type') || 'estimate';
+    const orgId = parseInt(q.searchParams.get('orgId'), 10);
+    if (!orgId) return send(res, 400, { error: 'orgId required' });
+    const [[org]] = await pool.query('SELECT id, name, parent_id, depth FROM sys_org WHERE id=?', [orgId]);
+    if (!org) return send(res, 404, { error: 'org not found' });
+    const [children] = await pool.query('SELECT id, name, parent_id, depth FROM sys_org WHERE parent_id=? AND status=1 ORDER BY sort ASC, id ASC', [orgId]);
+    const allIds = [orgId, ...children.map(c => c.id)];
+    const [flows] = await pool.query(
+      'SELECT org_id, period, budget_revenue, budget_profit, budget_cash, status, source FROM ops_budget_flow WHERE year=? AND version=? AND org_id IN (' + allIds.join(',') + ')',
+      [year, version]
+    );
+    const flowByOrg = {};
+    allIds.forEach(id => { flowByOrg[id] = {}; });
+    flows.forEach(f => {
+      if (!flowByOrg[f.org_id]) flowByOrg[f.org_id] = {};
+      flowByOrg[f.org_id][f.period] = {
+        budget_revenue: Number(f.budget_revenue) || 0,
+        budget_profit: Number(f.budget_profit) || 0,
+        budget_cash: Number(f.budget_cash) || 0,
+        status: f.status, source: f.source
+      };
+    });
+    const self = { id: org.id, name: org.name, level: budgetLevelOf(org.depth), depth: org.depth, data: flowByOrg[orgId] || {} };
+    const childList = children.map(c => ({ id: c.id, name: c.name, level: budgetLevelOf(c.depth), depth: c.depth, data: flowByOrg[c.id] || {} }));
+    return send(res, 200, { year, version, versionType, orgId, periods: BUDGET_PERIODS, self, children: childList });
   }
 
   // 获取版本列表
@@ -1464,7 +1535,7 @@ async function handleApi(req, res, pathname, method) {
     // 只取 BD/领域/BU（depth 3-5）
     const targetOrgs = [];
     Object.values(nodes).forEach(n => { if (n.depth >= 3 && n.depth <= 5) targetOrgs.push(n); });
-    const periods = ['Q1', 'Q2', 'Q3', 'Q4', 'H1', 'H2', 'YTD'];
+    const periods = BUDGET_PERIODS.map(p => p.code);
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
