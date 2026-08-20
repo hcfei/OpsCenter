@@ -10,6 +10,7 @@ REMOTE = '/opt/ops-platform/'
 FILES = [
     ('运营管理平台.html', 'index.html'),
     ('admin.html', 'admin.html'),
+    ('app.js', 'app.js'),
 ]
 
 def main():
@@ -76,8 +77,8 @@ def main():
             data=data, headers={'Content-Type': 'application/json'}, method='POST')
         resp = urllib.request.urlopen(req, timeout=10)
         result = json.loads(resp.read().decode())
-        has_token = bool(result.get('data', {}).get('token'))
-        has_admin_perm = 'system:admin' in result.get('data', {}).get('perms', [])
+        has_token = bool(result.get('token'))
+        has_admin_perm = 'system:admin' in result.get('perms', [])
         print(f'Login API: {resp.status} OK, token: {has_token}, system:admin: {has_admin_perm}')
     except Exception as e:
         print(f'Login API FAILED: {e}')

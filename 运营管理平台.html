@@ -127,6 +127,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 .kpi-icon svg{width:20px;height:20px}
 .kpi-meta{flex:1}
 .kpi-label{font-size:12px;color:var(--text-secondary);margin-bottom:2px}
+.kpi-unit{font-size:12px;color:var(--text-muted);margin-left:2px}
+.tree-toggle{cursor:pointer;color:var(--primary);font-size:11px;margin-right:4px;user-select:none}
+.tree-toggle:hover{color:var(--primary-dark)}
+.org-link{color:var(--primary);text-decoration:none;font-weight:500}
+.org-link:hover{text-decoration:underline}
+.budget-tree-table{width:100%;border-collapse:collapse}
 .kpi-value{font-size:26px;font-weight:700;color:var(--text);line-height:1.2}
 .kpi-value.primary{color:var(--primary)}
 .kpi-value.success{color:var(--success)}
@@ -395,6 +401,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 .fc-status-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 8px rgba(16,185,129,0.6);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
 .fc-status-chip .dim{color:var(--text-muted);font-weight:400}
+/* 预算管理子 Tab */
+.sub-tab-bar{display:flex;gap:4px;background:var(--bg);border-radius:10px;padding:4px}
+.sub-tab{padding:8px 16px;border:none;background:transparent;color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer;border-radius:8px;transition:all .2s}
+.sub-tab:hover{background:rgba(255,255,255,0.08)}
+.sub-tab.active{background:var(--primary);color:#fff}
+.sub-tab-content{animation:fadeIn .3s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.budget-tree-table{width:100%;border-collapse:collapse}
+.budget-tree-table th,.budget-tree-table td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:13px}
+.budget-tree-table th{background:var(--bg);font-weight:600;color:var(--text-secondary)}
+.budget-tree-table .status-draft{color:var(--warning)}
+.budget-tree-table .status-submitted{color:var(--primary)}
+.budget-tree-table .status-approved{color:var(--success)}
+.budget-tree-table .status-rejected{color:var(--danger)}
+.budget-tree-table .status-allocated{color:#a855f7}
 .fc-progress-track{display:flex;gap:3px;flex:1;min-width:220px;max-width:420px}
 .fc-progress-cell{height:10px;border-radius:3px;background:rgba(255,255,255,0.08);flex:1;position:relative;transition:background .3s}
 .fc-progress-cell.on{background:linear-gradient(180deg,#3b82f6,#1d4ed8)}
@@ -841,65 +862,146 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   </div>
 </section>
 
-<!-- Budget Management (月度预算设置 + 预算目标拆分) -->
+<!-- Budget Management: BD→领域→BU 三级预算编制 -->
 <section id="tab-budget" class="tab-content">
   <div class="page-title">预算管理</div>
-  <div class="page-subtitle">月度预算设置 · 预算目标拆分（金额单位：万元）</div>
+  <div class="page-subtitle">BD→领域→BU 三级预算编制 · 从下到上汇集 / 从上到下分解（金额单位：万元）</div>
 
+  <!-- 子 Tab 切换 -->
   <div class="fc-status-bar" style="margin-bottom:14px">
-    <span class="fc-status-chip"><span class="dot"></span>预算 = 达成率分母（季度 / 半年度 / 全年自动聚合）</span>
+    <div class="sub-tab-bar">
+      <button class="sub-tab active" data-subtab="bflow" onclick="switchBudgetSubTab('bflow')">📊 预算状态看板</button>
+      <button class="sub-tab" data-subtab="bcollect" onclick="switchBudgetSubTab('bcollect')">⬆️ 从下到上汇集</button>
+      <button class="sub-tab" data-subtab="ballocate" onclick="switchBudgetSubTab('ballocate')">⬇️ 从上到下分解</button>
+    </div>
     <div class="tab-actions" style="margin-left:auto">
-      <select class="filter-select" id="bdBuSel" onchange="onBdBuChange()" style="min-width:112px" title="BU 维度">
-        <option value="汇总">汇总</option><option value="软工">软工</option><option value="硬工">硬工</option><option value="云">云</option><option value="智能汽车">智能汽车</option>
+      <select class="filter-select" id="bfYearSel" onchange="onBfYearChange()" style="min-width:90px">
+        <option value="2024">2024年</option>
+        <option value="2025">2025年</option>
+        <option value="2026" selected>2026年</option>
+        <option value="2027">2027年</option>
+        <option value="2028">2028年</option>
+        <option value="2029">2029年</option>
+        <option value="2030">2030年</option>
       </select>
-      <select class="filter-select" id="bdYearSel" onchange="onBdYearChange()" style="min-width:90px"></select>
+      <select class="filter-select" id="bfVersionTypeSel" onchange="onBfVersionTypeChange()" style="min-width:100px">
+        <option value="estimate">预估版本</option>
+        <option value="target">目标版本</option>
+      </select>
+      <select class="filter-select" id="bfVersionSel" style="min-width:70px"></select>
+      <button class="btn-icon" onclick="openVersionModal()" title="新建版本">➕</button>
+      <select class="filter-select" id="bfPeriodSel" onchange="onBfPeriodChange()" style="min-width:80px">
+        <option value="Q1">Q1</option>
+        <option value="Q2">Q2</option>
+        <option value="Q3">Q3</option>
+        <option value="Q4">Q4</option>
+        <option value="H1">H1</option>
+        <option value="H2">H2</option>
+        <option value="YTD">全年</option>
+      </select>
     </div>
   </div>
 
-  <div class="dash-card full">
+  <!-- 子 Tab 1: 预算状态看板 -->
+  <div id="bflow-subtab" class="sub-tab-content">
+    <div class="dash-card full" style="margin-bottom:14px">
+      <div class="chart-section-title">📊 <span id="bfKpiYear"></span> 年 <span id="bfKpiVersion"></span> <span id="bfKpiPeriod"></span> 预算总值</div>
+      <div class="kpi-row" id="bfKpiRow" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px">
+        <div class="kpi-card"><div class="kpi-label">预算收入</div><div class="kpi-value">--<span class="kpi-unit">万</span></div></div>
+        <div class="kpi-card"><div class="kpi-label">预算贡献利润</div><div class="kpi-value">--<span class="kpi-unit">万</span></div></div>
+        <div class="kpi-card"><div class="kpi-label">预算现金流</div><div class="kpi-value">--<span class="kpi-unit">万</span></div></div>
+      </div>
+    </div>
+    <div class="dash-card full">
+      <div class="chart-section-title">预算编制状态树（点击组织名称钻取）</div>
+      <div class="table-container" style="max-height:480px;overflow:auto">
+        <table class="data-table budget-tree-table">
+          <thead>
+            <tr><th>组织</th><th>层级</th><th>状态</th><th>来源</th><th>预算收入</th><th>预算贡献利润</th><th>预算现金流</th><th>操作</th></tr>
+          </thead>
+          <tbody id="bflowTreeBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 子 Tab 2: 从下到上汇集 -->
+  <div id="bcollect-subtab" class="sub-tab-content" style="display:none">
+    <div class="dash-card full">
+      <div class="chart-section-title">⬆️ 从下到上汇集预算</div>
+      <div class="form-section" style="padding:12px 0;border-bottom:1px solid var(--border);margin-bottom:14px">
+        <div class="form-grid two">
+          <div class="form-field">
+            <label>选择要汇总的组织</label>
+            <select id="bfCollectTarget" class="filter-select" style="width:100%">
+              <option value="">-- 请选择 --</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>当前汇总预览</label>
+            <div id="bfCollectPreview" style="padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);min-height:42px">
+              选择组织后显示下级汇总数据
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <button class="btn-primary" onclick="collectBudgetFromChildren()">⬆️ 汇总下级预算</button>
+        </div>
+      </div>
+    </div>
+    <div class="dash-card full">
+      <div class="chart-section-title">我的预算填报</div>
+      <div class="form-grid two">
+        <div class="form-field"><label>预算收入（万元）</label><input type="number" step="0.01" id="bfMyRevenue" placeholder="0.00"></div>
+        <div class="form-field"><label>预算贡献利润（万元）</label><input type="number" step="0.01" id="bfMyProfit" placeholder="0.00"></div>
+        <div class="form-field"><label>预算现金流（万元）</label><input type="number" step="0.01" id="bfMyCash" placeholder="0.00"></div>
+        <div class="form-field"><label>备注</label><input type="text" id="bfMyRemark" placeholder="可选"></div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:12px">
+        <button class="btn-secondary" onclick="saveMyBudgetDraft()">💾 保存草稿</button>
+        <button class="btn-primary" onclick="submitMyBudget()">📤 提交汇总</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 子 Tab 3: 从上到下分解 -->
+  <div id="ballocate-subtab" class="sub-tab-content" style="display:none">
+    <div class="dash-card full">
+      <div class="chart-section-title">⬇️ 从上到下分解预算</div>
+      <div class="form-section" style="padding:12px 0;border-bottom:1px solid var(--border);margin-bottom:14px">
+        <div class="form-grid two">
+          <div class="form-field">
+            <label>BD 总目标（万元）</label>
+            <input type="number" step="0.01" id="bfAllocRevenue" placeholder="预算收入" oninput="calcAllocation()">
+            <input type="number" step="0.01" id="bfAllocProfit" placeholder="贡献利润" style="margin-top:6px" oninput="calcAllocation()">
+            <input type="number" step="0.01" id="bfAllocCash" placeholder="现金流" style="margin-top:6px" oninput="calcAllocation()">
+          </div>
+          <div class="form-field">
+            <label>分解模式</label>
+            <select id="bfAllocMode" class="filter-select" style="width:100%" onchange="calcAllocation()">
+              <option value="ratio">按比例分配</option>
+              <option value="even">均分到下级</option>
+            </select>
+            <div style="margin-top:12px">
+              <button class="btn-primary" onclick="allocateBudgetToChildren()">⬇️ 分解到下级</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="table-container" style="max-height:360px;overflow:auto">
+        <table class="data-table">
+          <thead>
+            <tr><th>下级组织</th><th>层级</th><th>收入占比</th><th>收入目标</th><th>利润目标</th><th>现金流目标</th></tr>
+          </thead>
+          <tbody id="bfAllocPreview"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 旧版月度预算（保留兼容） -->
+  <div class="dash-card full" id="oldBudgetCard" style="display:none">
     <div class="chart-section-title"><span id="bdPageYearLabel">2026</span> 年月度预算（万元）</div>
-    <div class="form-section" style="padding:0 0 12px;border-bottom:1px solid var(--border);margin-bottom:14px">
-      <h4>全年预算快速设置</h4>
-      <div class="form-grid">
-        <div class="form-field"><label>全年预算收入（万元）</label><input type="number" step="0.01" min="0" id="bdSplitRev" placeholder="0.00"></div>
-        <div class="form-field"><label>全年预算贡献利润（万元）</label><input type="number" step="0.01" min="0" id="bdSplitProfit" placeholder="0.00"></div>
-        <div class="form-field"><label>全年预算现金流（万元）</label><input type="number" step="0.01" id="bdSplitCash" placeholder="0.00"></div>
-        <div class="form-field"><label>全年预算费用（万元）</label><input type="number" step="0.01" min="0" id="bdSplitExp" placeholder="0.00"></div>
-      </div>
-      <div class="budget-split-bar">
-        <span style="font-size:12px;color:var(--text-muted)">快速分摊到 12 个月：</span>
-        <select id="bdSplitMode" class="filter-select" style="min-width:130px">
-          <option value="even">均摊 12 个月</option>
-          <option value="grow">递增分摊（年初低年末高）</option>
-          <option value="ratio">按预测收入比例分摊</option>
-        </select>
-        <button type="button" class="btn-secondary" onclick="applyBudgetPageSplit()">应用到 12 个月</button>
-        <span style="font-size:11px;color:var(--text-muted)">填左侧全年总额 → 选模式 → 应用，然后可在下方逐月微调</span>
-      </div>
-    </div>
-    <div class="table-container" style="max-height:320px;overflow:auto">
-      <table class="data-table budget-table">
-        <thead><tr><th>月份</th><th>预算收入（万元）</th><th>预算贡献利润（万元）</th><th>预算现金流（万元）</th><th>预算费用（万元）</th></tr></thead>
-        <tbody id="budgetPageBody"></tbody>
-        <tfoot><tr id="budgetPageFoot"></tr></tfoot>
-      </table>
-    </div>
-    <div style="display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap">
-      <button class="btn-primary" id="bdSaveBtn" onclick="submitBudgetPage()">保存预算</button>
-      <span style="font-size:11px;color:var(--text-muted)">* 达成率 = 实际值 ÷ 对应周期预算；预算费用达成率超 100% 表示超支预警</span>
-    </div>
-  </div>
-
-  <div class="dash-card full">
-    <div class="chart-section-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <span>预算目标拆分明细（单位：万元）</span>
-      <button class="btn-primary" onclick="openTargetModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增记录</button>
-    </div>
-    <div class="fc-status-chip dim" style="margin-bottom:10px">口径：实际值(7月) / 2026年目标-V1 · 偏差 = 实际 − 目标 · 达成率 = 实际 ÷ 目标</div>
-    <div class="table-container" style="overflow-x:auto">
-      <table class="data-table target-table">
-        <thead>
-          <tr>
             <th rowspan="2">指标</th><th rowspan="2">BU</th>
             <th colspan="7">实际值（7月）</th>
             <th colspan="7">2026年目标-V1</th>
@@ -1617,11 +1719,261 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     document.getElementById('breadcrumb').innerHTML='<span class="current">'+TAB_TITLES[tab]+'</span>';
     document.getElementById('sidebar').classList.remove('mobile-open');
     // 新页面懒加载（预算/预测/实际/数据表管理）
-    if(tab==='budget'){loadBudgetPage();}
+    if(tab==='budget'){initBudgetFlowPage();}
     else if(tab==='forecast'){syncF2Controls();renderForecastPage();}
     else if(tab==='actual'){loadActualPage();}
     else if(tab==='table-mgmt'){tmLoadTree();}
   };
+
+  /* ---------- 预算流程: BD→领域→BU 三级编制 ---------- */
+  var BF_YEAR=2026,BF_VERSION='V1',BF_VERSION_TYPE='estimate',BF_PERIOD='Q1',BF_TREE=[],BF_EXPANDED=[];
+  function initBudgetFlowPage(){
+    var y=document.getElementById('bfYearSel');
+    if(y && !y.options.length){
+      y.innerHTML='';
+      for(var i=2024;i<=2030;i++)y.innerHTML+='<option value="'+i+'">'+i+'年</option>';
+    }
+    var p=document.getElementById('bfPeriodSel');
+    if(p){p.value=BF_PERIOD;p.onchange=function(){BF_PERIOD=this.value;loadBudgetFlowTree();};}
+    loadBudgetFlowVersions();
+  }
+  function loadBudgetFlowVersions(){
+    fetch('/api/budget-version?year='+BF_YEAR+'&type='+BF_VERSION_TYPE,{method:'GET',headers:{'Authorization':'Bearer '+localStorage.getItem('wb_ops_token')}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var vsel=document.getElementById('bfVersionSel');
+      if(vsel){
+        vsel.innerHTML='';
+        var vers=d.length?d.map(function(x){return x.version;}):['V1'];
+        vers.forEach(function(v){vsel.innerHTML+='<option value="'+v+'">'+v+'</option>';});
+        if(vers.indexOf(BF_VERSION)<0)BF_VERSION=vers[0]||'V1';
+        vsel.value=BF_VERSION;
+        vsel.onchange=function(){BF_VERSION=this.value;loadBudgetFlowTree();};
+      }
+      loadBudgetFlowTree();
+    }).catch(function(){loadBudgetFlowTree();});
+  }
+  function onBfVersionTypeChange(){
+    BF_VERSION_TYPE=document.getElementById('bfVersionTypeSel').value;
+    BF_VERSION='V1';
+    loadBudgetFlowVersions();
+  }
+  // 新建版本弹窗
+  function openVersionModal(){
+    var html='<div style="padding:20px">'+
+      '<h3 style="margin:0 0 16px">新建预算版本</h3>'+
+      '<div class="form-field"><label>版本号</label><input type="text" id="newVerNum" placeholder="如 V1、V2" style="width:100%"></div>'+
+      '<div class="form-field"><label>版本类型</label><select id="newVerType" style="width:100%">'+
+        '<option value="estimate">预估版本（从下到上汇集）</option>'+
+        '<option value="target">目标版本（从上到下分解）</option></select></div>'+
+      '<div class="form-field"><label>备注</label><input type="text" id="newVerRemark" placeholder="可选说明" style="width:100%"></div>'+
+      '<div style="margin-top:20px;display:flex;gap:12px;justify-content:flex-end">'+
+        '<button class="btn-secondary" onclick="closeModal()">取消</button>'+
+        '<button class="btn-primary" onclick="createNewVersion()">创建并激活</button></div></div>';
+    openModal(html);
+  }
+  function createNewVersion(){
+    var ver=document.getElementById('newVerNum').value.trim()||'V1';
+    var type=document.getElementById('newVerType').value;
+    var remark=document.getElementById('newVerRemark').value;
+    fetch('/api/budget-version/activate',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('wb_ops_token'),'Content-Type':'application/json'},
+      body:JSON.stringify({year:BF_YEAR,version:ver,version_type:type,remark:remark})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      closeModal();
+      showToast('版本创建成功：'+ver);
+      loadBudgetFlowVersions();
+    }).catch(function(e){showToast('创建失败：'+e.message||'error','error');});
+  }
+  function onBfYearChange(){
+    BF_YEAR=parseInt(document.getElementById('bfYearSel').value,10);
+    BF_VERSION='V1';
+    loadBudgetFlowVersions();
+  }
+  function onBfPeriodChange(){BF_PERIOD=document.getElementById('bfPeriodSel').value;loadBudgetFlowTree();}
+  window.switchBudgetSubTab=function(sub){
+    document.querySelectorAll('.sub-tab').forEach(function(el){el.classList.toggle('active',el.dataset.subtab===sub);});
+    document.querySelectorAll('.sub-tab-content').forEach(function(el){el.style.display='none';});
+    document.getElementById(sub+'-subtab').style.display='';
+  };
+  function loadBudgetFlowTree(){
+    fetch('/api/budget-flow/tree?year='+BF_YEAR+'&version='+BF_VERSION+'&version_type='+BF_VERSION_TYPE+'&period='+BF_PERIOD,{method:'GET',headers:{'Authorization':'Bearer '+localStorage.getItem('wb_ops_token')}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      BF_TREE=d.tree||[];
+      renderBudgetFlowKpi(d);
+      renderBudgetFlowTree();
+    }).catch(function(e){console.error(e);});
+  }
+  function renderBudgetFlowKpi(d){
+    var yl=document.getElementById('bfKpiYear');
+    var vl=document.getElementById('bfKpiVersion');
+    var pl=document.getElementById('bfKpiPeriod');
+    if(yl)yl.textContent=BF_YEAR;
+    if(vl)vl.textContent=BF_VERSION;
+    if(pl)pl.textContent=BF_PERIOD;
+    var kpi=document.getElementById('bfKpiRow');
+    if(kpi){
+      kpi.innerHTML='<div class="kpi-card"><div class="kpi-label">预算收入</div><div class="kpi-value">'+(d.totalRevenue||0).toLocaleString()+'<span class="kpi-unit">万</span></div></div>'+
+        '<div class="kpi-card"><div class="kpi-label">预算贡献利润</div><div class="kpi-value">'+(d.totalProfit||0).toLocaleString()+'<span class="kpi-unit">万</span></div></div>'+
+        '<div class="kpi-card"><div class="kpi-label">预算现金流</div><div class="kpi-value">'+(d.totalCash||0).toLocaleString()+'<span class="kpi-unit">万</span></div></div>';
+    }
+  }
+  function renderBudgetFlowTree(){
+    var tbody=document.getElementById('bflowTreeBody');
+    if(!tbody)return;
+    var html='';
+    function walk(nodes,indent){
+      nodes.forEach(function(n){
+        var isExp=BF_EXPANDED.indexOf(n.id)>=0;
+        var hasChild=n.children&&n.children.length;
+        var statusClass='status-'+n.status;
+        var statusText={draft:'草稿',submitted:'已提交',approved:'已审批',rejected:'已拒绝',allocated:'待确认'}[n.status]||n.status;
+        var sourceText={manual:'手工',collected:'下级汇总',allocated:'上级分解'}[n.source]||n.source;
+        html+='<tr>'+
+          '<td style="padding-left:'+(indent*20)+'px">'+(hasChild?'<span class="tree-toggle" onclick="toggleBudgetNode('+n.id+')">'+(isExp?'▼':'▶'):' ')+'</span> '+
+          '<a href="javascript:void(0)" class="org-link" onclick="drillBudgetOrg('+n.id+')">'+n.name+'</a></td>'+
+          '<td><span class="org-badge">'+(n.level||'')+'</span></td>'+
+          '<td class="'+statusClass+'">'+statusText+'</td>'+
+          '<td>'+sourceText+'</td>'+
+          '<td class="num">'+(n.budget_revenue||0).toLocaleString()+'</td>'+
+          '<td class="num">'+(n.budget_profit||0).toLocaleString()+'</td>'+
+          '<td class="num">'+(n.budget_cash||0).toLocaleString()+'</td>'+
+          '<td><button class="btn-secondary btn-sm" onclick="editBudgetFlow('+n.id+')">编辑</button></td></tr>';
+        if(hasChild&&isExp)walk(n.children,indent+1);
+      });
+    }
+    walk(BF_TREE,0);
+    tbody.innerHTML=html||'<tr><td colspan="8" style="text-align:center;color:var(--text-muted)">暂无组织数据，请在后台配置组织层级</td></tr>';
+  }
+  window.toggleBudgetNode=function(id){
+    var idx=BF_EXPANDED.indexOf(id);
+    if(idx>=0)BF_EXPANDED.splice(idx,1);
+    else BF_EXPANDED.push(id);
+    renderBudgetFlowTree();
+  };
+  window.drillBudgetOrg=function(id){
+    // 点击组织名称钻取：展开该组织并滚动到该行
+    if(BF_EXPANDED.indexOf(id)<0)BF_EXPANDED.push(id);
+    renderBudgetFlowTree();
+    setTimeout(function(){
+      var rows=document.querySelectorAll('#bflowTreeBody tr');
+      for(var i=0;i<rows.length;i++){
+        if(rows[i].innerHTML.indexOf('onclick="editBudgetFlow('+id+')')>=0){
+          rows[i].scrollIntoView({behavior:'smooth',block:'center'});
+          rows[i].style.background='rgba(59,130,246,0.1)';
+          setTimeout(function(){rows[i].style.background='';},2000);
+          break;
+        }
+      }
+    },100);
+  };
+  function populateCollectTarget(){
+    var sel=document.getElementById('bfCollectTarget');
+    if(!sel)return;
+    sel.innerHTML='<option value="">-- 请选择 --</option>';
+    function walk(nodes){
+      nodes.forEach(function(n){
+        if(n.children&&n.children.length){
+          sel.innerHTML+='<option value="'+n.id+'">'+n.name+'（'+n.level+'）</option>';
+          walk(n.children);
+        }
+      });
+    }
+    walk(BF_TREE);
+    sel.onchange=function(){
+      var orgId=parseInt(this.value,10);
+      if(!orgId)return;
+      var node=findNode(BF_TREE,orgId);
+      var preview=document.getElementById('bfCollectPreview');
+      if(!node||!node.children||node.children.length===0){
+        preview.innerHTML='该组织没有下级组织';
+        return;
+      }
+      var totalR=0,totalP=0,totalC=0;
+      node.children.forEach(function(c){
+        totalR+=c.budget_revenue||0;
+        totalP+=c.budget_profit||0;
+        totalC+=c.budget_cash||0;
+      });
+      preview.innerHTML='<b>下级汇总：</b> 收入 '+totalR.toLocaleString()+'万， 利润 '+totalP.toLocaleString()+'万， 现金流 '+totalC.toLocaleString()+'万';
+    };
+  }
+  function findNode(nodes,id){
+    for(var i=0;i<nodes.length;i++){
+      if(nodes[i].id===id)return nodes[i];
+      if(nodes[i].children){
+        var f=findNode(nodes[i].children,id);
+        if(f)return f;
+      }
+    }
+    return null;
+  }
+  function collectBudgetFromChildren(){
+    var targetId=document.getElementById('bfCollectTarget').value;
+    if(!targetId){toast('请选择要汇总的组织','error');return;}
+    fetch('/api/budget-flow/collect',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('wb_ops_token')},
+      body:JSON.stringify({year:BF_YEAR,version:BF_VERSION,period:BF_PERIOD,targetOrgId:parseInt(targetId,10)})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      toast('已汇总 '+d.collected+' 个下级组织','success');
+      loadBudgetFlowTree();
+    }).catch(function(e){toast('汇总失败: '+e.message,'error');});
+  }
+  function saveMyBudgetDraft(){
+    var payload={year:BF_YEAR,version:BF_VERSION,period:BF_PERIOD,orgId:1,status:'draft',budget_revenue:parseFloat(document.getElementById('bfMyRevenue').value)||0,budget_profit:parseFloat(document.getElementById('bfMyProfit').value)||0,budget_cash:parseFloat(document.getElementById('bfMyCash').value)||0,remark:document.getElementById('bfMyRemark').value};
+    fetch('/api/budget-flow',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('wb_ops_token')},body:JSON.stringify(payload)})
+    .then(function(){toast('草稿已保存','success');loadBudgetFlowTree();}).catch(function(e){toast('保存失败','error');});
+  }
+  function submitMyBudget(){
+    var payload={year:BF_YEAR,version:BF_VERSION,period:BF_PERIOD,orgId:1,status:'submitted',budget_revenue:parseFloat(document.getElementById('bfMyRevenue').value)||0,budget_profit:parseFloat(document.getElementById('bfMyProfit').value)||0,budget_cash:parseFloat(document.getElementById('bfMyCash').value)||0,remark:document.getElementById('bfMyRemark').value};
+    fetch('/api/budget-flow',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('wb_ops_token')},body:JSON.stringify(payload)})
+    .then(function(){toast('已提交','success');loadBudgetFlowTree();}).catch(function(e){toast('提交失败','error');});
+  }
+  function calcAllocation(){
+    var rev=parseFloat(document.getElementById('bfAllocRevenue').value)||0;
+    var profit=parseFloat(document.getElementById('bfAllocProfit').value)||0;
+    var cash=parseFloat(document.getElementById('bfAllocCash').value)||0;
+    var mode=document.getElementById('bfAllocMode').value;
+    var tbody=document.getElementById('bfAllocPreview');
+    if(!tbody)return;
+    var bdNode=BF_TREE[0];
+    if(!bdNode||!bdNode.children){tbody.innerHTML='<tr><td colspan="6" style="text-align:center">请先在后台配置组织层级</td></tr>';return;}
+    var children=bdNode.children||[];
+    var cnt=children.length;
+    if(cnt===0){tbody.innerHTML='<tr><td colspan="6" style="text-align:center">无下级组织</td></tr>';return;}
+    var html='';
+    children.forEach(function(c){
+      var ratio=mode==='even'?1/cnt:0.3;
+      var rRev=Math.round(rev*ratio*100)/100;
+      var rProfit=Math.round(profit*ratio*100)/100;
+      var rCash=Math.round(cash*ratio*100)/100;
+      html+='<tr><td>'+c.name+'</td><td>'+(c.level||'领域')+'</td><td>'+(mode==='even'?'均分':(ratio*100).toFixed(1)+'%')+'</td><td class="num">'+rRev.toLocaleString()+'</td><td class="num">'+rProfit.toLocaleString()+'</td><td class="num">'+rCash.toLocaleString()+'</td></tr>';
+    });
+    tbody.innerHTML=html;
+  }
+  function allocateBudgetToChildren(){
+    var rev=parseFloat(document.getElementById('bfAllocRevenue').value)||0;
+    var profit=parseFloat(document.getElementById('bfAllocProfit').value)||0;
+    var cash=parseFloat(document.getElementById('bfAllocCash').value)||0;
+    var bdNode=BF_TREE[0];
+    if(!bdNode||!bdNode.children||bdNode.children.length===0){toast('无下级组织','error');return;}
+    var mode=document.getElementById('bfAllocMode').value;
+    var children=bdNode.children;
+    var cnt=children.length;
+    var allocs=children.map(function(c){
+      var ratio=mode==='even'?1/cnt:0.3;
+      return{orgId:c.id,ratio:ratio};
+    });
+    fetch('/api/budget-flow/allocate',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('wb_ops_token')},
+      body:JSON.stringify({year:BF_YEAR,period:BF_PERIOD,sourceOrgId:bdNode.id,allocations:allocs})})
+    .then(function(r){return r.json();})
+    .then(function(d){toast('已分解到 '+d.allocated+' 个下级','success');loadBudgetFlowTree();})
+    .catch(function(e){toast('分解失败','error');});
+  }
+  function editBudgetFlow(orgId){
+    toast('编辑功能开发中','info');
+  }
 
   function populateSelects(){
     Object.keys(SCHEMA_OPTIONS).forEach(function(fieldName){

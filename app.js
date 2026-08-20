@@ -149,7 +149,27 @@ CREATE TABLE IF NOT EXISTS sys_org (
   type VARCHAR(20) DEFAULT 'dept' COMMENT 'company/dept/team',
   sort INT DEFAULT 0,
   status TINYINT DEFAULT 1,
+  template_id INT DEFAULT NULL COMMENT '分支模板ID(BD节点挂载)',
+  level_name VARCHAR(50) DEFAULT NULL COMMENT '层级名覆盖',
+  tpl_level INT DEFAULT NULL COMMENT '模板层级下标(0起,NULL=按深度自动推导)',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS sys_org_config (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  cfg_key VARCHAR(50) NOT NULL,
+  cfg_value VARCHAR(500) NOT NULL,
+  description VARCHAR(200) DEFAULT '',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_cfg_key (cfg_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS sys_org_template (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  levels JSON NOT NULL COMMENT '分支层级名数组(BD以下)',
+  description VARCHAR(255) DEFAULT '',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_tpl_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS sys_session (
   token VARCHAR(64) PRIMARY KEY,
@@ -178,6 +198,15 @@ const SYS_ORGS = [
   ['项目管理部', 'dept', 1, 2],
   ['数据平台部', 'dept', 1, 3],
   ['综合管理部', 'dept', 1, 4]
+];
+
+/* ---------- 组织模型: 固定三层(全局统一) + 分支模板(BD以下, 各部门自选) ---------- */
+const ORG_FIXED_LEVELS = ['集团', 'BG', 'BD'];
+const ORG_TEMPLATE_SEEDS = [
+  ['互联网型', ['领域', 'BU', 'PDU', '项目组'], '互联网业务线：BD→领域→BU→PDU→项目组'],
+  ['云业务型', ['CU', 'PDU'], '云业务线：BD→CU→PDU'],
+  ['职能型', ['部门', '团队'], '职能支撑：BD→部门→团队'],
+  ['硬件型', ['产品线', '产品组'], '硬件产品线：BD→产品线→产品组']
 ];
 
 const CREATE_TABLE_SQL = `
@@ -294,6 +323,28 @@ async function migrateBudgetTable() {
   }
 }
 
+/* 预算流程表迁移: 补 version 列 */
+async function migrateBudgetFlowTable() {
+  const [vcols] = await pool.query("SHOW COLUMNS FROM ops_budget_flow LIKE 'version'");
+  if (vcols.length === 0) {
+    await pool.query("ALTER TABLE ops_budget_flow ADD COLUMN version VARCHAR(20) NOT NULL DEFAULT 'V1' AFTER year");
+    console.log('[migrate] ops_budget_flow 已升级: 新增 version 列');
+  }
+}
+
+async function migrateBudgetVersionTable() {
+  try {
+    await pool.query("CREATE TABLE IF NOT EXISTS ops_budget_version (" +
+      "id INT AUTO_INCREMENT PRIMARY KEY, year INT NOT NULL, version VARCHAR(20) NOT NULL, " +
+      "version_type VARCHAR(20) NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'draft', " +
+      "start_date DATE, end_date DATE, remark VARCHAR(500), created_by INT, " +
+      "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, " +
+      "UNIQUE KEY uk_version_year_type (year, version, version_type)" +
+      ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    console.log('[migrate] ops_budget_version 表已创建/升级');
+  } catch (e) { if (e.code !== 'ER_TABLE_EXISTS_ERROR') console.error('[migrate] ops_budget_version:', e.message); }
+}
+
 /* 月度实际数据表: 按月+BU 存储"实际达成" (收入/贡献利润/现金流/费用)
  * 汇总口径 = 各 BU 之和 (查询时 SUM), 本表不存「汇总」行 */
 const CREATE_ACTUAL_TABLE_SQL = `
@@ -310,6 +361,72 @@ CREATE TABLE IF NOT EXISTS ops_actual (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uk_actual_bu_ym (bu, year, month)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+/* ---------- 预算流程管理: BD→领域→BU 三级预算编制 ----------
+ * ops_budget_flow: 预算编制状态（草稿/已提交/已审批/待确认）
+ * ops_budget_relation: 上下级汇总关系（BD→领域→BU）
+ * ops_budget_allocation: 上级分解到下级的目标比例 */
+const CREATE_BUDGET_FLOW_SQL = `
+CREATE TABLE IF NOT EXISTS ops_budget_flow (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  year INT NOT NULL,
+  version VARCHAR(20) NOT NULL DEFAULT 'V1' COMMENT '预算版本如V1/V2/正式版',
+  period VARCHAR(10) NOT NULL COMMENT 'Q1/Q2/Q3/Q4/H1/H2/YTD',
+  org_id INT NOT NULL COMMENT '组织ID(对应sys_org)',
+  level VARCHAR(10) NOT NULL COMMENT 'BD/领域/BU',
+  status VARCHAR(20) NOT NULL DEFAULT 'draft' COMMENT 'draft/submitted/approved/rejected/allocated',
+  source VARCHAR(20) NOT NULL DEFAULT 'manual' COMMENT 'manual=手工/collected=下级汇总/allocated=上级分解',
+  budget_revenue DECIMAL(14,2) DEFAULT 0,
+  budget_profit DECIMAL(14,2) DEFAULT 0,
+  budget_cash DECIMAL(14,2) DEFAULT 0,
+  remark VARCHAR(500),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_flow_yv_period_org (year, version, period, org_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+const CREATE_BUDGET_RELATION_SQL = `
+CREATE TABLE IF NOT EXISTS ops_budget_relation (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  year INT NOT NULL,
+  parent_org_id INT NOT NULL COMMENT '上级组织(BD/领域)',
+  child_org_id INT NOT NULL COMMENT '下级组织(领域/BU)',
+  level VARCHAR(10) NOT NULL COMMENT 'BD/领域',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_rel_year_parent_child (year, parent_org_id, child_org_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+const CREATE_BUDGET_ALLOCATION_SQL = `
+CREATE TABLE IF NOT EXISTS ops_budget_allocation (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  year INT NOT NULL,
+  period VARCHAR(10),
+  source_org_id INT NOT NULL COMMENT '来源组织(BD/领域)',
+  target_org_id INT NOT NULL COMMENT '目标组织(领域/BU)',
+  metric VARCHAR(20) NOT NULL COMMENT '预算收入/预算贡献利润/预算现金流',
+  ratio DECIMAL(5,4) DEFAULT 0 COMMENT '分解比例(0~1)',
+  target_value DECIMAL(14,2) DEFAULT 0 COMMENT '目标值',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_alloc_year_period_source_target_metric (year, period, source_org_id, target_org_id, metric)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+/* ---------- 预算管理: 版本表 ----------
+ * ops_budget_version: 预算版本管理（预估版本/目标版本） */
+const CREATE_BUDGET_VERSION_SQL = `
+CREATE TABLE IF NOT EXISTS ops_budget_version (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  year INT NOT NULL,
+  version VARCHAR(20) NOT NULL COMMENT '版本号如V1/V2/正式版',
+  version_type VARCHAR(20) NOT NULL COMMENT 'estimate=预估版本/target=目标版本',
+  status VARCHAR(20) NOT NULL DEFAULT 'draft' COMMENT 'draft=草稿/active=进行中/completed=已完成',
+  start_date DATE,
+  end_date DATE,
+  remark VARCHAR(500),
+  created_by INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_version_year_type (year, version, version_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
 /* ---------- 数据表管理: 元数据表 (业务分类树 + 表定义 + 字段 + 审批 + 日志) ----------
@@ -609,6 +726,16 @@ function send(res, code, obj) {
     'Access-Control-Allow-Headers': 'Content-Type, Authorization'
   });
   res.end(body);
+}
+// MySQL JSON 列: mysql2 默认已解析为 JS 对象, 此处兼容「字符串 / 已解析对象」两种形态
+function parseJsonArr(v) {
+  if (v == null) return [];
+  if (typeof v === 'string') { try { return JSON.parse(v); } catch (e) { return []; } }
+  return Array.isArray(v) ? v : [];
+}
+function jsonStr(v) {
+  if (v == null) return '[]';
+  return typeof v === 'string' ? v : JSON.stringify(v);
 }
 
 /* ---------- 系统管理辅助: 密码哈希 / 会话 / 鉴权 (RBAC) ---------- */
@@ -1012,6 +1139,380 @@ async function handleApi(req, res, pathname, method) {
       return send(res, 200, { ok: true });
     }
   }
+
+  /* ---------- 预算流程 API: BD→领域→BU 三级预算编制 ---------- */
+  // 获取预算编制状态树
+  if (pathname === '/api/budget-flow/tree' && method === 'GET') {
+    const q = new URL(req.url, 'http://x');
+    const year = parseInt(q.searchParams.get('year') || new Date().getFullYear(), 10);
+    const version = q.searchParams.get('version') || 'V1';
+    const versionType = q.searchParams.get('version_type') || 'estimate';
+    const period = q.searchParams.get('period') || 'Q1';
+    // 获取可用版本列表（优先从版本表查，否则回退到流表）
+    let versionList = [version];
+    try {
+      const [vers] = await pool.query('SELECT version FROM ops_budget_version WHERE year=? AND version_type=? ORDER BY version DESC', [year, versionType]);
+      if (vers.length) versionList = vers.map(v => v.version);
+    } catch (e) { /* 版本表不存在时回退 */ }
+    if (versionList.length === 0) versionList = [version];
+    // 读取所有组织的预算编制状态
+    const [flows] = await pool.query('SELECT * FROM ops_budget_flow WHERE year=? AND version=? AND period=?', [year, version, period]);
+    const flowMap = {};
+    flows.forEach(f => { flowMap[f.org_id] = f; });
+    // 从 sys_org 获取组织树（含 depth）
+    const [orgRows] = await pool.query('SELECT * FROM sys_org WHERE status=1 ORDER BY sort ASC, id ASC');
+    // 构建节点映射
+    const nodes = {};
+    orgRows.forEach(r => {
+      nodes[r.id] = { id: r.id, name: r.name, parentId: r.parent_id, depth: 0, children: [] };
+    });
+    // 父子关系
+    const roots = [];
+    orgRows.forEach(r => {
+      if (r.parent_id && nodes[r.parent_id]) nodes[r.parent_id].children.push(nodes[r.id]);
+      else roots.push(nodes[r.id]);
+    });
+    // 计算深度
+    const calcDepth = (list, d) => {
+      list.forEach(n => { n.depth = d; calcDepth(n.children, d + 1); });
+    };
+    calcDepth(roots, 1);
+    // 映射到扁平列表
+    const flatOrgs = [];
+    const flatMap = {};
+    const flatWalk = (list) => {
+      list.forEach(n => { flatOrgs.push(n); flatMap[n.id] = n; flatWalk(n.children); });
+    };
+    flatWalk(roots);
+    // 构建预算树
+    const buildBudgetTree = (list) => {
+      return list.map(o => {
+        const flow = flowMap[o.id] || { status: 'draft', source: 'manual', budget_revenue: 0, budget_profit: 0, budget_cash: 0 };
+        const children = buildBudgetTree(o.children);
+        return {
+          id: o.id, name: o.name, depth: o.depth,
+          level: o.depth === 1 ? '集团' : (o.depth === 2 ? 'BG' : (o.depth === 3 ? 'BD' : (o.depth === 4 ? '领域' : 'BU'))),
+          status: flow.status || 'draft', source: flow.source || 'manual',
+          budget_revenue: Number(flow.budget_revenue) || 0,
+          budget_profit: Number(flow.budget_profit) || 0,
+          budget_cash: Number(flow.budget_cash) || 0,
+          children
+        };
+      });
+    };
+    const budgetTree = buildBudgetTree(roots);
+    // 计算顶级汇总
+    let totalRevenue = 0, totalProfit = 0, totalCash = 0;
+    const calcTotal = (list) => {
+      list.forEach(n => {
+        totalRevenue += n.budget_revenue || 0;
+        totalProfit += n.budget_profit || 0;
+        totalCash += n.budget_cash || 0;
+        if (n.children && n.children.length) calcTotal(n.children);
+      });
+    };
+    calcTotal(budgetTree);
+    return send(res, 200, { year, version, versionList, period, totalRevenue, totalProfit, totalCash, tree: budgetTree });
+  }
+
+  // 获取版本列表
+  if (pathname === '/api/budget-flow/versions' && method === 'GET') {
+    const q = new URL(req.url, 'http://x');
+    const year = parseInt(q.searchParams.get('year') || new Date().getFullYear(), 10);
+    const [versions] = await pool.query('SELECT DISTINCT version FROM ops_budget_flow WHERE year=? ORDER BY version', [year]);
+    return send(res, 200, { year, versions: versions.length ? versions.map(v => v.version) : ['V1'] });
+  }
+
+  // 汇总下级预算
+  if (pathname === '/api/budget-flow/collect' && method === 'POST') {
+    const body = await readBody(req);
+    const year = parseInt(body.year, 10);
+    const version = body.version || 'V1';
+    const period = body.period || 'Q1';
+    const targetOrgId = parseInt(body.targetOrgId, 10);
+    if (!year || !targetOrgId) return send(res, 400, { error: 'year and targetOrgId required' });
+    // 获取所有下级组织（递归）
+    const getAllChildren = (parentId) => {
+      const children = orgs.filter(o => o.parent_id === parentId);
+      let result = [...children];
+      children.forEach(c => { result = result.concat(getAllChildren(c.id)); });
+      return result;
+    };
+    const [orgs] = await pool.query('SELECT id, name, parent_id FROM sys_org WHERE status=1');
+    const allChildren = getAllChildren(targetOrgId);
+    if (allChildren.length === 0) return send(res, 400, { error: 'no child orgs to collect' });
+    // 汇总下级预算
+    let totalRevenue = 0, totalProfit = 0, totalCash = 0;
+    for (const c of allChildren) {
+      const [[f]] = await pool.query('SELECT budget_revenue, budget_profit, budget_cash FROM ops_budget_flow WHERE year=? AND version=? AND period=? AND org_id=?', [year, version, period, c.id]);
+      if (f) {
+        totalRevenue += Number(f.budget_revenue) || 0;
+        totalProfit += Number(f.budget_profit) || 0;
+        totalCash += Number(f.budget_cash) || 0;
+      }
+    }
+    // 写入汇总记录
+    const [[org]] = await pool.query('SELECT depth FROM sys_org WHERE id=?', [targetOrgId]);
+    const level = org && org.depth === 3 ? 'BD' : '领域';
+    await pool.query(
+      `INSERT INTO ops_budget_flow (year, version, period, org_id, level, status, source, budget_revenue, budget_profit, budget_cash)
+       VALUES (?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE budget_revenue=VALUES(budget_revenue), budget_profit=VALUES(budget_profit), budget_cash=VALUES(budget_cash), status=VALUES(status), source=VALUES(source)`,
+      [year, version, period, targetOrgId, level, 'draft', 'collected', totalRevenue, totalProfit, totalCash]
+    );
+    return send(res, 200, { ok: true, collected: allChildren.length, totalRevenue, totalProfit, totalCash });
+  }
+
+  // 分解预算到下级
+  if (pathname === '/api/budget-flow/allocate' && method === 'POST') {
+    const body = await readBody(req);
+    const year = parseInt(body.year, 10);
+    const version = body.version || 'V1';
+    const period = body.period || 'Q1';
+    const sourceOrgId = parseInt(body.sourceOrgId, 10);
+    const allocations = body.allocations || [];
+    if (!year || !sourceOrgId || allocations.length === 0) return send(res, 400, { error: 'year, sourceOrgId and allocations required' });
+    // 获取上级预算
+    const [[sourceFlow]] = await pool.query('SELECT * FROM ops_budget_flow WHERE year=? AND version=? AND period=? AND org_id=?', [year, version, period, sourceOrgId]);
+    if (!sourceFlow) return send(res, 400, { error: 'source org has no budget to allocate' });
+    let count = 0;
+    for (const alloc of allocations) {
+      const targetOrgId = parseInt(alloc.orgId, 10);
+      const ratio = parseFloat(alloc.ratio) || 0;
+      const revenue = Math.round(sourceFlow.budget_revenue * ratio * 100) / 100;
+      const profit = Math.round(sourceFlow.budget_profit * ratio * 100) / 100;
+      const cash = Math.round(sourceFlow.budget_cash * ratio * 100) / 100;
+      const [[targetOrg]] = await pool.query('SELECT depth FROM sys_org WHERE id=?', [targetOrgId]);
+      const level = targetOrg && targetOrg.depth === 4 ? 'BU' : '领域';
+      // 写入分解记录
+      await pool.query(
+        `INSERT INTO ops_budget_flow (year, version, period, org_id, level, status, source, budget_revenue, budget_profit, budget_cash)
+         VALUES (?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE budget_revenue=VALUES(budget_revenue), budget_profit=VALUES(budget_profit), budget_cash=VALUES(budget_cash), status=VALUES(status), source=VALUES(source)`,
+        [year, version, period, targetOrgId, level, 'draft', 'allocated', revenue, profit, cash]
+      );
+      // 写入分解比例
+      await pool.query(
+        `INSERT INTO ops_budget_allocation (year, period, source_org_id, target_org_id, metric, ratio, target_value) VALUES (?,?,?,?,?,?,?)`,
+        [year, period, sourceOrgId, targetOrgId, '预算收入', ratio, revenue]
+      );
+      count++;
+    }
+    // 更新源组织状态为已分解
+    await pool.query('UPDATE ops_budget_flow SET status=? WHERE year=? AND version=? AND period=? AND org_id=?', ['allocated', year, version, period, sourceOrgId]);
+    return send(res, 200, { ok: true, allocated: count });
+  }
+
+  // 提交/审批
+  if (pathname === '/api/budget-flow/submit' && method === 'POST') {
+    const body = await readBody(req);
+    const year = parseInt(body.year, 10);
+    const version = body.version || 'V1';
+    const period = body.period || 'Q1';
+    const orgId = parseInt(body.orgId, 10);
+    const action = body.action;  // submit / approve / reject
+    if (!year || !orgId || !action) return send(res, 400, { error: 'year, orgId and action required' });
+    const [[flow]] = await pool.query('SELECT * FROM ops_budget_flow WHERE year=? AND version=? AND period=? AND org_id=?', [year, version, period, orgId]);
+    if (!flow) return send(res, 404, { error: 'budget flow not found' });
+    let newStatus = flow.status;
+    if (action === 'submit') newStatus = 'submitted';
+    else if (action === 'approve') newStatus = 'approved';
+    else if (action === 'reject') newStatus = 'rejected';
+    else return send(res, 400, { error: 'invalid action' });
+    await pool.query('UPDATE ops_budget_flow SET status=? WHERE year=? AND version=? AND period=? AND org_id=?', [newStatus, year, version, period, orgId]);
+    return send(res, 200, { ok: true, status: newStatus });
+  }
+
+  // 预算填报（单个组织）
+  if (pathname === '/api/budget-flow' && method === 'POST') {
+    const body = await readBody(req);
+    const year = parseInt(body.year, 10);
+    const version = body.version || 'V1';
+    const period = body.period || 'Q1';
+    const orgId = parseInt(body.orgId, 10);
+    if (!year || !orgId) return send(res, 400, { error: 'year and orgId required' });
+    const [[org]] = await pool.query('SELECT depth FROM sys_org WHERE id=?', [orgId]);
+    const level = org && org.depth === 3 ? 'BD' : (org && org.depth === 4 ? '领域' : 'BU');
+    await pool.query(
+      `INSERT INTO ops_budget_flow (year, version, period, org_id, level, status, source, budget_revenue, budget_profit, budget_cash, remark)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE budget_revenue=VALUES(budget_revenue), budget_profit=VALUES(budget_profit), budget_cash=VALUES(budget_cash), remark=VALUES(remark), status=VALUES(status)`,
+      [year, version, period, orgId, level, body.status || 'draft', body.source || 'manual',
+       parseFloat(body.budget_revenue) || 0, parseFloat(body.budget_profit) || 0, parseFloat(body.budget_cash) || 0, body.remark || '']
+    );
+    return send(res, 200, { ok: true });
+  }
+
+  if (pathname === '/api/budget-flow' && method === 'GET') {
+    const q = new URL(req.url, 'http://x');
+    const year = parseInt(q.searchParams.get('year') || new Date().getFullYear(), 10);
+    const version = q.searchParams.get('version') || 'V1';
+    const period = q.searchParams.get('period') || 'Q1';
+    const orgId = q.searchParams.get('orgId');
+    let sql = 'SELECT * FROM ops_budget_flow WHERE year=? AND version=? AND period=?';
+    const params = [year, version, period];
+    if (orgId) { sql += ' AND org_id=?'; params.push(parseInt(orgId, 10)); }
+    const [rows] = await pool.query(sql, params);
+    // 补充组织名称
+    const orgIds = [...new Set(rows.map(r => r.org_id))];
+    const orgMap = {};
+    if (orgIds.length > 0) {
+      const [orgs] = await pool.query('SELECT id, name, depth FROM sys_org WHERE id IN (' + orgIds.join(',') + ')');
+      orgs.forEach(o => { orgMap[o.id] = o; });
+    }
+    return send(res, 200, rows.map(r => ({
+      orgId: r.org_id, orgName: orgMap[r.org_id]?.name || '未知',
+      level: r.level, status: r.status, source: r.source,
+      budget_revenue: Number(r.budget_revenue), budget_profit: Number(r.budget_profit), budget_cash: Number(r.budget_cash), remark: r.remark
+    })));
+  }
+
+  if (pathname === '/api/budget-flow' && method === 'DELETE') {
+    const q = new URL(req.url, 'http://x');
+    const id = q.searchParams.get('id');
+    if (!id) return send(res, 400, { error: 'id required' });
+    await pool.query('DELETE FROM ops_budget_flow WHERE id=?', [parseInt(id, 10)]);
+    return send(res, 200, { ok: true });
+  }
+
+  /* ---------- 预算版本管理 API ----------
+   * 预估版本: 从下到上汇集 -> 完成预估
+   * 目标版本: 从上到下分解 -> 确认目标 -> 生成正式版 */
+  if (pathname === '/api/budget-version' && method === 'GET') {
+    const q = new URL(req.url, 'http://x');
+    const year = q.searchParams.get('year');
+    const type = q.searchParams.get('type'); // estimate/target
+    let sql = 'SELECT * FROM ops_budget_version';
+    const params = [];
+    const cond = [];
+    if (year) { cond.push('year=?'); params.push(parseInt(year)); }
+    if (type) { cond.push('version_type=?'); params.push(type); }
+    if (cond.length > 0) sql += ' WHERE ' + cond.join(' AND ');
+    sql += ' ORDER BY year DESC, version DESC';
+    const [versions] = await pool.query(sql, params);
+    return send(res, 200, versions);
+  }
+
+  if (pathname === '/api/budget-version' && method === 'POST') {
+    const body = await readBody(req);
+    const { year, version, version_type, status, start_date, end_date, remark } = body;
+    if (!year || !version || !version_type) return send(res, 400, { error: 'year/version/version_type required' });
+    // 检查是否已存在
+    const [[exist]] = await pool.query('SELECT id FROM ops_budget_version WHERE year=? AND version=? AND version_type=?',
+      [year, version, version_type]);
+    if (exist) return send(res, 400, { error: '版本已存在' });
+    const [result] = await pool.query(
+      'INSERT INTO ops_budget_version (year, version, version_type, status, start_date, end_date, remark, created_by) VALUES (?,?,?,?,?,?,?,?)',
+      [year, version, version_type, status || 'draft', start_date || null, end_date || null, remark || '', getSessionUser(req)]);
+    return send(res, 200, { id: result.insertId, ok: true });
+  }
+
+  if (pathname.startsWith('/api/budget-version/') && method === 'PUT') {
+    const id = pathname.split('/').pop();
+    const body = await readBody(req);
+    const { status, start_date, end_date, remark } = body;
+    const fields = [], params = [];
+    if (status !== undefined) { fields.push('status=?'); params.push(status); }
+    if (start_date !== undefined) { fields.push('start_date=?'); params.push(start_date); }
+    if (end_date !== undefined) { fields.push('end_date=?'); params.push(end_date); }
+    if (remark !== undefined) { fields.push('remark=?'); params.push(remark); }
+    if (fields.length === 0) return send(res, 400, { error: 'no fields to update' });
+    params.push(parseInt(id));
+    await pool.query(`UPDATE ops_budget_version SET ${fields.join(',')} WHERE id=?`, params);
+    return send(res, 200, { ok: true });
+  }
+
+  if (pathname.startsWith('/api/budget-version/') && method === 'DELETE') {
+    const id = pathname.split('/').pop();
+    // 检查是否有关联的预算数据
+    const [[v]] = await pool.query('SELECT year, version, version_type FROM ops_budget_version WHERE id=?', [parseInt(id)]);
+    if (v) {
+      const [[cnt]] = await pool.query('SELECT COUNT(*) c FROM ops_budget_flow WHERE year=? AND version=?',
+        [v.year, v.version]);
+      if (cnt.c > 0) return send(res, 400, { error: '该版本已有预算数据，无法删除' });
+    }
+    await pool.query('DELETE FROM ops_budget_version WHERE id=?', [parseInt(id)]);
+    return send(res, 200, { ok: true });
+  }
+
+  if (pathname === '/api/budget-version/activate' && method === 'POST') {
+    // 激活版本：将状态改为 active，同时初始化预算流数据
+    const body = await readBody(req);
+    const { year, version, version_type } = body;
+    if (!year || !version || !version_type) return send(res, 400, { error: 'year/version/version_type required' });
+    // 查找或创建版本记录
+    let [[ver]] = await pool.query('SELECT * FROM ops_budget_version WHERE year=? AND version=? AND version_type=?',
+      [year, version, version_type]);
+    if (!ver) {
+      const [r] = await pool.query('INSERT INTO ops_budget_version (year, version, version_type, status) VALUES (?,?,?,?)',
+        [year, version, version_type, 'active']);
+      [[ver]] = await pool.query('SELECT * FROM ops_budget_version WHERE id=?', [r.insertId]);
+    } else {
+      await pool.query('UPDATE ops_budget_version SET status=? WHERE id=?', ['active', ver.id]);
+      ver.status = 'active';
+    }
+    // 初始化预算流：BD/领域/BU 层级各组织生成草稿记录
+    // 获取所有组织并计算深度（从根节点开始，根=depth 1）
+    const [orgRows] = await pool.query('SELECT id, name, parent_id FROM sys_org WHERE status=1 ORDER BY id');
+    const nodes = {};
+    orgRows.forEach(r => { nodes[r.id] = { id: r.id, name: r.name, parentId: r.parent_id, depth: 0, children: [] }; });
+    const roots = [];
+    orgRows.forEach(r => {
+      if (r.parent_id && nodes[r.parent_id]) nodes[r.parent_id].children.push(nodes[r.id]);
+      else roots.push(nodes[r.id]);
+    });
+    // 递归计算深度
+    const calcDepth = (list, d) => { list.forEach(n => { n.depth = d; calcDepth(n.children, d + 1); }); };
+    calcDepth(roots, 1);
+    // 只取 BD/领域/BU（depth 3-5）
+    const targetOrgs = [];
+    Object.values(nodes).forEach(n => { if (n.depth >= 3 && n.depth <= 5) targetOrgs.push(n); });
+    const periods = ['Q1', 'Q2', 'Q3', 'Q4', 'H1', 'H2', 'YTD'];
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      for (const org of targetOrgs) {
+        const level = org.depth === 3 ? 'BD' : (org.depth === 4 ? '领域' : 'BU');
+        for (const period of periods) {
+          await conn.query(
+            `INSERT IGNORE INTO ops_budget_flow (year, version, period, org_id, level, status, source) VALUES (?,?,?,?,?,?,?)`,
+            [year, version, period, org.id, level, 'draft', 'manual']);
+        }
+      }
+      await conn.commit();
+    } catch (e) { await conn.rollback(); throw e; } finally { conn.release(); }
+    return send(res, 200, { version: ver, ok: true });
+  }
+
+  if (pathname === '/api/budget-version/complete' && method === 'POST') {
+    // 完成版本：预估版本完成预估，目标版本确认目标
+    const body = await readBody(req);
+    const { year, version, version_type } = body;
+    if (!year || !version || !version_type) return send(res, 400, { error: 'year/version/version_type required' });
+    // 目标版本：复制为正式版
+    if (version_type === 'target') {
+      const [[existing]] = await pool.query('SELECT id FROM ops_budget_version WHERE year=? AND version=? AND version_type=?',
+        [year, '正式版', 'target']);
+      if (!existing) {
+        // 复制预算流数据到正式版
+        await pool.query(
+          `INSERT INTO ops_budget_flow (year, version, period, org_id, level, status, source, budget_revenue, budget_profit, budget_cash, remark)
+           SELECT year, '正式版', period, org_id, level, status, source, budget_revenue, budget_profit, budget_cash, remark
+           FROM ops_budget_flow WHERE year=? AND version=?`,
+          [year, version]);
+        await pool.query(
+          `INSERT INTO ops_budget_allocation (year, period, source_org_id, target_org_id, metric, ratio, target_value)
+           SELECT year, period, source_org_id, target_org_id, metric, ratio, target_value
+           FROM ops_budget_allocation WHERE year=?`,
+          [year]);
+        await pool.query(
+          'INSERT INTO ops_budget_version (year, version, version_type, status, remark) VALUES (?,?,?,?,?)',
+          [year, '正式版', 'target', 'completed', `由${version}生成`]);
+      }
+    }
+    await pool.query('UPDATE ops_budget_version SET status=? WHERE year=? AND version=? AND version_type=?',
+      ['completed', year, version, version_type]);
+    return send(res, 200, { ok: true });
+  }
+
+  /* ---------- 目标拆分 API 结束 ---------- */
   if (pathname === '/api/target-split/batch' && method === 'POST') {
     const body = await readBody(req);
     const list = Array.isArray(body) ? body : (body && body.records) || [];
@@ -1671,20 +2172,106 @@ async function handleApi(req, res, pathname, method) {
       }
     }
 
+    /* ---- 组织分支模板管理 ---- */
+    if (pathname === '/api/admin/org-templates' && method === 'GET') {
+      const [[cfg]] = await pool.query("SELECT cfg_value FROM sys_org_config WHERE cfg_key='fixed_levels'");
+      let fixed = ORG_FIXED_LEVELS;
+      try { if (cfg && cfg.cfg_value) fixed = JSON.parse(cfg.cfg_value); } catch (e) {}
+      const [rows] = await pool.query('SELECT * FROM sys_org_template ORDER BY id ASC');
+      const list = [];
+      for (const r of rows) {
+        const levels = parseJsonArr(r.levels);
+        const [[{ c }]] = await pool.query('SELECT COUNT(*) AS c FROM sys_org WHERE template_id=?', [r.id]);
+        list.push({ id: r.id, name: r.name, levels: levels, description: r.description, refCount: c, createdAt: r.created_at });
+      }
+      return send(res, 200, { templates: list, fixedLevels: fixed });
+    }
+    if (pathname === '/api/admin/org-templates' && method === 'POST') {
+      const body = await readBody(req);
+      const name = String(body.name || '').trim();
+      const levels = Array.isArray(body.levels) ? body.levels.map(String).map(s => s.trim()).filter(Boolean) : [];
+      if (!name) return send(res, 400, { error: '模板名称必填' });
+      if (!levels.length) return send(res, 400, { error: '层级列表不能为空' });
+      const [dup] = await pool.query('SELECT id FROM sys_org_template WHERE name=?', [name]);
+      if (dup.length > 0) return send(res, 400, { error: '模板名称已存在: ' + name });
+      const [r] = await pool.query('INSERT INTO sys_org_template (name, levels, description) VALUES (?,?,?)',
+        [name, JSON.stringify(levels), String(body.description || '')]);
+      return send(res, 201, { _id: String(r.insertId) });
+    }
+    const tIdm = pathname.match(/^\/api\/admin\/org-templates\/(\d+)$/);
+    if (tIdm) {
+      const tid = parseInt(tIdm[1], 10);
+      const [[tpl]] = await pool.query('SELECT * FROM sys_org_template WHERE id=?', [tid]);
+      if (!tpl) return send(res, 404, { error: '模板不存在' });
+      if (method === 'PUT') {
+        const body = await readBody(req);
+        const name = String(body.name != null ? body.name : tpl.name).trim();
+        const levels = Array.isArray(body.levels) ? body.levels.map(String).map(s => s.trim()).filter(Boolean) : null;
+        if (!name) return send(res, 400, { error: '模板名称必填' });
+        if (levels !== null && !levels.length) return send(res, 400, { error: '层级列表不能为空' });
+        const [dup] = await pool.query('SELECT id FROM sys_org_template WHERE id<>? AND name=?', [tid, name]);
+        if (dup.length > 0) return send(res, 400, { error: '模板名称已存在: ' + name });
+        await pool.query('UPDATE sys_org_template SET name=?, levels=?, description=? WHERE id=?',
+          [name, levels !== null ? JSON.stringify(levels) : jsonStr(tpl.levels), body.description != null ? String(body.description) : tpl.description, tid]);
+        return send(res, 200, { ok: true });
+      }
+      if (method === 'DELETE') {
+        const [[{ c }]] = await pool.query('SELECT COUNT(*) AS c FROM sys_org WHERE template_id=?', [tid]);
+        if (c > 0) return send(res, 400, { error: '该模板正被 ' + c + ' 个组织引用，请先解除引用' });
+        await pool.query('DELETE FROM sys_org_template WHERE id=?', [tid]);
+        return send(res, 200, { ok: true });
+      }
+    }
+
     /* ---- 组织结构管理 ---- */
     if (pathname === '/api/admin/orgs' && method === 'GET') {
       const [rows] = await pool.query('SELECT * FROM sys_org ORDER BY sort ASC, id ASC');
+      const [[cfg]] = await pool.query("SELECT cfg_value FROM sys_org_config WHERE cfg_key='fixed_levels'");
+      let FIXED = ORG_FIXED_LEVELS;
+      try { if (cfg && cfg.cfg_value) FIXED = JSON.parse(cfg.cfg_value); } catch (e) {}
+      const [trows] = await pool.query('SELECT id, name, levels FROM sys_org_template');
+      const TPL = {}, TPL_NAMES = {};
+      trows.forEach(t => { TPL[t.id] = parseJsonArr(t.levels); TPL_NAMES[t.id] = t.name; });
       const nodes = {};
-      rows.forEach(r => { nodes[r.id] = { id: r.id, name: r.name, parentId: r.parent_id, type: r.type, sort: r.sort, status: r.status }; });
+      rows.forEach(r => {
+        nodes[r.id] = { id: r.id, name: r.name, parentId: r.parent_id, type: r.type, sort: r.sort, status: r.status,
+          templateId: r.template_id, levelName: r.level_name, tplLevel: r.tpl_level, depth: 0, levelLabel: '', templateName: null, children: [] };
+      });
       const roots = [];
       rows.forEach(r => {
         const node = nodes[r.id];
-        node.children = nodes[r.id].children || [];
-        if (r.parent_id && nodes[r.parent_id]) { nodes[r.parent_id].children = nodes[r.parent_id].children || []; nodes[r.parent_id].children.push(node); }
+        if (r.parent_id && nodes[r.parent_id]) nodes[r.parent_id].children.push(node);
         else roots.push(node);
       });
+      // 深度 + 模板继承 + 层级名推导:
+      //   depth≤3 固定层(FIXED[depth-1]); depth≥4 模板层——
+      //     自身 tpl_level 优先 → 模板.levels[tpl_level]（支持跳层）
+      //     否则继承父节点推导层级 +1（父无则 0），即按链顺延
+      //   level_name 覆盖始终最高优先
+      (function walk(list, depth, tplId, tplName, parentLvIdx){
+        for (const n of list) {
+          n.depth = depth;
+          const curTpl = n.templateId != null ? n.templateId : tplId;
+          const curName = n.templateId != null ? (TPL_NAMES[n.templateId] || null) : tplName;
+          n.templateName = curName;
+          n.tplId = curTpl;
+          const levels = curTpl != null ? (TPL[curTpl] || []) : [];
+          let lvIdx = null;
+          if (n.tplLevel != null) lvIdx = n.tplLevel;
+          else if (depth > FIXED.length) lvIdx = (parentLvIdx != null ? parentLvIdx + 1 : 0);
+          n.tplLevel = lvIdx;
+          if (n.levelName) n.levelLabel = n.levelName;
+          else if (depth <= FIXED.length) n.levelLabel = FIXED[depth - 1];
+          else if (lvIdx != null && levels.length > lvIdx) n.levelLabel = levels[lvIdx];
+          else n.levelLabel = '自定义层级';
+          walk(n.children, depth + 1, curTpl, curName, lvIdx);
+        }
+      })(roots, 1, null, null, null);
       const [[{ uc }]] = await pool.query('SELECT COUNT(*) AS uc FROM sys_user WHERE org_id IS NOT NULL');
-      return send(res, 200, { tree: roots, userCount: uc });
+      return send(res, 200, {
+        tree: roots, userCount: uc, fixedLevels: FIXED,
+        templates: trows.map(t => ({ id: t.id, name: t.name, levels: parseJsonArr(t.levels) }))
+      });
     }
     if (pathname === '/api/admin/orgs' && method === 'POST') {
       const body = await readBody(req);
@@ -1693,8 +2280,11 @@ async function handleApi(req, res, pathname, method) {
       const parentId = body.parentId ? parseInt(body.parentId, 10) : null;
       const [dup] = await pool.query('SELECT id FROM sys_org WHERE name=? AND ((parent_id=? ) OR (parent_id IS NULL AND ? IS NULL))', [name, parentId, parentId]);
       if (dup.length > 0) return send(res, 400, { error: '同级已存在同名组织: ' + name });
-      const [r] = await pool.query('INSERT INTO sys_org (name, parent_id, type, sort) VALUES (?,?,?,?)',
-        [name, parentId, String(body.type || 'dept'), parseInt(body.sort, 10) || 0]);
+      const [r] = await pool.query('INSERT INTO sys_org (name, parent_id, type, sort, template_id, level_name, tpl_level) VALUES (?,?,?,?,?,?,?)',
+        [name, parentId, String(body.type || 'dept'), parseInt(body.sort, 10) || 0,
+         body.templateId ? (parseInt(body.templateId, 10) || null) : null,
+         body.levelName ? String(body.levelName).trim() : null,
+         body.tplLevel != null && body.tplLevel !== '' ? (parseInt(body.tplLevel, 10) || 0) : null]);
       return send(res, 201, { _id: String(r.insertId) });
     }
     const oIdm = pathname.match(/^\/api\/admin\/orgs\/(\d+)$/);
@@ -1710,8 +2300,13 @@ async function handleApi(req, res, pathname, method) {
         if (parentId === oid) return send(res, 400, { error: '不能将组织挂在自身之下' });
         const [dup] = await pool.query('SELECT id FROM sys_org WHERE id<>? AND name=? AND ((parent_id=? ) OR (parent_id IS NULL AND ? IS NULL))', [oid, name, parentId, parentId]);
         if (dup.length > 0) return send(res, 400, { error: '同级已存在同名组织: ' + name });
-        await pool.query('UPDATE sys_org SET name=?, parent_id=?, type=?, sort=? WHERE id=?',
-          [name, parentId, String(body.type != null ? body.type : org.type), body.sort != null ? (parseInt(body.sort, 10) || 0) : org.sort, oid]);
+        const tpl = body.templateId !== undefined ? (parseInt(body.templateId, 10) || null) : org.template_id;
+        const ln = body.levelName !== undefined ? String(body.levelName).trim() : org.level_name;
+        const tlv = body.tplLevel !== undefined
+          ? (body.tplLevel === null || body.tplLevel === '' ? null : (parseInt(body.tplLevel, 10) || 0))
+          : org.tpl_level;
+        await pool.query('UPDATE sys_org SET name=?, parent_id=?, type=?, sort=?, template_id=?, level_name=?, tpl_level=? WHERE id=?',
+          [name, parentId, String(body.type != null ? body.type : org.type), body.sort != null ? (parseInt(body.sort, 10) || 0) : org.sort, tpl, ln || null, tlv, oid]);
         return send(res, 200, { ok: true });
       }
       if (method === 'DELETE') {
@@ -1834,6 +2429,40 @@ async function seedActualIfEmpty() {
   console.log('[init] 已写入 ' + count + ' 条月度实际数据(' + year + '年 BU×12月, 预置自目标拆分实际值)');
 }
 
+/* ---------- 预算流程预置: 从 sys_org 推导 BD→领域→BU 关系 ----------
+ * 仅当 ops_budget_relation 为空时写入 */
+async function seedBudgetRelationIfEmpty() {
+  const [[c]] = await pool.query('SELECT COUNT(*) AS c FROM ops_budget_relation');
+  if (c.c > 0) return;
+  // 读取有 template_id 的节点，其子节点建立关系
+  const [orgs] = await pool.query(`
+    SELECT o.id, o.name, o.parent_id, o.template_id
+    FROM sys_org o
+    WHERE o.template_id IS NOT NULL OR o.parent_id IN (SELECT id FROM sys_org WHERE template_id IS NOT NULL)
+  `);
+  const bdMap = {};
+  const rels = [];
+  for (const o of orgs) {
+    if (o.template_id) bdMap[o.id] = o.name;
+  }
+  for (const o of orgs) {
+    if (o.parent_id && bdMap[o.parent_id]) {
+      rels.push({ year: 2026, parent_org_id: o.parent_id, child_org_id: o.id, level: '领域' });
+    }
+  }
+  if (rels.length === 0) {
+    console.log('[init] 预算关系表为空，请手动配置 BD→领域→BU 关系');
+    return;
+  }
+  for (const r of rels) {
+    await pool.query(
+      'INSERT INTO ops_budget_relation (year, parent_org_id, child_org_id, level) VALUES (?,?,?,?)',
+      [r.year, r.parent_org_id, r.child_org_id, r.level]
+    );
+  }
+  console.log('[init] 已写入 ' + rels.length + ' 条预算汇总关系(BD→领域)');
+}
+
 /* ---------- 数据表管理预置: 分类树 + 现有业务表注册 (仅当元数据表为空时) ---------- */
 async function seedTableMetaIfEmpty() {
   const [[c]] = await pool.query('SELECT COUNT(*) AS c FROM ops_table_meta');
@@ -1925,6 +2554,70 @@ async function seedSysDataIfEmpty() {
   }
 }
 
+/* ---------- 组织模型: 迁移 + 种子 (固定层配置 / 分支模板 / 存量BD挂模板) ---------- */
+async function migrateOrgTable() {
+  const [c1] = await pool.query("SHOW COLUMNS FROM sys_org LIKE 'template_id'");
+  if (c1.length === 0) {
+    await pool.query("ALTER TABLE sys_org ADD COLUMN template_id INT DEFAULT NULL COMMENT '分支模板ID(BD节点挂载)', ADD COLUMN level_name VARCHAR(50) DEFAULT NULL COMMENT '层级名覆盖'");
+    console.log('[migrate] sys_org 已升级: 新增 template_id(BD挂模板)/level_name(层级名覆盖)');
+  }
+  const [c2] = await pool.query("SHOW COLUMNS FROM sys_org LIKE 'tpl_level'");
+  if (c2.length === 0) {
+    await pool.query("ALTER TABLE sys_org ADD COLUMN tpl_level INT DEFAULT NULL COMMENT '模板层级下标(0起,NULL=按深度自动推导)'");
+    console.log('[migrate] sys_org 已升级: 新增 tpl_level(模板层级下标,支持跳层)');
+  }
+  // 动态计算并更新 depth 列
+  const [hasDepth] = await pool.query("SHOW COLUMNS FROM sys_org LIKE 'depth'");
+  if (hasDepth.length === 0) {
+    await pool.query("ALTER TABLE sys_org ADD COLUMN depth INT DEFAULT 0 COMMENT '层级深度(1=根,递增)'");
+    console.log('[migrate] sys_org 已升级: 新增 depth 列');
+    // 计算 depth
+    const [rows] = await pool.query('SELECT id, parent_id FROM sys_org ORDER BY id');
+    const nodes = {}; rows.forEach(r => { nodes[r.id] = { id: r.id, parent_id: r.parent_id, depth: 0 }; });
+    const calc = (id, d) => { if (nodes[id]) { nodes[id].depth = d; if (nodes[id].parent_id) calc(nodes[id].parent_id, d + 1); } };
+    // 从根开始计算
+    rows.forEach(r => { if (!r.parent_id) calc(r.id, 1); });
+    // 对所有节点计算相对于根的深度
+    const getDepthFromRoot = (id) => {
+      let d = 0, curr = id;
+      while (curr && nodes[curr]) { d++; curr = nodes[curr].parent_id; }
+      return d;
+    };
+    for (const id in nodes) { nodes[id].depth = getDepthFromRoot(parseInt(id)); }
+    for (const id in nodes) {
+      await pool.query('UPDATE sys_org SET depth=? WHERE id=?', [nodes[id].depth, parseInt(id)]);
+    }
+    console.log('[migrate] sys_org 已计算 depth 完成');
+  }
+}
+
+async function seedOrgTemplateIfEmpty() {
+  // 固定层配置
+  const [[cc]] = await pool.query("SELECT COUNT(*) AS c FROM sys_org_config WHERE cfg_key='fixed_levels'");
+  if (cc.c === 0) {
+    await pool.query('INSERT INTO sys_org_config (cfg_key, cfg_value, description) VALUES (?,?,?)',
+      ['fixed_levels', JSON.stringify(ORG_FIXED_LEVELS), '全局固定层级(前三级, 所有组织统一)']);
+  }
+  // 分支模板种子
+  const [[tc]] = await pool.query('SELECT COUNT(*) AS c FROM sys_org_template');
+  if (tc.c === 0) {
+    for (const [name, levels, desc] of ORG_TEMPLATE_SEEDS) {
+      await pool.query('INSERT INTO sys_org_template (name, levels, description) VALUES (?,?,?)', [name, JSON.stringify(levels), desc]);
+    }
+    console.log('[init] 组织分支模板预置: ' + ORG_TEMPLATE_SEEDS.length + ' 套(互联网型/云业务型/职能型/硬件型)');
+  }
+  // 存量组织树: 三级(BD)节点若无模板则挂「职能型」兜底
+  const [[fr]] = await pool.query("SELECT id FROM sys_org_template WHERE name='职能型'");
+  if (fr) {
+    const [rows] = await pool.query(
+      'SELECT c.id FROM sys_org c JOIN sys_org p ON c.parent_id=p.id JOIN sys_org pp ON p.parent_id=pp.id WHERE c.template_id IS NULL');
+    for (const r of rows) {
+      await pool.query('UPDATE sys_org SET template_id=? WHERE id=?', [fr.id, r.id]);
+    }
+    if (rows.length > 0) console.log('[migrate] 存量三级(BD)节点已挂默认模板「职能型」: ' + rows.length + ' 个');
+  }
+}
+
 /* ---------- 启动初始化: 建表 + 种子数据 ---------- */
 async function init() {
   await pool.query(CREATE_TABLE_SQL);
@@ -1996,6 +2689,15 @@ async function init() {
   await pool.query(CREATE_ACTUAL_TABLE_SQL);
   await seedActualIfEmpty();
   const [[actcnt]] = await pool.query('SELECT COUNT(*) AS c FROM ops_actual');
+  // 预算流程: 编制状态 + 汇总关系 + 分解比例 + 版本管理
+  await pool.query(CREATE_BUDGET_FLOW_SQL);
+  await migrateBudgetFlowTable();
+  await pool.query(CREATE_BUDGET_RELATION_SQL);
+  await pool.query(CREATE_BUDGET_ALLOCATION_SQL);
+  await pool.query(CREATE_BUDGET_VERSION_SQL);
+  await migrateBudgetVersionTable();
+  await seedBudgetRelationIfEmpty();
+  const [[flowcnt]] = await pool.query('SELECT COUNT(*) AS c FROM ops_budget_flow');
   // 数据表管理: 元数据表 + 预置分类树
   await pool.query(CREATE_TABLE_META_SQL);
   await pool.query(CREATE_TABLE_FIELD_SQL);
@@ -2008,12 +2710,15 @@ async function init() {
     const s = String(stmt).trim();
     if (s) await pool.query(s);
   }
+  await migrateOrgTable();
   await seedSysDataIfEmpty();
+  await seedOrgTemplateIfEmpty();
   const [[sysucnt]] = await pool.query('SELECT COUNT(*) AS c FROM sys_user');
   const [[sysrcnt]] = await pool.query('SELECT COUNT(*) AS c FROM sys_role');
   const [[syspcnt]] = await pool.query('SELECT COUNT(*) AS c FROM sys_permission');
   const [[sysocnt]] = await pool.query('SELECT COUNT(*) AS c FROM sys_org');
-  console.log('[init] MySQL 数据库就绪: ' + DB.database + ' (records=' + cnt.c + ', forecast=' + fccnt.c + ', budget=' + bdcnt.c + ', target=' + tgtcnt.c + ', actual=' + actcnt.c + ', table_meta=' + tmtcnt.c + ', sys_user=' + sysucnt.c + ', sys_role=' + sysrcnt.c + ', sys_perm=' + syspcnt.c + ', sys_org=' + sysocnt.c + ')');
+  const [[sysotcnt]] = await pool.query('SELECT COUNT(*) AS c FROM sys_org_template');
+  console.log('[init] MySQL 数据库就绪: ' + DB.database + ' (records=' + cnt.c + ', forecast=' + fccnt.c + ', budget=' + bdcnt.c + ', target=' + tgtcnt.c + ', actual=' + actcnt.c + ', table_meta=' + tmtcnt.c + ', sys_user=' + sysucnt.c + ', sys_role=' + sysrcnt.c + ', sys_perm=' + syspcnt.c + ', sys_org=' + sysocnt.c + ', org_tpl=' + sysotcnt.c + ')');
 }
 
 /* ---------- 启动服务 ---------- */

@@ -125,6 +125,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 .form-section-title{font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .form-grid.two{grid-template-columns:1fr 1fr}
+
+/* ===== 组织模板面板 ===== */
+.orgtpl-layout{display:grid;grid-template-columns:270px 1fr;gap:16px;align-items:start}
+.orgtpl-list{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:10px;max-height:600px;overflow:auto}
+.orgtpl-list-head{font-size:12px;color:var(--text-secondary);padding:6px 8px 10px;border-bottom:1px solid var(--border);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.orgtpl-card{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;border:1px solid transparent;margin-bottom:6px;transition:all .15s}
+.orgtpl-card:hover{background:rgba(59,130,246,0.08)}
+.orgtpl-card.active{background:rgba(59,130,246,0.14);border-color:rgba(59,130,246,0.4)}
+.orgtpl-card .tpl-ico{width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,0.15);color:#60a5fa;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.orgtpl-card .tpl-name{font-weight:600;font-size:13px;color:var(--text);line-height:1.3}
+.orgtpl-card .tpl-meta{font-size:11px;color:var(--text-secondary)}
+.orgtpl-detail{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;min-height:320px}
+.tpl-level-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;margin-bottom:8px}
+.tpl-level-row .lv-idx{width:26px;height:26px;border-radius:50%;background:rgba(59,130,246,0.15);color:#60a5fa;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+.tpl-level-row input{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);background:var(--bg);outline:none}
+.tpl-level-row input:focus{border-color:var(--primary)}
+.tpl-ref-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.tpl-ref-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#a7f3d0;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.25);padding:3px 10px;border-radius:14px}
+@media (max-width:900px){.orgtpl-layout{grid-template-columns:1fr}}
 .form-field{display:flex;flex-direction:column;gap:5px}
 .form-field label{font-size:12px;color:var(--text-secondary);font-weight:500}
 .form-field input,.form-field select,.form-field textarea{padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;color:var(--text);background:var(--bg);width:100%;outline:none;transition:all .2s}
@@ -261,9 +280,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   </button>
   <nav class="sidebar-nav" id="sidebarNav">
     <div class="nav-section-label">系统管理</div>
-    <button class="nav-item active" data-am="orglevels" onclick="amSwitch('orglevels')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      <span class="nav-text">组织层级</span>
+    <button class="nav-item active" data-am="orgtpls" onclick="amSwitch('orgtpls')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+      <span class="nav-text">组织模板</span>
     </button>
     <button class="nav-item" data-am="orgs" onclick="amSwitch('orgs')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>
@@ -309,8 +328,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     <button class="topbar-toggle" onclick="toggleSidebar()" title="收起/展开菜单">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
-    <span class="topbar-title" id="topbarTitle">组织层级</span>
-    <span class="topbar-subtitle" id="topbarSubtitle">组织层级概览与统计</span>
+    <span class="topbar-title" id="topbarTitle">组织模板</span>
+    <span class="topbar-subtitle" id="topbarSubtitle">固定三层（集团→BG→BD）+ BD 以下分支模板</span>
     <span class="topbar-spacer"></span>
   </div>
 
@@ -370,15 +389,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
         </table>
       </div>
     </div>
-    <!-- 组织层级 -->
-    <div class="am-pane active" id="amPane-orglevels">
+    <!-- 组织模板 -->
+    <div class="am-pane active" id="amPane-orgtpls">
       <div class="am-toolbar">
-        <span style="color:var(--text-secondary);font-size:13px">组织层级定义：按树型排列的层级名称，如 集团→BG→BD→领域→BU→PDU→项目组</span>
+        <span style="color:var(--text-secondary);font-size:13px">固定三层：<b style="color:var(--text)">集团 → BG → BD</b>（全局统一）· BD 以下各组织选用分支模板</span>
         <span class="spacer"></span>
-        <button class="btn-secondary" onclick="amAddLevel()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增层级</button>
+        <button class="btn-secondary" onclick="amNewTpl()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新建模板</button>
+        <button class="btn-secondary" onclick="amLoadOrgTpls()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>刷新</button>
       </div>
-      <div class="am-table-wrap" style="padding:20px">
-        <div id="orgLevelsView" style="min-height:200px"></div>
+      <div class="orgtpl-layout" style="margin-top:4px">
+        <div class="orgtpl-list">
+          <div class="orgtpl-list-head">分支模板 <span id="orgTplCount" style="color:var(--text-tertiary)"></span></div>
+          <div id="orgTplList"></div>
+        </div>
+        <div class="orgtpl-detail">
+          <div id="orgTplDetail"></div>
+        </div>
       </div>
     </div>
     <!-- 组织结构 -->
@@ -397,9 +423,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 
 <!-- 移动端底部导航 -->
 <div class="mobile-tabbar" id="mobileTabbar" style="display:none">
-  <button class="mt-item active" data-am="orglevels" onclick="amSwitch('orglevels')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-    层级
+  <button class="mt-item active" data-am="orgtpls" onclick="amSwitch('orgtpls')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+    模板
   </button>
   <button class="mt-item" data-am="orgs" onclick="amSwitch('orgs')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
@@ -512,15 +538,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 </div>
 <!-- 组织弹窗 -->
 <div class="modal-overlay" id="amOrgModalOverlay">
-  <div class="modal-box" style="max-width:520px">
+  <div class="modal-box" style="max-width:560px">
     <div class="modal-title" id="amOrgModalTitle">新增组织</div>
     <form onsubmit="amSubmitOrg(event)">
+      <!-- ① 层级信息区 -->
+      <div id="amOLvInfo" style="display:none;margin-bottom:14px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg)">
+        <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:6px">层级信息</div>
+        <div id="amOLvPath" style="font-size:13px;color:var(--text-secondary);margin-bottom:8px"></div>
+        <div id="amOLvBadge"></div>
+      </div>
       <div class="form-field"><label>组织名称<span class="required">*</span></label><input type="text" id="amOName" maxlength="100" placeholder="如：数据平台部" required></div>
       <div class="form-grid two" style="margin-top:12px">
         <div class="form-field"><label>上级组织</label><select id="amOParent"><option value="">（顶级）</option></select></div>
         <div class="form-field"><label>类型</label><select id="amOType"><option value="company">公司</option><option value="dept" selected>部门</option><option value="team">团队</option></select></div>
       </div>
-      <div class="form-field" style="margin-top:12px"><label>排序</label><input type="number" id="amOSort" value="0" min="0"></div>
+      <!-- ② 固定层级设置区（集团/BG/BD） -->
+      <div id="amOFixedWrap" style="display:none;margin-top:14px;padding:12px 14px;border:1px solid #3b82f633;border-radius:10px;background:#3b82f60a">
+        <div style="font-size:11px;color:#3b82f6;margin-bottom:8px;font-weight:600">固定层级设置（集团 → BG → BD，系统统一）</div>
+        <div class="form-grid two">
+          <div class="form-field"><label>所属层级</label><div id="amOFixedLv" style="font-size:13px;color:var(--text);padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg)"></div></div>
+          <div class="form-field"><label>排序</label><input type="number" id="amOSort" value="0" min="0"></div>
+        </div>
+        <div class="form-field" id="amOTplWrap" style="display:none;margin-top:12px"><label>分支模板</label><select id="amOTpl"></select><div style="font-size:11px;color:var(--text-tertiary);margin-top:3px">BD 节点挂载模板后，其下级层级按模板推导（如 领域→BU→PDU→项目组）</div></div>
+      </div>
+      <!-- ③ 模板层级设置区（BD 以下） -->
+      <div id="amOTplLvWrap" style="display:none;margin-top:14px;padding:12px 14px;border:1px solid #8b5cf633;border-radius:10px;background:#8b5cf60a">
+        <div style="font-size:11px;color:#8b5cf6;margin-bottom:8px;font-weight:600">模板层级设置（BD 以下按分支模板推导）</div>
+        <div class="form-field"><label>继承模板</label><div id="amOInheritTip" style="font-size:12px;color:var(--text-secondary);padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg)"></div></div>
+        <div class="form-grid two" style="margin-top:12px">
+          <div class="form-field"><label>所属模板层级</label><select id="amOTplLv"></select><div style="font-size:11px;color:var(--text-tertiary);margin-top:3px">默认按上级顺延，可改选实现跳层（如 BD 下直接建 BU）</div></div>
+          <div class="form-field"><label>层级名覆盖</label><input type="text" id="amOLevelName" maxlength="50" placeholder="留空按模板推导"></div>
+        </div>
+      </div>
       <div class="modal-actions">
         <button type="button" class="btn-secondary" onclick="amCloseOrg()">取消</button>
         <button type="submit" class="btn-primary">保存</button>
@@ -560,8 +609,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   var SYS_PERMS = [];
   var ROLE_NAME_MAP = { 'admin': '管理员', 'user': '普通用户' };
   var AM_TITLES = {
-    orglevels: { title: '组织层级', sub: '组织层级概览与统计' },
-    orgs: { title: '组织结构', sub: '公司/部门/团队 树形维护' },
+    orgtpls: { title: '组织模板', sub: '固定三层（集团→BG→BD）+ BD 以下分支模板' },
+    orgs: { title: '组织结构', sub: '公司/部门/团队 树形维护（BD 节点挂分支模板）' },
     roles: { title: '角色管理', sub: '角色与权限聚合管理' },
     perms: { title: '权限管理', sub: '菜单/操作权限定义' },
     users: { title: '用户管理', sub: '系统用户账号管理' }
@@ -738,7 +787,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   });
 
   /* ================= 后台管理 (用户/角色/权限/组织) ================= */
-  var AM_CUR='orglevels';
+  var AM_CUR='orgtpls';
   var AM_USER_PAGE=1, AM_USER_TOTAL=0;
   var AM_USER_EDIT_ID=null, AM_ROLE_EDIT_ID=null, AM_PERM_EDIT_ID=null, AM_ORG_EDIT_ID=null;
   var AM_ROLE_USERS_ID=null, AM_ROLE_PERMS_ID=null, AM_PWD_USER_ID=null;
@@ -776,7 +825,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       document.getElementById('sidebar').classList.remove('mobile-open');
       document.getElementById('sidebarOverlay').classList.remove('show');
     }
-    if (t === 'orglevels') amLoadOrgLevels();
+    if (t === 'orgtpls') amLoadOrgTpls();
     else if (t === 'users') amLoadUsers(1);
     else if (t === 'roles') amLoadRoles();
     else if (t === 'perms') amLoadPerms();
@@ -1177,96 +1226,180 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     });
   };
 
-  /* ---- 组织层级 ---- */
-  var DEFAULT_ORG_LEVELS = ['集团', 'BG', 'BD', '领域', 'BU', 'PDU', '项目组'];
-  var LEVEL_COLORS = ['#8b5cf6', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
-  function amGetLevels(){
-    try { var v = JSON.parse(localStorage.getItem('wb_ops_org_levels') || 'null'); return (v && v.length) ? v : DEFAULT_ORG_LEVELS.slice(); }
-    catch(e) { return DEFAULT_ORG_LEVELS.slice(); }
+  /* ---- 组织模板管理 (固定三层 + BD以下分支模板) ---- */
+  var AM_TPLS_CACHE = [], AM_TPLS_CUR = null, AM_TPLS_FIXED = ['集团', 'BG', 'BD'];
+  function amLoadOrgTpls(){
+    amFetch('/api/admin/org-templates').then(function(d){
+      AM_TPLS_FIXED = d.fixedLevels || ['集团', 'BG', 'BD'];
+      AM_TPLS_CACHE = d.templates || [];
+      var cntEl = document.getElementById('orgTplCount');
+      if (cntEl) cntEl.textContent = '(' + AM_TPLS_CACHE.length + ')';
+      var hasCur = false;
+      for (var i = 0; i < AM_TPLS_CACHE.length; i++) if (AM_TPLS_CACHE[i].id === AM_TPLS_CUR) hasCur = true;
+      if (!hasCur) AM_TPLS_CUR = AM_TPLS_CACHE.length ? AM_TPLS_CACHE[0].id : null;
+      amRenderTplList();
+      amRenderTplDetail();
+    }).catch(function(err){ toast(err.message, 'error'); });
   }
-  function amSaveLevels(arr){ localStorage.setItem('wb_ops_org_levels', JSON.stringify(arr)); }
-  function amLoadOrgLevels(){
-    var levels = amGetLevels();
-    var view = document.getElementById('orgLevelsView');
-    if (!levels.length) { view.innerHTML = '<div class="am-empty">暂无层级，点击右上角「新增层级」添加</div>'; return; }
-    // 树型排列：每行一个层级，用竖线连接
-    var html = '<div style="display:inline-block;min-width:300px">';
-    for (var i = 0; i < levels.length; i++) {
-      var isLast = (i === levels.length - 1);
-      var color = LEVEL_COLORS[i % LEVEL_COLORS.length];
-      var hasDown = !isLast;
-      // 节点行
-      html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;margin-left:0;transition:border-color .2s" onmouseover="this.style.borderColor=\'' + color + '\'" onmouseout="this.style.borderColor=\'var(--border)\'">';
-      // 序号圆
-      html += '<span style="width:28px;height:28px;border-radius:50%;background:' + color + '22;color:' + color + ';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">' + (i + 1) + '</span>';
-      // 层级名称
-      html += '<span style="font-weight:600;color:var(--text);font-size:14px;min-width:80px">' + amEsc(levels[i]) + '</span>';
-      // 层级标签
-      html += '<span style="font-size:11px;color:' + color + ';background:' + color + '15;padding:2px 10px;border-radius:10px">L' + (i + 1) + '</span>';
-      html += '<span class="spacer" style="flex:1"></span>';
-      // 操作按钮
-      html += '<button class="btn-secondary btn-sm" onclick="amEditLevel(' + i + ')" title="编辑">编辑</button>';
-      if (i > 0) html += '<button class="btn-secondary btn-sm" onclick="amMoveLevel(' + i + ',-1)" title="上移">↑</button>';
-      if (i < levels.length - 1) html += '<button class="btn-secondary btn-sm" onclick="amMoveLevel(' + i + ',1)" title="下移">↓</button>';
-      html += '<button class="btn-secondary btn-sm btn-danger" onclick="amDeleteLevel(' + i + ')" title="删除">删除</button>';
-      html += '</div>';
-      // 连接线
-      if (hasDown) {
-        html += '<div style="display:flex;justify-content:flex-start;padding-left:28px;height:20px">';
-        html += '<div style="width:2px;height:100%;background:' + color + '44;border-radius:1px"></div>';
-        html += '</div>';
+  function amRenderTplList(){
+    var box = document.getElementById('orgTplList');
+    if (!box) return;
+    if (!AM_TPLS_CACHE.length) { box.innerHTML = '<div class="am-empty" style="padding:20px 8px">暂无模板，点击右上角「新建模板」创建</div>'; return; }
+    box.innerHTML = AM_TPLS_CACHE.map(function(t){
+      return '<div class="orgtpl-card' + (t.id === AM_TPLS_CUR ? ' active' : '') + '" onclick="amSelectTpl(' + t.id + ')">' +
+        '<span class="tpl-ico"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span>' +
+        '<span style="flex:1;min-width:0"><span class="tpl-name">' + amEsc(t.name) + '</span><br><span class="tpl-meta">' + t.levels.length + ' 级 · 引用 ' + t.refCount + ' 个组织</span></span>' +
+        '</div>';
+    }).join('');
+  }
+  window.amSelectTpl = function(id){ AM_TPLS_CUR = id; amRenderTplList(); amRenderTplDetail(); };
+  function amCurTpl(){
+    for (var i = 0; i < AM_TPLS_CACHE.length; i++) if (AM_TPLS_CACHE[i].id === AM_TPLS_CUR) return AM_TPLS_CACHE[i];
+    return null;
+  }
+  function amRenderTplDetail(){
+    var box = document.getElementById('orgTplDetail');
+    if (!box) return;
+    var t = amCurTpl();
+    if (!t) { box.innerHTML = '<div class="am-empty" style="padding:60px 20px">请选择左侧模板，或新建一个模板</div>'; return; }
+    var html = '';
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">' +
+      '<input type="text" id="tplNameInput" value="' + amEsc(t.name) + '" maxlength="100" placeholder="模板名称" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);background:var(--bg);outline:none">' +
+      '<button class="btn-primary" onclick="amSaveTpl()" style="height:36px;white-space:nowrap"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>保存</button>' +
+      '<button class="btn-secondary btn-danger" onclick="amDeleteTpl(' + t.id + ')" style="height:36px;white-space:nowrap">删除</button>' +
+      '</div>';
+    html += '<input type="text" id="tplDescInput" value="' + amEsc(t.description || '') + '" maxlength="255" placeholder="模板描述（可选）" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text-secondary);background:var(--bg);outline:none;margin-bottom:14px">';
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--text-secondary)">' +
+      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#60a5fa" stroke-width="2" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>' +
+      '固定三层（全局统一）：<b style="color:var(--text)">' + AM_TPLS_FIXED.map(amEsc).join(' → ') + '</b>　·　本模板定义 BD 以下层级：</div>';
+    if (!t.levels.length) {
+      html += '<div class="am-empty" style="padding:22px">暂无层级，点击下方「添加层级」</div>';
+    } else {
+      for (var i = 0; i < t.levels.length; i++) {
+        html += '<div class="tpl-level-row">' +
+          '<span class="lv-idx">' + (i + 1) + '</span>' +
+          '<input type="text" value="' + amEsc(t.levels[i]) + '" placeholder="层级名称" data-lv="' + i + '" onchange="amEditTplLevel(this,' + i + ')">' +
+          (i > 0 ? '<button class="btn-secondary btn-sm" onclick="amMoveTplLevel(' + i + ',-1)" title="上移">↑</button>' : '') +
+          (i < t.levels.length - 1 ? '<button class="btn-secondary btn-sm" onclick="amMoveTplLevel(' + i + ',1)" title="下移">↓</button>' : '') +
+          '<button class="btn-secondary btn-sm btn-danger" onclick="amRemoveTplLevel(' + i + ')" title="删除">✕</button>' +
+          '</div>';
       }
     }
-    html += '</div>';
-    view.innerHTML = html;
+    html += '<button class="btn-secondary" onclick="amAddTplLevel()" style="margin-top:4px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>添加层级</button>';
+    if (t.refCount > 0) {
+      html += '<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">' +
+        '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">引用此模板的 BD 组织（' + t.refCount + '）——在「组织结构」中维护</div>' +
+        '<div class="tpl-ref-list" id="tplRefList"></div></div>';
+    }
+    box.innerHTML = html;
+    if (t.refCount > 0) amRenderTplRefs(t.id);
   }
-  window.amAddLevel = function(){
-    var name = prompt('请输入层级名称：', '');
+  function amRenderTplRefs(tid){
+    var box = document.getElementById('tplRefList');
+    if (!box) return;
+    amFetch('/api/admin/orgs').then(function(d){
+      var refs = [];
+      (function walk(nodes){ (nodes || []).forEach(function(n){ if (n.templateId === tid) refs.push(n); walk(n.children || []); }); })(d.tree);
+      box.innerHTML = refs.length ? refs.map(function(n){ return '<span class="tpl-ref-chip">' + amEsc(n.name) + ' <span style="opacity:.7">' + amEsc(n.levelLabel || '') + '</span></span>'; }).join('') : '<span style="font-size:12px;color:var(--text-tertiary)">—</span>';
+    }).catch(function(){});
+  }
+  window.amNewTpl = function(){
+    var name = prompt('请输入模板名称：', '');
     if (!name || !name.trim()) return;
     name = name.trim();
-    var levels = amGetLevels();
-    if (levels.indexOf(name) >= 0) { toast('该层级名称已存在', 'error'); return; }
-    levels.push(name);
-    amSaveLevels(levels);
-    toast('层级「' + name + '」已添加', 'success');
-    amLoadOrgLevels();
+    var levels = prompt('请输入 BD 以下层级，用逗号或 → 分隔（如：领域,BU,PDU,项目组）：', '领域,BU,PDU,项目组');
+    if (levels === null) return;
+    var arr = String(levels).split(/[,，→>]/).map(function(s){ return s.trim(); }).filter(Boolean);
+    amFetch('/api/admin/org-templates', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: name, levels: arr, description: '' }) })
+      .then(function(d){
+        toast('模板「' + name + '」已创建', 'success');
+        AM_TPLS_CUR = parseInt(d._id, 10) || AM_TPLS_CUR;
+        amLoadOrgTpls();
+      }).catch(function(err){ toast(err.message, 'error'); });
   };
-  window.amEditLevel = function(idx){
-    var levels = amGetLevels();
-    var old = levels[idx];
-    var name = prompt('请修改层级名称：', old);
-    if (name === null) return;
-    name = name.trim();
-    if (!name) { toast('层级名称不能为空', 'error'); return; }
-    if (name !== old && levels.indexOf(name) >= 0) { toast('该层级名称已存在', 'error'); return; }
-    levels[idx] = name;
-    amSaveLevels(levels);
-    toast('层级已更新', 'success');
-    amLoadOrgLevels();
+  window.amSaveTpl = function(){
+    var t = amCurTpl();
+    if (!t) return;
+    var nameEl = document.getElementById('tplNameInput');
+    var descEl = document.getElementById('tplDescInput');
+    if (!nameEl || !descEl) return;
+    var levels = [];
+    var rows = document.querySelectorAll('#orgTplDetail .tpl-level-row input[data-lv]');
+    for (var i = 0; i < rows.length; i++) { var v = rows[i].value.trim(); if (v) levels.push(v); }
+    var payload = { name: nameEl.value.trim(), description: descEl.value.trim(), levels: levels };
+    if (!payload.name) { toast('模板名称必填', 'error'); return; }
+    if (!levels.length) { toast('至少保留一个层级', 'error'); return; }
+    amFetch('/api/admin/org-templates/' + t.id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      .then(function(){ toast('模板已保存', 'success'); amLoadOrgTpls(); })
+      .catch(function(err){ toast(err.message, 'error'); });
   };
-  window.amMoveLevel = function(idx, dir){
-    var levels = amGetLevels();
+  window.amDeleteTpl = function(id){
+    showConfirm('确认删除该模板吗？（被 BD 引用的模板无法删除）', function(){
+      amFetch('/api/admin/org-templates/' + id, { method:'DELETE' })
+        .then(function(){ toast('模板已删除', 'success'); AM_TPLS_CUR = null; amLoadOrgTpls(); })
+        .catch(function(err){ toast(err.message, 'error'); });
+    });
+  };
+  window.amAddTplLevel = function(){
+    var t = amCurTpl();
+    if (!t) return;
+    var name = prompt('请输入新层级名称：', '');
+    if (!name || !name.trim()) return;
+    t.levels.push(name.trim());
+    amRenderTplDetail();
+  };
+  window.amEditTplLevel = function(el, idx){
+    var t = amCurTpl();
+    if (!t) return;
+    var v = el.value.trim();
+    if (!v) { toast('层级名称不能为空', 'error'); el.value = t.levels[idx]; return; }
+    if (v !== t.levels[idx] && t.levels.indexOf(v) >= 0) { toast('该层级名称已存在', 'error'); el.value = t.levels[idx]; return; }
+    t.levels[idx] = v;
+  };
+  window.amMoveTplLevel = function(idx, dir){
+    var t = amCurTpl();
+    if (!t) return;
     var ni = idx + dir;
-    if (ni < 0 || ni >= levels.length) return;
-    var tmp = levels[idx]; levels[idx] = levels[ni]; levels[ni] = tmp;
-    amSaveLevels(levels);
-    amLoadOrgLevels();
+    if (ni < 0 || ni >= t.levels.length) return;
+    var tmp = t.levels[idx]; t.levels[idx] = t.levels[ni]; t.levels[ni] = tmp;
+    amRenderTplDetail();
   };
-  window.amDeleteLevel = function(idx){
-    var levels = amGetLevels();
-    var name = levels[idx];
-    showConfirm('确认删除层级「' + name + '」吗？', function(){
-      levels.splice(idx, 1);
-      amSaveLevels(levels);
-      toast('层级「' + name + '」已删除', 'success');
-      amLoadOrgLevels();
+  window.amRemoveTplLevel = function(idx){
+    var t = amCurTpl();
+    if (!t) return;
+    showConfirm('确认删除层级「' + t.levels[idx] + '」吗？', function(){
+      t.levels.splice(idx, 1);
+      amRenderTplDetail();
     });
   };
 
   /* ---- 组织结构管理 ---- */
+  /* ---- 组织结构管理 ---- */
+  var AM_ORGS_TPL = [];
+  var AM_ORG_FIXED = ['集团', 'BG', 'BD'];
+  var ORG_LV_COLORS = ['#8b5cf6', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#a855f7'];
+  function amFindOrgInTree(nodes, id){
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].id === id) return nodes[i];
+      var f = amFindOrgInTree(nodes[i].children || [], id);
+      if (f) return f;
+    }
+    return null;
+  }
+  function amFindTplById(tplId){
+    for (var i = 0; i < AM_ORGS_TPL.length; i++) if (AM_ORGS_TPL[i].id === tplId) return AM_ORGS_TPL[i];
+    return null;
+  }
+  function amOrgPathArr(node){
+    var arr = [], cur = node;
+    while (cur) { arr.unshift(cur); cur = cur.parentId ? amFindOrgInTree(AM_ORGS_CACHE, cur.parentId) : null; }
+    return arr;
+  }
   function amLoadOrgs(){
     amFetch('/api/admin/orgs').then(function(d){
       AM_ORGS_CACHE = d.tree;
+      AM_ORGS_TPL = d.templates || [];
+      if (d.fixedLevels && d.fixedLevels.length) AM_ORG_FIXED = d.fixedLevels;
       amFillOrgSelects();
       var box = document.getElementById('amOrgTree');
       if (!d.tree.length) { box.innerHTML = '<div class="am-empty">暂无组织数据，点击右上角「新增组织」创建</div>'; return; }
@@ -1276,6 +1409,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   function amOrgTreeHtml(nodes){
     return nodes.map(function(n){
       var typeName = n.type === 'company' ? '公司' : (n.type === 'team' ? '团队' : '部门');
+      var isFixedLv = (n.depth || 1) <= 3;
+      var lvColor = isFixedLv ? (ORG_LV_COLORS[(n.depth || 1) - 1] || '#3b82f6') : '#8b5cf6';
+      var lvBadge = '<span style="font-size:11px;color:' + lvColor + ';background:' + lvColor + '18;padding:1px 8px;border-radius:10px;margin-left:6px;white-space:nowrap">' + (isFixedLv ? '' : '模板·') + amEsc(n.levelLabel || '') + '</span>';
       var kids = (n.children && n.children.length) ? '<div class="am-tree-children">' + amOrgTreeHtml(n.children) + '</div>' : '';
       return '<div class="am-node' + (n.children && n.children.length ? '' : ' collapsed') + '">' +
         '<div class="am-tree-row">' +
@@ -1283,7 +1419,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
             ? '<button class="am-tree-arrow" onclick="event.stopPropagation();this.closest(\'.am-node\').classList.toggle(\'collapsed\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>'
             : '<span class="am-tree-arrow"></span>') +
           '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="' + (n.type === 'company' ? '#8b5cf6' : '#3b82f6') + '" stroke-width="2" style="flex-shrink:0"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>' +
-          '<span class="am-tree-name">' + amEsc(n.name) + '<span class="org-type">' + typeName + '</span></span>' +
+          '<span class="am-tree-name">' + amEsc(n.name) + '<span class="org-type">' + typeName + '</span>' + lvBadge + '</span>' +
           '<span class="spacer" style="flex:1"></span>' +
           '<span class="am-actions">' +
             '<button class="btn-secondary btn-sm" onclick="amOpenOrg(' + n.id + ')">新增子组织</button>' +
@@ -1292,6 +1428,64 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
           '</span>' +
         '</div>' + kids + '</div>';
     }).join('');
+  }
+  function amRenderLvInfo(depth, curLvName, isFixed, pathArr){
+    var lvInfo = document.getElementById('amOLvInfo');
+    if (!lvInfo) return;
+    lvInfo.style.display = '';
+    var parts = pathArr.map(function(p){ return p.levelLabel || p.name; });
+    parts.push(curLvName);
+    document.getElementById('amOLvPath').textContent = parts.join(' → ');
+    var col = isFixed ? '#3b82f6' : '#8b5cf6';
+    document.getElementById('amOLvBadge').innerHTML =
+      '<span style="display:inline-block;font-size:11px;color:' + col + ';background:' + col + '18;padding:2px 10px;border-radius:10px;font-weight:600">' + (isFixed ? '固定层' : '模板层') + ' · ' + amEsc(curLvName) + '</span>';
+  }
+  function amShowOrgLvCtl(depth, node, isNew, parentNode){
+    var lvInfo = document.getElementById('amOLvInfo');
+    var fixedWrap = document.getElementById('amOFixedWrap');
+    var tplWrap = document.getElementById('amOTplWrap');
+    var tplLvWrap = document.getElementById('amOTplLvWrap');
+    if (!lvInfo || !fixedWrap || !tplLvWrap) return;
+    lvInfo.style.display = 'none'; fixedWrap.style.display = 'none'; tplLvWrap.style.display = 'none';
+    if (depth <= 1 && !parentNode && !node) {
+      // 顶级 → 集团
+      amRenderLvInfo(1, AM_ORG_FIXED[0] || '集团', true, []);
+      return;
+    }
+    if (depth <= 3) {
+      // 固定层
+      fixedWrap.style.display = '';
+      var fixedName = AM_ORG_FIXED[depth - 1] || ('第' + depth + '层');
+      document.getElementById('amOFixedLv').textContent = fixedName;
+      var fpath = amOrgPathArr(node || parentNode);
+      if (node && node.parentId) fpath = amOrgPathArr(amFindOrgInTree(AM_ORGS_CACHE, node.parentId));
+      amRenderLvInfo(depth, fixedName, true, fpath);
+      if (depth === 3) {
+        tplWrap.style.display = '';
+        var selTpl = document.getElementById('amOTpl');
+        selTpl.value = (node && node.templateId != null) ? String(node.templateId) : '';
+      }
+      return;
+    }
+    // 模板层 depth>3
+    tplLvWrap.style.display = '';
+    var tplId = node ? node.tplId : (parentNode ? parentNode.tplId : null);
+    var tplObj = tplId != null ? amFindTplById(tplId) : null;
+    var tplName = node ? (node.templateName || '未挂模板') : (parentNode ? (parentNode.templateName || '未挂模板') : '未挂模板');
+    var levels = tplObj ? (tplObj.levels || []) : [];
+    document.getElementById('amOInheritTip').innerHTML = '<b style="color:var(--text)">' + amEsc(tplName) + '</b>' + (levels.length ? '（' + amEsc(levels.join(' → ')) + '）' : '');
+    var sel = document.getElementById('amOTplLv');
+    var opts = ['<option value="">自动（按上级顺延）</option>'];
+    levels.forEach(function(lv, i){ opts.push('<option value="' + i + '">' + amEsc(lv) + '</option>'); });
+    sel.innerHTML = opts.join('');
+    var curLv = null;
+    if (!isNew && node && node.tplLevel != null) curLv = node.tplLevel;
+    else if (isNew && parentNode) curLv = (parentNode.tplLevel != null ? parentNode.tplLevel + 1 : 0);
+    if (curLv != null && curLv < levels.length) sel.value = String(curLv); else sel.value = '';
+    var lb = (curLv != null && levels.length > curLv) ? levels[curLv] : '自动';
+    var tpath = node ? amOrgPathArr(node.parentId ? amFindOrgInTree(AM_ORGS_CACHE, node.parentId) : null)
+                     : amOrgPathArr(parentNode);
+    amRenderLvInfo(depth, lb, false, tpath);
   }
   window.amOpenOrg = function(parentId, editId){
     AM_ORG_EDIT_ID = editId || null;
@@ -1303,21 +1497,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     document.getElementById('amOSort').value = '0';
     amFillOrgSelects();
     if (parentId) document.getElementById('amOParent').value = String(parentId);
+    var selTpl = document.getElementById('amOTpl');
+    selTpl.innerHTML = '<option value="">（不挂模板）</option>' + (AM_ORGS_TPL || []).map(function(t){ return '<option value="' + t.id + '">' + amEsc(t.name) + '（' + amEsc(t.levels.join('→')) + '）</option>'; }).join('');
+    document.getElementById('amOLevelName').value = '';
+    var curNode = null, curDepth = 0, parentNode = null;
     if (AM_ORG_EDIT_ID) {
-      var found = null;
-      (function find(nodes){
-        for (var i = 0; i < nodes.length; i++) {
-          if (nodes[i].id === AM_ORG_EDIT_ID) { found = nodes[i]; break; }
-          find(nodes[i].children || []);
-        }
-      })(AM_ORGS_CACHE);
-      if (found) {
-        document.getElementById('amOName').value = found.name;
-        document.getElementById('amOType').value = found.type;
-        document.getElementById('amOSort').value = String(found.sort || 0);
-        if (found.parentId) document.getElementById('amOParent').value = String(found.parentId);
+      curNode = amFindOrgInTree(AM_ORGS_CACHE, AM_ORG_EDIT_ID);
+      if (curNode) {
+        document.getElementById('amOName').value = curNode.name;
+        document.getElementById('amOType').value = curNode.type;
+        document.getElementById('amOSort').value = String(curNode.sort || 0);
+        if (curNode.parentId) document.getElementById('amOParent').value = String(curNode.parentId);
+        document.getElementById('amOLevelName').value = curNode.levelName || '';
+        curDepth = curNode.depth || 0;
+      }
+    } else {
+      // 新增: 目标深度 = 上级深度 + 1
+      if (parentId) {
+        parentNode = amFindOrgInTree(AM_ORGS_CACHE, parentId);
+        curDepth = parentNode ? ((parentNode.depth || 0) + 1) : 1;
+      } else {
+        curDepth = 1;
       }
     }
+    amShowOrgLvCtl(curDepth, curNode, isNew, parentNode);
     document.getElementById('amOrgModalOverlay').classList.add('show');
   };
   window.amCloseOrg = function(){ document.getElementById('amOrgModalOverlay').classList.remove('show'); };
@@ -1327,8 +1530,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       name: document.getElementById('amOName').value.trim(),
       type: document.getElementById('amOType').value,
       sort: parseInt(document.getElementById('amOSort').value, 10) || 0,
-      parentId: document.getElementById('amOParent').value ? parseInt(document.getElementById('amOParent').value, 10) : null
+      parentId: document.getElementById('amOParent').value ? parseInt(document.getElementById('amOParent').value, 10) : null,
+      levelName: document.getElementById('amOLevelName').value.trim()
     };
+    var tplWrap = document.getElementById('amOTplWrap');
+    if (tplWrap && tplWrap.style.display !== 'none') {
+      var tplSel = document.getElementById('amOTpl');
+      payload.templateId = tplSel.value ? parseInt(tplSel.value, 10) : null;
+    }
+    var tplLvWrap = document.getElementById('amOTplLvWrap');
+    if (tplLvWrap && tplLvWrap.style.display !== 'none') {
+      var lvSel = document.getElementById('amOTplLv');
+      var lvVal = lvSel.value;
+      payload.tplLevel = (lvVal === '' || lvVal == null) ? null : parseInt(lvVal, 10);
+    }
     if (!payload.name) { toast('组织名称必填', 'error'); return; }
     var req = AM_ORG_EDIT_ID
       ? amFetch('/api/admin/orgs/' + AM_ORG_EDIT_ID, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
