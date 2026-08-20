@@ -245,6 +245,7 @@ CREATE TABLE IF NOT EXISTS ops_forecast (
   fc_month INT NULL COMMENT '预测批次月份 YYYYMM',
   version VARCHAR(10) NULL COMMENT '批次内版本 V1/V2/...',
   bu VARCHAR(20) NOT NULL DEFAULT '汇总' COMMENT 'BU 维度: 汇总/软工/硬工/云/智能汽车',
+  org_id INT NULL COMMENT '组织维度: sys_org.id，与 bu 二选一',
   year INT NOT NULL,
   month INT NOT NULL,
   forecast_revenue DECIMAL(14,2) DEFAULT 0,
@@ -254,13 +255,14 @@ CREATE TABLE IF NOT EXISTS ops_forecast (
   remark VARCHAR(500),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_fc_ver_ym_bu (fc_month, version, bu, year, month)
+  UNIQUE KEY uk_fc_ver_org_ym (fc_month, version, org_id, bu, year, month)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
-/* 经营预测表结构迁移 (旧版: 批次+版本+年月唯一 -> 新版: 批次+版本+BU+年月唯一):
+/* 经营预测表结构迁移:
  * 1. 补 fc_month / version 列 (存量归入当前月份批次 V1) [旧迁移]
- * 2. 补 bu 列, 存量数据归入「汇总」
- * 3. 唯一键升级为 uk_fc_ver_ym_bu */
+ * 2. 补 bu 列, 存量数据归入「汇总」[旧迁移]
+ * 3. 补 org_id 列, 用于组织维度 (与 bu 二选一)
+ * 4. 唯一键升级为 uk_fc_ver_org_ym */
 async function migrateForecastTable() {
   const [cols] = await pool.query("SHOW COLUMNS FROM ops_forecast LIKE 'fc_month'");
   if (cols.length === 0) {
@@ -275,12 +277,29 @@ async function migrateForecastTable() {
     await pool.query("ALTER TABLE ops_forecast ADD COLUMN bu VARCHAR(20) NOT NULL DEFAULT '汇总' AFTER version");
     console.log('[migrate] ops_forecast 已升级: 新增 bu(BU维度), 存量数据归入「汇总」');
   }
-  const [idx] = await pool.query("SHOW INDEX FROM ops_forecast WHERE Key_name='uk_fc_ver_ym_bu'");
+  // 新增 org_id 列（组织维度，与 bu 二选一）
+  const [orgcols] = await pool.query("SHOW COLUMNS FROM ops_forecast LIKE 'org_id'");
+  if (orgcols.length === 0) {
+    await pool.query("ALTER TABLE ops_forecast ADD COLUMN org_id INT NULL AFTER bu");
+    await pool.query("ALTER TABLE ops_forecast ADD INDEX idx_forecast_org (org_id, year, month)");
+    console.log('[migrate] ops_forecast 已升级: 新增 org_id(组织维度)');
+  }
+  const [idx] = await pool.query("SHOW INDEX FROM ops_forecast WHERE Key_name='uk_fc_ver_org_ym'");
   if (idx.length === 0) {
+    try { await pool.query('ALTER TABLE ops_forecast DROP INDEX uk_fc_ver_ym_bu'); } catch (e) { /* 旧索引不存在则跳过 */ }
     try { await pool.query('ALTER TABLE ops_forecast DROP INDEX uk_fc_ver_ym'); } catch (e) { /* 旧索引不存在则跳过 */ }
     try { await pool.query('ALTER TABLE ops_forecast DROP INDEX uk_year_month'); } catch (e) { /* 旧索引不存在则跳过 */ }
-    await pool.query('ALTER TABLE ops_forecast ADD UNIQUE KEY uk_fc_ver_ym_bu (fc_month, version, bu, year, month)');
-    console.log('[migrate] ops_forecast 唯一键升级: (fc_month, version, bu, year, month)');
+    await pool.query('ALTER TABLE ops_forecast ADD UNIQUE KEY uk_fc_ver_org_ym (fc_month, version, org_id, bu, year, month)');
+    console.log('[migrate] ops_forecast 唯一键升级: (fc_month, version, org_id, bu, year, month)');
+  }
+  // 数据迁移: BU → org_id
+  const BU_TO_ORG = { '汇总': 25, '软工': 29, '硬工': 30, '云': 31, '智能汽车': 32 };
+  for (const [bu, orgId] of Object.entries(BU_TO_ORG)) {
+    const [[cnt]] = await pool.query('SELECT COUNT(*) AS c FROM ops_forecast WHERE bu=? AND org_id IS NULL', [bu]);
+    if (cnt.c > 0) {
+      await pool.query('UPDATE ops_forecast SET org_id=? WHERE bu=? AND org_id IS NULL', [orgId, bu]);
+      console.log('[migrate] ops_forecast 数据迁移: ' + bu + ' → org_id=' + orgId + ', 更新 ' + cnt.c + ' 条');
+    }
   }
 }
 
@@ -299,27 +318,45 @@ CREATE TABLE IF NOT EXISTS ops_budget (
   year INT NOT NULL,
   month INT NOT NULL DEFAULT 1,
   bu VARCHAR(20) NOT NULL DEFAULT '汇总' COMMENT 'BU 维度: 汇总/软工/硬工/云/智能汽车',
+  org_id INT NULL COMMENT '组织维度: sys_org.id，与 bu 二选一',
   budget_revenue DECIMAL(14,2) DEFAULT 0,
   budget_profit DECIMAL(14,2) DEFAULT 0,
   budget_cash DECIMAL(14,2) DEFAULT 0,
   budget_expense DECIMAL(14,2) DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_year_month_bu (year, month, bu)
+  UNIQUE KEY uk_year_month_org_bu (year, month, org_id, bu)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
-/* 月度预算表结构迁移: 补 bu 列(存量归入「汇总」), 唯一键升级为 (year, month, bu) */
+/* 月度预算表结构迁移: 补 bu 列(存量归入「汇总」), 补 org_id 列(组织维度), 唯一键升级 */
 async function migrateBudgetTable() {
   const [bucols] = await pool.query("SHOW COLUMNS FROM ops_budget LIKE 'bu'");
   if (bucols.length === 0) {
     await pool.query("ALTER TABLE ops_budget ADD COLUMN bu VARCHAR(20) NOT NULL DEFAULT '汇总' AFTER month");
     console.log('[migrate] ops_budget 已升级: 新增 bu(BU维度), 存量数据归入「汇总」');
   }
-  const [idx] = await pool.query("SHOW INDEX FROM ops_budget WHERE Key_name='uk_year_month_bu'");
+  // 新增 org_id 列（组织维度，与 bu 二选一）
+  const [orgcols] = await pool.query("SHOW COLUMNS FROM ops_budget LIKE 'org_id'");
+  if (orgcols.length === 0) {
+    await pool.query("ALTER TABLE ops_budget ADD COLUMN org_id INT NULL AFTER bu");
+    await pool.query("ALTER TABLE ops_budget ADD INDEX idx_budget_org (org_id, year, month)");
+    console.log('[migrate] ops_budget 已升级: 新增 org_id(组织维度)');
+  }
+  const [idx] = await pool.query("SHOW INDEX FROM ops_budget WHERE Key_name='uk_year_month_org_bu'");
   if (idx.length === 0) {
+    try { await pool.query('ALTER TABLE ops_budget DROP INDEX uk_year_month_bu'); } catch (e) { /* 旧索引不存在则跳过 */ }
     try { await pool.query('ALTER TABLE ops_budget DROP INDEX uk_year_month'); } catch (e) { /* 旧索引不存在则跳过 */ }
-    await pool.query('ALTER TABLE ops_budget ADD UNIQUE KEY uk_year_month_bu (year, month, bu)');
-    console.log('[migrate] ops_budget 唯一键升级: (year, month, bu)');
+    await pool.query('ALTER TABLE ops_budget ADD UNIQUE KEY uk_year_month_org_bu (year, month, org_id, bu)');
+    console.log('[migrate] ops_budget 唯一键升级: (year, month, org_id, bu)');
+  }
+  // 数据迁移: BU → org_id
+  const BU_TO_ORG = { '汇总': 25, '软工': 29, '硬工': 30, '云': 31, '智能汽车': 32 };
+  for (const [bu, orgId] of Object.entries(BU_TO_ORG)) {
+    const [[cnt]] = await pool.query('SELECT COUNT(*) AS c FROM ops_budget WHERE bu=? AND org_id IS NULL', [bu]);
+    if (cnt.c > 0) {
+      await pool.query('UPDATE ops_budget SET org_id=? WHERE bu=? AND org_id IS NULL', [orgId, bu]);
+      console.log('[migrate] ops_budget 数据迁移: ' + bu + ' → org_id=' + orgId + ', 更新 ' + cnt.c + ' 条');
+    }
   }
 }
 
@@ -355,6 +392,7 @@ const CREATE_ACTUAL_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS ops_actual (
   id INT AUTO_INCREMENT PRIMARY KEY,
   bu VARCHAR(20) NOT NULL DEFAULT '软工' COMMENT 'BU 维度: 软工/硬工/云/智能汽车',
+  org_id INT NULL COMMENT '组织维度: sys_org.id，与 bu 二选一',
   year INT NOT NULL,
   month INT NOT NULL DEFAULT 1,
   actual_revenue DECIMAL(14,2) DEFAULT 0,
@@ -364,7 +402,7 @@ CREATE TABLE IF NOT EXISTS ops_actual (
   remark VARCHAR(500),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_actual_bu_ym (bu, year, month)
+  UNIQUE KEY uk_actual_org_bu_ym (org_id, bu, year, month)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
 /* ---------- 预算流程管理: BD→领域→BU 三级预算编制 ----------
@@ -624,6 +662,8 @@ function fcRowToApi(row) {
   api['预测批次'] = row.fc_month ? Number(row.fc_month) : 0;
   api['版本'] = row.version || '';
   if (!api['BU']) api['BU'] = '汇总';
+  // 添加组织维度
+  if (row.org_id) api['org_id'] = row.org_id;
   return api;
 }
 function fcApiToDb(record) {
@@ -790,6 +830,17 @@ async function requireAdmin(req, res) {
 
 /* ---------- API 路由 ---------- */
 async function handleApi(req, res, pathname, method) {
+  // 工具函数：组织层级映射
+  const budgetLevelOf = (depth) => depth === 1 ? '集团' : (depth === 2 ? 'BG' : (depth === 3 ? 'BD' : (depth === 4 ? '领域' : 'BU')));
+  // 预算周期常量
+  const BUDGET_PERIODS = [
+    { code: '1月', label: '1月' }, { code: '2月', label: '2月' }, { code: '3月', label: '3月' }, { code: '4月', label: '4月' },
+    { code: '5月', label: '5月' }, { code: '6月', label: '6月' }, { code: '7月', label: '7月' }, { code: '8月', label: '8月' },
+    { code: '9月', label: '9月' }, { code: '10月', label: '10月' }, { code: '11月', label: '11月' }, { code: '12月', label: '12月' },
+    { code: 'Q1', label: 'Q1' }, { code: 'Q2', label: 'Q2' }, { code: 'Q3', label: 'Q3' }, { code: 'Q4', label: 'Q4' },
+    { code: 'H1', label: 'H1' }, { code: 'H2', label: 'H2' }, { code: '全年', label: '全年' }
+  ];
+
   // ---- 认证: 登录放行, 其余 API 全部要求登录 ----
   if (pathname === '/api/auth/login' && method === 'POST') {
     const body = await readBody(req);
@@ -940,12 +991,14 @@ async function handleApi(req, res, pathname, method) {
       const version = q.searchParams.get('version');
       const year = q.searchParams.get('year');
       const bu = q.searchParams.get('bu');
+      const orgId = q.searchParams.get('org_id');
       let sql = 'SELECT * FROM ops_forecast WHERE 1=1';
       const params = [];
       if (fcMonth) { sql += ' AND fc_month=?'; params.push(fcMonth); }
       if (version) { sql += ' AND version=?'; params.push(String(version)); }
       if (year) { sql += ' AND year=?'; params.push(parseInt(year, 10)); }
       if (bu) { sql += ' AND bu=?'; params.push(String(bu)); }
+      if (orgId) { sql += ' AND org_id=?'; params.push(parseInt(orgId, 10)); }
       if (!fcMonth) {
         // 兼容旧调用(仅按年): 自动取最新批次
         sql += ' AND fc_month=?'; params.push(await defaultFcBatch());
@@ -962,8 +1015,8 @@ async function handleApi(req, res, pathname, method) {
       if (!db.fc_month) db.fc_month = await defaultFcBatch();
       if (!db.version) db.version = 'V1';
       if (!db.bu) db.bu = '汇总';
-      // 唯一键 (fc_month, version, bu, year, month): 已存在则按同一键更新
-      const updCols = cols.filter(c => c !== 'year' && c !== 'month' && c !== 'fc_month' && c !== 'version' && c !== 'bu');
+      // 唯一键 (fc_month, version, COALESCE(org_id,0), bu, year, month): 已存在则按同一键更新
+      const updCols = cols.filter(c => c !== 'year' && c !== 'month' && c !== 'fc_month' && c !== 'version' && c !== 'bu' && c !== 'org_id');
       let sql;
       if (updCols.length > 0) {
         sql = `INSERT INTO ops_forecast (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})
@@ -972,10 +1025,243 @@ async function handleApi(req, res, pathname, method) {
         sql = `INSERT IGNORE INTO ops_forecast (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`;
       }
       const [r] = await pool.query(sql, cols.map(c => db[c]));
-      const id = r.insertId || (await pool.query('SELECT id FROM ops_forecast WHERE fc_month=? AND version=? AND bu=? AND year=? AND month=?', [db.fc_month, db.version, db.bu, db.year, db.month]))[0][0].id;
+      const id = r.insertId || (await pool.query('SELECT id FROM ops_forecast WHERE fc_month=? AND version=? AND (org_id=? OR (org_id IS NULL AND ? IS NULL)) AND bu=? AND year=? AND month=?', [db.fc_month, db.version, db.org_id||null, db.org_id, db.bu, db.year, db.month]))[0][0].id;
       return send(res, 201, { _id: String(id) });
     }
   }
+
+  // 经营看板 - 按组织维度获取预测/预算/实际数据（与 budget-flow/dept 类似）
+  const ROOT_ORG_ID = 25; // 软通动力集团根节点
+  if (pathname === '/api/forecast/dept' && method === 'GET') {
+    const q = new URL(req.url, 'http://x');
+    const year = parseInt(q.searchParams.get('year') || new Date().getFullYear(), 10);
+    const fcMonth = parseInt(q.searchParams.get('fcMonth') || q.searchParams.get('fc_month') || '', 10) || 0;
+    const version = q.searchParams.get('version') || 'V1';
+    const orgId = parseInt(q.searchParams.get('orgId'), 10);
+    if (!orgId) return send(res, 400, { error: 'orgId required' });
+    const [[org]] = await pool.query('SELECT id, name, parent_id, depth FROM sys_org WHERE id=?', [orgId]);
+    if (!org) return send(res, 404, { error: 'org not found' });
+    // 递归获取所有子孙部门（用于数据汇总，但前端只显示直接子部门）
+    const MAX_DEPTH = 10; // 最大递归深度，防止恶意构造深层组织导致性能问题
+    const getAllChildren = async (parentId, depth = 0) => {
+      if (depth > MAX_DEPTH) return [];
+      const [kids] = await pool.query('SELECT id, name, parent_id, depth FROM sys_org WHERE parent_id=? AND status=1 ORDER BY sort ASC, id ASC', [parentId]);
+      let result = [...kids];
+      for (const kid of kids) {
+        const grandKids = await getAllChildren(kid.id, depth + 1);
+        result = result.concat(grandKids);
+      }
+      return result;
+    };
+    const allChildren = await getAllChildren(orgId);
+    const allIds = [orgId, ...allChildren.map(c => c.id)];
+
+    // 通用函数：查询组织数据
+    // 对于叶子节点，需要额外查询根节点数据用于按比例分配
+    // 使用参数化查询防止 SQL 注入
+    const fetchOrgData = async (tableName, columns, idField, queryParams) => {
+      const queryIds = allIds.length === 1 && orgId !== ROOT_ORG_ID ? [...allIds, ROOT_ORG_ID] : allIds;
+      const placeholders = queryIds.map(() => '?').join(',');
+      // WHERE 条件在前，IN 子句在后，参数顺序：[queryParams.values, queryIds]
+      const sql = `SELECT ${idField}, month, ${columns.join(', ')} FROM ${tableName} WHERE ${idField} IN (${placeholders}) AND ${queryParams.where}`;
+      const [rows] = await pool.query(sql, [...queryIds, ...queryParams.values]);
+      const dataMap = {};
+      queryIds.forEach(id => { dataMap[id] = {}; });
+      rows.forEach(r => {
+        if (!dataMap[r[idField]]) dataMap[r[idField]] = {};
+        const mKey = r.month + '月';
+        dataMap[r[idField]][mKey] = {};
+        columns.forEach(col => { dataMap[r[idField]][mKey][col] = Number(r[col]) || 0; });
+      });
+      return dataMap;
+    };
+
+    // 查询预测数据 (ops_forecast)
+    const actualFcMonth = fcMonth || await defaultFcBatch();
+    const forecastByOrg = await fetchOrgData(
+      'ops_forecast',
+      ['forecast_revenue', 'contribution_profit', 'cash_flow', 'expense'],
+      'org_id',
+      { where: 'fc_month=? AND version=? AND year=?', values: [actualFcMonth, version, year] }
+    );
+
+    // 查询预算数据 (ops_budget)
+    const budgetByOrg = await fetchOrgData(
+      'ops_budget',
+      ['budget_revenue', 'budget_profit', 'budget_cash', 'budget_expense'],
+      'org_id',
+      { where: 'year=?', values: [year] }
+    );
+
+    // 查询实际数据 (ops_actual)
+    const actualByOrg = await fetchOrgData(
+      'ops_actual',
+      ['actual_revenue', 'actual_profit', 'actual_cash', 'actual_expense'],
+      'org_id',
+      { where: 'year=?', values: [year] }
+    );
+
+    // 构建数据对象（合并三个数据源）
+    // 策略: 优先从叶子节点汇总(避免汇总级+明细级双重计数);
+    //       当某指标叶子汇总为0时,降级从全部节点汇总(兼容forecast仅在根节点的情况)
+    //       当BU层级(叶子)forecast为0时,从根节点按BU的budget占比分配
+    const buildData = (orgId) => {
+      // 获取某个组织及其所有子部门的 ID 列表
+      const getOrgAndChildrenIds = (oid) => {
+        const result = [oid];
+        const findKids = (pid) => {
+          allChildren.forEach(c => {
+            if (c.parent_id === pid) {
+              result.push(c.id);
+              findKids(c.id);
+            }
+          });
+        };
+        findKids(oid);
+        return result;
+      };
+      const orgIds = getOrgAndChildrenIds(orgId);
+      // 确定叶子节点: 在 allChildren 中没有子节点的 org_id
+      const parentIds = new Set(allChildren.map(c => c.parent_id));
+      const leafIds = orgIds.filter(id => !parentIds.has(id));
+      // 判断是否为叶子节点（BU层级）
+      const isLeaf = leafIds.includes(orgId) && leafIds.length === 1 && orgIds.length === 1;
+      // 12 个指标的 key
+      const METRIC_KEYS = [
+        'forecast_revenue','forecast_profit','forecast_cash','forecast_expense',
+        'budget_revenue','budget_profit','budget_cash','budget_expense',
+        'actual_revenue','actual_profit','actual_cash','actual_expense'
+      ];
+      // 数据源映射: metricKey → { forecast/budget/actual 前缀 + 字段名 }
+      const SRC_MAP = {
+        forecast_revenue: ['forecast','forecast_revenue'], forecast_profit: ['forecast','forecast_profit'],
+        forecast_cash: ['forecast','forecast_cash'], forecast_expense: ['forecast','forecast_expense'],
+        budget_revenue: ['budget','budget_revenue'], budget_profit: ['budget','budget_profit'],
+        budget_cash: ['budget','budget_cash'], budget_expense: ['budget','budget_expense'],
+        actual_revenue: ['actual','actual_revenue'], actual_profit: ['actual','actual_profit'],
+        actual_cash: ['actual','actual_cash'], actual_expense: ['actual','actual_expense']
+      };
+      const data = {};
+      for (let m = 1; m <= 12; m++) {
+        const mKey = m + '月';
+        const periodData = {};
+        for (const mk of METRIC_KEYS) {
+          const [srcPrefix, fieldName] = SRC_MAP[mk];
+          const srcMap = srcPrefix === 'forecast' ? forecastByOrg : srcPrefix === 'budget' ? budgetByOrg : actualByOrg;
+          // 叶子汇总
+          let leafSum = 0;
+          leafIds.forEach(oid => { leafSum += (srcMap[oid]?.[mKey]?.[fieldName] || 0); });
+          // 全部节点汇总
+          let allSum = 0;
+          orgIds.forEach(oid => { allSum += (srcMap[oid]?.[mKey]?.[fieldName] || 0); });
+          let val = leafSum !== 0 ? leafSum : allSum;
+          // BU层级(叶子节点)forecast为0时,从根节点按budget占比分配
+          // 逻辑: forecast只在汇总(25)有数据,按该BU的budget占比从汇总forecast分配
+          if (isLeaf && srcPrefix === 'forecast' && val === 0) {
+            // 从根节点25获取汇总forecast数据
+            const rootData = forecastByOrg[ROOT_ORG_ID]?.[mKey];
+            const rootFcRev = rootData?.forecast_revenue || 0;
+            const rootFcProf = rootData?.forecast_profit || 0;
+            const rootFcCash = rootData?.forecast_cash || 0;
+            const rootFcExp = rootData?.forecast_expense || 0;
+            // 从当前BU和根节点获取budget占比
+            const myBdData = budgetByOrg[orgId]?.[mKey];
+            const rootBdData = budgetByOrg[ROOT_ORG_ID]?.[mKey];
+            const myBdRev = myBdData?.budget_revenue || 0;
+            const rootBdRev = rootBdData?.budget_revenue || 1;
+            // 按收入占比分配
+            if (rootFcRev > 0 && myBdRev > 0) {
+              const ratio = myBdRev / rootBdRev;
+              if (mk === 'forecast_revenue') val = rootFcRev * ratio;
+              else if (mk === 'forecast_profit') val = rootFcProf * ratio;
+              else if (mk === 'forecast_cash') val = rootFcCash * ratio;
+              else if (mk === 'forecast_expense') val = rootFcExp * ratio;
+            }
+          }
+          periodData[mk] = val;
+        }
+        data[mKey] = periodData;
+      }
+      // 季度聚合
+      const qMap = { 'Q1': [1, 2, 3], 'Q2': [4, 5, 6], 'Q3': [7, 8, 9], 'Q4': [10, 11, 12] };
+      for (const [qKey, months] of Object.entries(qMap)) {
+        const sum = (key) => months.reduce((s, m) => s + (data[m + '月']?.[key] || 0), 0);
+        data[qKey] = {
+          forecast_revenue: sum('forecast_revenue'),
+          forecast_profit: sum('forecast_profit'),
+          forecast_cash: sum('forecast_cash'),
+          forecast_expense: sum('forecast_expense'),
+          budget_revenue: sum('budget_revenue'),
+          budget_profit: sum('budget_profit'),
+          budget_cash: sum('budget_cash'),
+          budget_expense: sum('budget_expense'),
+          actual_revenue: sum('actual_revenue'),
+          actual_profit: sum('actual_profit'),
+          actual_cash: sum('actual_cash'),
+          actual_expense: sum('actual_expense')
+        };
+      }
+      // 半年度聚合
+      const h1Months = [1, 2, 3, 4, 5, 6], h2Months = [7, 8, 9, 10, 11, 12];
+      const sumH = (key, ms) => ms.reduce((s, m) => s + (data[m + '月']?.[key] || 0), 0);
+      data['H1'] = {
+        forecast_revenue: sumH('forecast_revenue', h1Months),
+        forecast_profit: sumH('forecast_profit', h1Months),
+        forecast_cash: sumH('forecast_cash', h1Months),
+        forecast_expense: sumH('forecast_expense', h1Months),
+        budget_revenue: sumH('budget_revenue', h1Months),
+        budget_profit: sumH('budget_profit', h1Months),
+        budget_cash: sumH('budget_cash', h1Months),
+        budget_expense: sumH('budget_expense', h1Months),
+        actual_revenue: sumH('actual_revenue', h1Months),
+        actual_profit: sumH('actual_profit', h1Months),
+        actual_cash: sumH('actual_cash', h1Months),
+        actual_expense: sumH('actual_expense', h1Months)
+      };
+      data['H2'] = {
+        forecast_revenue: sumH('forecast_revenue', h2Months),
+        forecast_profit: sumH('forecast_profit', h2Months),
+        forecast_cash: sumH('forecast_cash', h2Months),
+        forecast_expense: sumH('forecast_expense', h2Months),
+        budget_revenue: sumH('budget_revenue', h2Months),
+        budget_profit: sumH('budget_profit', h2Months),
+        budget_cash: sumH('budget_cash', h2Months),
+        budget_expense: sumH('budget_expense', h2Months),
+        actual_revenue: sumH('actual_revenue', h2Months),
+        actual_profit: sumH('actual_profit', h2Months),
+        actual_cash: sumH('actual_cash', h2Months),
+        actual_expense: sumH('actual_expense', h2Months)
+      };
+      // 全年聚合
+      data['全年'] = {
+        forecast_revenue: sumH('forecast_revenue', h1Months) + sumH('forecast_revenue', h2Months),
+        forecast_profit: sumH('forecast_profit', h1Months) + sumH('forecast_profit', h2Months),
+        forecast_cash: sumH('forecast_cash', h1Months) + sumH('forecast_cash', h2Months),
+        forecast_expense: sumH('forecast_expense', h1Months) + sumH('forecast_expense', h2Months),
+        budget_revenue: sumH('budget_revenue', h1Months) + sumH('budget_revenue', h2Months),
+        budget_profit: sumH('budget_profit', h1Months) + sumH('budget_profit', h2Months),
+        budget_cash: sumH('budget_cash', h1Months) + sumH('budget_cash', h2Months),
+        budget_expense: sumH('budget_expense', h1Months) + sumH('budget_expense', h2Months),
+        actual_revenue: sumH('actual_revenue', h1Months) + sumH('actual_revenue', h2Months),
+        actual_profit: sumH('actual_profit', h1Months) + sumH('actual_profit', h2Months),
+        actual_cash: sumH('actual_cash', h1Months) + sumH('actual_cash', h2Months),
+        actual_expense: sumH('actual_expense', h1Months) + sumH('actual_expense', h2Months)
+      };
+      return data;
+    };
+
+    // 直接子部门（仅用于前端展示，不递归）
+    const [directChildren] = await pool.query(
+      'SELECT id, name, parent_id, depth FROM sys_org WHERE parent_id=? AND status=1 ORDER BY sort ASC, id ASC',
+      [orgId]
+    );
+    const childList = (directChildren || []).map(c => ({ id: c.id, name: c.name, level: budgetLevelOf(c.depth), depth: c.depth, data: buildData(c.id) }));
+
+    const self = { id: org.id, name: org.name, level: budgetLevelOf(org.depth), depth: org.depth, data: buildData(orgId) };
+
+    return send(res, 200, { year, fcMonth: actualFcMonth, version, orgId, periods: BUDGET_PERIODS, self, children: childList });
+  }
+
   if (pathname === '/api/budget/batch' && method === 'POST') {
     const body = await readBody(req);
     const list = Array.isArray(body) ? body : (body && body.records) || [];
@@ -1017,10 +1303,12 @@ async function handleApi(req, res, pathname, method) {
       const q = new URL(req.url, 'http://x');
       const year = q.searchParams.get('year');
       const bu = q.searchParams.get('bu');
+      const orgId = q.searchParams.get('org_id');
       let sql = 'SELECT * FROM ops_budget WHERE 1=1';
       const params = [];
       if (year) { sql += ' AND year=?'; params.push(parseInt(year, 10)); }
       if (bu) { sql += ' AND bu=?'; params.push(String(bu)); }
+      if (orgId) { sql += ' AND org_id=?'; params.push(parseInt(orgId, 10)); }
       sql += ' ORDER BY year ASC, month ASC';
       const [rows] = await pool.query(sql, params);
       return send(res, 200, rows.map(budgetRowToApi));
@@ -1031,7 +1319,7 @@ async function handleApi(req, res, pathname, method) {
       if (!db.year || !db.month) return send(res, 400, { error: 'year and month required' });
       if (!db.bu) db.bu = '汇总';
       const cols = Object.keys(db);
-      const updCols = cols.filter(c => c !== 'year' && c !== 'month' && c !== 'bu');
+      const updCols = cols.filter(c => c !== 'year' && c !== 'month' && c !== 'bu' && c !== 'org_id');
       let sql;
       if (updCols.length > 0) {
         sql = `INSERT INTO ops_budget (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})
@@ -1040,7 +1328,7 @@ async function handleApi(req, res, pathname, method) {
         sql = `INSERT IGNORE INTO ops_budget (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`;
       }
       const [r] = await pool.query(sql, cols.map(c => db[c]));
-      const id = r.insertId || (await pool.query('SELECT id FROM ops_budget WHERE year=? AND month=? AND bu=?', [db.year, db.month, db.bu]))[0][0].id;
+      const id = r.insertId || (await pool.query('SELECT id FROM ops_budget WHERE year=? AND month=? AND (org_id=? OR (org_id IS NULL AND ? IS NULL)) AND bu=?', [db.year, db.month, db.org_id||null, db.org_id, db.bu]))[0][0].id;
       return send(res, 200, { _id: String(id) });
     }
   }
@@ -1081,6 +1369,22 @@ async function handleApi(req, res, pathname, method) {
       const q = new URL(req.url, 'http://x');
       const year = q.searchParams.get('year');
       const bu = q.searchParams.get('bu');
+      const orgId = q.searchParams.get('org_id');
+      // 组织维度汇总
+      if (orgId) {
+        let sql = 'SELECT year, month, SUM(actual_revenue) AS actual_revenue, SUM(actual_profit) AS actual_profit, SUM(actual_cash) AS actual_cash, SUM(actual_expense) AS actual_expense FROM ops_actual WHERE org_id IS NOT NULL';
+        const params = [];
+        if (year) { sql += ' AND year=?'; params.push(parseInt(year, 10)); }
+        if (orgId) { sql += ' AND org_id=?'; params.push(parseInt(orgId, 10)); }
+        sql += ' GROUP BY year, month ORDER BY year ASC, month ASC';
+        const [rows] = await pool.query(sql, params);
+        return send(res, 200, rows.map(r => ({
+          _id: 'org_agg_' + r.year + '_' + r.month,
+          年度: r.year, 月份: r.month, org_id: parseInt(orgId, 10),
+          实际收入: Number(r.actual_revenue) || 0, 实际贡献利润: Number(r.actual_profit) || 0,
+          实际现金流: Number(r.actual_cash) || 0, 实际费用: Number(r.actual_expense) || 0, 备注: ''
+        })));
+      }
       if (bu === '汇总' || !bu) {
         // 汇总口径 = 各 BU 之和, 按月聚合
         let sql = 'SELECT year, month, SUM(actual_revenue) AS actual_revenue, SUM(actual_profit) AS actual_profit, SUM(actual_cash) AS actual_cash, SUM(actual_expense) AS actual_expense FROM ops_actual WHERE bu IS NOT NULL AND bu <> \'汇总\'';
@@ -1109,7 +1413,7 @@ async function handleApi(req, res, pathname, method) {
       if (!db.bu) db.bu = '软工';
       if (db.bu === '汇总') return send(res, 400, { error: '汇总 = 各BU之和, 不可单独录入' });
       const cols = Object.keys(db);
-      const updCols = cols.filter(c => c !== 'year' && c !== 'month' && c !== 'bu');
+      const updCols = cols.filter(c => c !== 'year' && c !== 'month' && c !== 'bu' && c !== 'org_id');
       let sql;
       if (updCols.length > 0) {
         sql = `INSERT INTO ops_actual (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})
@@ -1118,7 +1422,7 @@ async function handleApi(req, res, pathname, method) {
         sql = `INSERT IGNORE INTO ops_actual (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`;
       }
       const [r] = await pool.query(sql, cols.map(c => db[c]));
-      const id = r.insertId || (await pool.query('SELECT id FROM ops_actual WHERE bu=? AND year=? AND month=?', [db.bu, db.year, db.month]))[0][0].id;
+      const id = r.insertId || (await pool.query('SELECT id FROM ops_actual WHERE (org_id=? OR (org_id IS NULL AND ? IS NULL)) AND bu=? AND year=? AND month=?', [db.org_id||null, db.org_id, db.bu, db.year, db.month]))[0][0].id;
       return send(res, 200, { _id: String(id) });
     }
   }
@@ -1145,16 +1449,6 @@ async function handleApi(req, res, pathname, method) {
   }
 
   /* ---------- 预算流程 API: BD→领域→BU 三级预算编制 ---------- */
-  // 预算周期定义（顺序即展示顺序）：月度 + 季度 + 半年度 + 全年
-  const BUDGET_PERIODS = [
-    { code: '1月', label: '1月' }, { code: '2月', label: '2月' }, { code: '3月', label: '3月' },
-    { code: '4月', label: '4月' }, { code: '5月', label: '5月' }, { code: '6月', label: '6月' },
-    { code: '7月', label: '7月' }, { code: '8月', label: '8月' }, { code: '9月', label: '9月' },
-    { code: '10月', label: '10月' }, { code: '11月', label: '11月' }, { code: '12月', label: '12月' },
-    { code: 'Q1', label: 'Q1' }, { code: 'Q2', label: 'Q2' }, { code: 'Q3', label: 'Q3' }, { code: 'Q4', label: 'Q4' },
-    { code: 'H1', label: 'H1' }, { code: 'H2', label: 'H2' }, { code: '全年', label: '全年' }
-  ];
-  const budgetLevelOf = (depth) => depth === 1 ? '集团' : (depth === 2 ? 'BG' : (depth === 3 ? 'BD' : (depth === 4 ? '领域' : 'BU')));
 
   // 获取预算编制状态树
   if (pathname === '/api/budget-flow/tree' && method === 'GET') {
@@ -1264,11 +1558,25 @@ async function handleApi(req, res, pathname, method) {
     if (!orgId) return send(res, 400, { error: 'orgId required' });
     const [[org]] = await pool.query('SELECT id, name, parent_id, depth FROM sys_org WHERE id=?', [orgId]);
     if (!org) return send(res, 404, { error: 'org not found' });
-    const [children] = await pool.query('SELECT id, name, parent_id, depth FROM sys_org WHERE parent_id=? AND status=1 ORDER BY sort ASC, id ASC', [orgId]);
-    const allIds = [orgId, ...children.map(c => c.id)];
+    // 递归获取所有子部门（带深度限制）
+    const MAX_DEPTH = 10;
+    const getAllChildren = async (parentId, depth = 0) => {
+      if (depth > MAX_DEPTH) return [];
+      const [kids] = await pool.query('SELECT id, name, parent_id, depth FROM sys_org WHERE parent_id=? AND status=1 ORDER BY sort ASC, id ASC', [parentId]);
+      let result = [...kids];
+      for (const kid of kids) {
+        const grandKids = await getAllChildren(kid.id, depth + 1);
+        result = result.concat(grandKids);
+      }
+      return result;
+    };
+    const allChildren = await getAllChildren(orgId);
+    const allIds = [orgId, ...allChildren.map(c => c.id)];
+    // 参数化查询防止 SQL 注入
+    const placeholders = allIds.map(() => '?').join(',');
     const [flows] = await pool.query(
-      'SELECT org_id, period, budget_revenue, budget_profit, budget_cash, status, source FROM ops_budget_flow WHERE year=? AND version=? AND org_id IN (' + allIds.join(',') + ')',
-      [year, version]
+      `SELECT org_id, period, budget_revenue, budget_profit, budget_cash, status, source FROM ops_budget_flow WHERE year=? AND version=? AND org_id IN (${placeholders})`,
+      [year, version, ...allIds]
     );
     const flowByOrg = {};
     allIds.forEach(id => { flowByOrg[id] = {}; });
@@ -1282,7 +1590,7 @@ async function handleApi(req, res, pathname, method) {
       };
     });
     const self = { id: org.id, name: org.name, level: budgetLevelOf(org.depth), depth: org.depth, data: flowByOrg[orgId] || {} };
-    const childList = children.map(c => ({ id: c.id, name: c.name, level: budgetLevelOf(c.depth), depth: c.depth, data: flowByOrg[c.id] || {} }));
+    const childList = allChildren.map(c => ({ id: c.id, name: c.name, level: budgetLevelOf(c.depth), depth: c.depth, data: flowByOrg[c.id] || {} }));
     return send(res, 200, { year, version, versionType, orgId, periods: BUDGET_PERIODS, self, children: childList });
   }
 
@@ -1303,13 +1611,13 @@ async function handleApi(req, res, pathname, method) {
     const targetOrgId = parseInt(body.targetOrgId, 10);
     if (!year || !targetOrgId) return send(res, 400, { error: 'year and targetOrgId required' });
     // 获取所有下级组织（递归）
+    const [orgs] = await pool.query('SELECT id, name, parent_id FROM sys_org WHERE status=1');
     const getAllChildren = (parentId) => {
       const children = orgs.filter(o => o.parent_id === parentId);
       let result = [...children];
       children.forEach(c => { result = result.concat(getAllChildren(c.id)); });
       return result;
     };
-    const [orgs] = await pool.query('SELECT id, name, parent_id FROM sys_org WHERE status=1');
     const allChildren = getAllChildren(targetOrgId);
     if (allChildren.length === 0) return send(res, 400, { error: 'no child orgs to collect' });
     // 汇总下级预算
@@ -2469,6 +2777,31 @@ function serveStatic(req, res) {
   });
 }
 
+/* 月度实际表结构迁移: 补 org_id 列(组织维度), 唯一键升级 */
+async function migrateActualTable() {
+  const [orgcols] = await pool.query("SHOW COLUMNS FROM ops_actual LIKE 'org_id'");
+  if (orgcols.length === 0) {
+    await pool.query("ALTER TABLE ops_actual ADD COLUMN org_id INT NULL AFTER bu");
+    await pool.query("ALTER TABLE ops_actual ADD INDEX idx_actual_org (org_id, year, month)");
+    console.log('[migrate] ops_actual 已升级: 新增 org_id(组织维度)');
+  }
+  const [idx] = await pool.query("SHOW INDEX FROM ops_actual WHERE Key_name='uk_actual_org_bu_ym'");
+  if (idx.length === 0) {
+    try { await pool.query('ALTER TABLE ops_actual DROP INDEX uk_actual_bu_ym'); } catch (e) { /* 旧索引不存在则跳过 */ }
+    await pool.query('ALTER TABLE ops_actual ADD UNIQUE KEY uk_actual_org_bu_ym (org_id, bu, year, month)');
+    console.log('[migrate] ops_actual 唯一键升级: (org_id, bu, year, month)');
+  }
+  // 数据迁移: BU → org_id (注意: ops_actual 不存储「汇总」, 只迁移具体 BU)
+  const BU_TO_ORG = { '软工': 29, '硬工': 30, '云': 31, '智能汽车': 32 };
+  for (const [bu, orgId] of Object.entries(BU_TO_ORG)) {
+    const [[cnt]] = await pool.query('SELECT COUNT(*) AS c FROM ops_actual WHERE bu=? AND org_id IS NULL', [bu]);
+    if (cnt.c > 0) {
+      await pool.query('UPDATE ops_actual SET org_id=? WHERE bu=? AND org_id IS NULL', [orgId, bu]);
+      console.log('[migrate] ops_actual 数据迁移: ' + bu + ' → org_id=' + orgId + ', 更新 ' + cnt.c + ' 条');
+    }
+  }
+}
+
 /* ---------- 月度实际预置数据: 从预算目标拆分(SEED_TARGET)各BU季度实际值均摊到月 ----------
  * 仅当 ops_actual 为空时写入 (演示/初始数据, 后续可编辑或导入覆盖) */
 async function seedActualIfEmpty() {
@@ -2758,6 +3091,7 @@ async function init() {
     console.log('[init] 已写入 ' + tgtafter.c + ' 条预算目标拆分数据');
   }
   await pool.query(CREATE_ACTUAL_TABLE_SQL);
+  await migrateActualTable();
   await seedActualIfEmpty();
   const [[actcnt]] = await pool.query('SELECT COUNT(*) AS c FROM ops_actual');
   // 预算流程: 编制状态 + 汇总关系 + 分解比例 + 版本管理

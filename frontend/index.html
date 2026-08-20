@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>运营管理平台</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+  <style>
+    /* 核心样式 - 内联以保持单文件特性，开发时可引用 src/styles/main.css */
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-card: #21262d;
+      --border: #30363d;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --accent: #58a6ff;
+      --success: #3fb950;
+      --warning: #d29922;
+      --danger: #f85149;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+    /* 登录遮罩 */
+    .login-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+    }
+    .login-box {
+      background: var(--bg-card); padding: 40px; border-radius: 8px; border: 1px solid var(--border);
+      width: 360px;
+    }
+    .login-box h2 { margin-bottom: 24px; text-align: center; }
+    .login-box input {
+      width: 100%; padding: 12px; margin-bottom: 16px;
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      color: var(--text-primary); border-radius: 6px;
+    }
+    .login-box button {
+      width: 100%; padding: 12px; background: var(--accent); color: #fff;
+      border: none; border-radius: 6px; cursor: pointer; font-size: 16px;
+    }
+    /* 布局 */
+    .app-container { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 200px; background: var(--bg-secondary); border-right: 1px solid var(--border);
+      padding: 16px 0;
+    }
+    .nav-item {
+      padding: 12px 20px; cursor: pointer; color: var(--text-secondary);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+    .nav-item.active { background: var(--bg-card); color: var(--accent); border-right: 3px solid var(--accent); }
+    .nav-group { font-size: 12px; color: var(--text-muted); padding: 8px 20px; margin-top: 16px; }
+    .main-content { flex: 1; padding: 24px; overflow-y: auto; }
+    .page-title { font-size: 24px; margin-bottom: 8px; }
+    .page-subtitle { color: var(--text-secondary); margin-bottom: 24px; }
+    /* 筛选栏 */
+    .filter-bar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
+    .filter-label { color: var(--text-secondary); font-size: 14px; }
+    .filter-select {
+      padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border);
+      color: var(--text-primary); border-radius: 6px; min-width: 120px;
+    }
+    /* 卡片 */
+    .dash-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 20px; margin-bottom: 20px;
+    }
+    .dash-card.full { width: 100%; }
+    /* 表格 */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th, .data-table td {
+      padding: 12px; text-align: left; border-bottom: 1px solid var(--border);
+    }
+    .data-table th { background: var(--bg-secondary); color: var(--text-secondary); font-weight: 500; font-size: 13px; }
+    .data-table tr:hover { background: var(--bg-secondary); }
+    .data-table .num { text-align: right; font-family: 'SF Mono', monospace; }
+    /* 徽章 */
+    .org-badge {
+      font-size: 11px; padding: 2px 6px; border-radius: 4px;
+      background: var(--bg-secondary); color: var(--text-muted);
+    }
+    /* 按钮 */
+    .btn-primary { background: var(--accent); color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+    .btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+    .btn-sm { padding: 4px 8px; font-size: 12px; }
+    .btn-icon { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; }
+    .btn-icon:hover { color: var(--accent); }
+    /* 工具类 */
+    .text-success { color: var(--success); }
+    .text-warning { color: var(--warning); }
+    .text-danger { color: var(--danger); }
+    .text-muted { color: var(--text-muted); }
+    .flex { display: flex; }
+    .flex-1 { flex: 1; }
+    .gap-2 { gap: 8px; }
+    .gap-4 { gap: 16px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- 登录遮罩 -->
+    <div id="loginOverlay" class="login-overlay hidden">
+      <div class="login-box">
+        <h2>运营管理平台</h2>
+        <input type="text" id="loginUsername" placeholder="用户名" value="admin">
+        <input type="password" id="loginPassword" placeholder="密码" value="Admin@123">
+        <button onclick="doLogin()">登录</button>
+      </div>
+    </div>
+
+    <!-- 主应用 -->
+    <div id="mainApp" class="app-container">
+      <nav class="sidebar">
+        <div class="nav-item active" data-tab="dashboard">📊 经营看板</div>
+        <div class="nav-item" data-tab="forecast">📈 经营预测</div>
+        <div class="nav-group">预算管理</div>
+        <div class="nav-item" data-tab="budget">💰 预算看板</div>
+        <div class="nav-item" data-tab="budget-flow">📋 预算流程</div>
+        <div class="nav-group">运营指标</div>
+        <div class="nav-item" data-tab="ops">🚀 运营看板</div>
+        <div class="nav-item" data-tab="target">🎯 目标拆分</div>
+        <div class="nav-group">数据管理</div>
+        <div class="nav-item" data-tab="records">📁 经营记录</div>
+        <div class="nav-item" data-tab="contracts">📝 合同管理</div>
+        <div class="nav-item" data-tab="projects">📦 项目管理</div>
+        <div class="nav-item" data-tab="acceptance">✅ 验收管理</div>
+        <div class="nav-item" data-tab="payments">💵 回款管理</div>
+        <div class="nav-group">系统</div>
+        <div class="nav-item" data-tab="table-mgmt">🗄️ 数据表管理</div>
+        <div class="nav-item" data-tab="admin" id="navAdmin">⚙️ 系统管理</div>
+      </nav>
+
+      <main class="main-content" id="mainContent">
+        <!-- 内容由 JS 动态渲染 -->
+      </main>
+    </div>
+  </div>
+
+  <!-- 脚本 -->
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

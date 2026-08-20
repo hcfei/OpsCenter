@@ -826,8 +826,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     <span class="fc-status-chip dim">已录入 <b id="fcEnteredCnt" style="margin:0 2px">0</b>/12 月</span>
     <div class="fc-progress-track" id="fcMonthTrack"></div>
     <div class="tab-actions" style="margin-left:auto">
-      <select class="filter-select" id="fcBuSel" onchange="onFcBuChange()" style="min-width:112px" title="BU 维度：汇总（领域整体）/ 各 BU / 全部 BU 对比">
-        <option value="汇总">汇总</option><option value="软工">软工</option><option value="硬工">硬工</option><option value="云">云</option><option value="智能汽车">智能汽车</option><option value="__all__">全部 BU 对比</option>
+      <select class="filter-select" id="fcDeptSel" onchange="onFcDeptChange()" style="min-width:140px" title="组织维度：选择部门查看预测/预算/实际数据">
+        <option value="">加载中...</option>
       </select>
       <select class="filter-select" id="forecastYear" onchange="switchForecastYear()" style="min-width:90px"></select>
       <button class="btn-secondary" onclick="openActualModal()" title="按月录入各 BU 实际达成，汇总 = 各 BU 之和自动计算"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>实际</button>
@@ -880,6 +880,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       </div>
       <div class="fc-table-note">* 达成率 = 该周期实际值 ÷ 该周期预算（月度=当月预算，季度=当季预算合计，半年度=该半年预算合计）；未录入实际时显示「—」，可点「实际」录入；仅月度行支持编辑与删除</div>
     </div>
+  </div>
+
+  <!-- 部门维度明细表（组织维度） -->
+  <div class="dash-card full" id="fcDeptTableCard" style="display:none">
+    <div class="chart-section-title">📊 经营预测明细（部门 × 周期，点击 + 展开子部门）</div>
+    <div class="table-container" style="max-height:520px;overflow:auto">
+      <table class="data-table" id="fcDeptTable">
+        <thead id="fcDeptHead">
+          <tr><th></th><th>部门</th><th>周期</th><th>预测收入</th><th>预算收入</th><th>实际收入</th><th>收入达成率</th><th>预测利润</th><th>预算利润</th><th>实际利润</th><th>利润达成率</th></tr>
+        </thead>
+        <tbody id="fcDeptBody"></tbody>
+      </table>
+    </div>
+    <div class="fc-table-note">* 收入达成率 = 实际收入 ÷ 预算收入（有实际显示），无实际时显示预测收入 ÷ 预算收入（灰色）；利润同理</div>
   </div>
 </section>
 
@@ -1627,7 +1641,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   var FC_BUDGET=null;      // 全年预算聚合 (由 FC_BUDGETS 求和, 供 KPI/趋势图使用)
   var FC_ACTUALS=[];       // 当前年份月度实际达成 [{_id,年度,月份,BU,实际收入,实际贡献利润,实际现金流,实际费用}] (汇总=各BU之和)
   var FC_ACTUAL=null;      // 全年实际聚合
-  var FC_BU='汇总';        // 当前选中 BU (汇总/软工/硬工/云/智能汽车/__all__)
+  var FC_BU='汇总';        // 当前选中 BU (汇总/软工/硬工/云/智能汽车/__all__) [旧维度，保留兼容]
+  var FC_DEPT_ID=0;       // 当前选中部门 ID（组织维度）
+  var FC_DEPT_DATA=null;   // 部门维度数据（从 /api/forecast/dept 加载）
+  var FC_DEPT_EXPANDED=[]; // 部门维度周期展开状态
+  var FC_ORGS=[];          // 部门列表缓存
   var FC_ALL=null;         // 全部 BU 对比数据 {BU:{data:[],budgets:[],actuals:[]}} (FC_BU='__all__' 时使用)
   var FC_ACT_ALL=null;     // 各 BU 全年实际聚合 [{BU,收入,利润,现金流,费用,利润率}] (KPI 卡下方占比图使用)
   var BU_LIST_ALL=['汇总','软工','硬工','云','智能汽车'];
@@ -2364,13 +2382,170 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       mSel.appendChild(o);
     }
     loadForecastVersions();
+    // 加载部门列表（组织维度）
+    loadForecastOrgs();
   }
+  // 加载部门列表（组织维度）
+  function loadForecastOrgs(){
+    fetch('/api/budget-flow/orgs',{method:'GET',headers:{'Authorization':'Bearer '+localStorage.getItem('wb_ops_token')}})
+    .then(function(r){return r.json();})
+    .then(function(orgs){
+      FC_ORGS=orgs;
+      var sel=document.getElementById('fcDeptSel');
+      if(!sel)return;
+      sel.innerHTML='';
+      // 按 depth 排序，扁平展示
+      orgs.sort(function(a,b){return (a.depth||0)-(b.depth||0);});
+      orgs.forEach(function(o){
+        var indent='　'.repeat((o.depth||1)-1);
+        sel.innerHTML+='<option value="'+o.id+'">'+indent+o.name+'（'+o.level+'）</option>';
+      });
+      // 默认选第一个
+      if(orgs.length>0){
+        sel.value=String(orgs[0].id);
+        FC_DEPT_ID=orgs[0].id;
+        loadForecastDept();
+      }
+    }).catch(function(e){console.error('loadForecastOrgs:',e);});
+  }
+  window.onFcDeptChange=function(){
+    var sel=document.getElementById('fcDeptSel');
+    FC_DEPT_ID=sel?parseInt(sel.value,10):0;
+    FC_DEPT_EXPANDED=[];
+    loadForecastDept();
+  };
+  // 按组织维度加载预测/预算/实际数据
+  function loadForecastDept(){
+    if(!FC_DEPT_ID)return;
+    var url='/api/forecast/dept?year='+FC_YEAR+'&fcMonth='+(FC_BATCH||'')+'&version='+FC_VERSION+'&orgId='+FC_DEPT_ID;
+    fetch(url,{method:'GET',headers:{'Authorization':'Bearer '+localStorage.getItem('wb_ops_token')}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      FC_DEPT_DATA=d;
+      renderForecastDeptKpi(d);
+      renderForecastDeptTable(d);
+    }).catch(function(e){console.error('loadForecastDept:',e);});
+  }
+  // 渲染部门维度 KPI
+  function renderForecastDeptKpi(d){
+    if(!d||!d.self)return;
+    var self=d.self||{};
+    var yData=self.data&&self.data['全年']?self.data['全年']:null;
+    var rev=0,profit=0,cash=0;
+    if(yData){
+      rev=yData.forecast_revenue||0;
+      profit=yData.forecast_profit||0;
+      cash=yData.forecast_cash||0;
+    }
+    // 更新 KPI 显示（复用现有 ID，也可以新建独立的）
+    var kpiRow=document.getElementById('fcAchGrid');
+    if(kpiRow){
+      // 暂时不更新，因为 KPI 结构不同
+    }
+  }
+  // 渲染部门维度明细表
+  function renderForecastDeptTable(d){
+    var card=document.getElementById('fcDeptTableCard');
+    if(!d||!card){if(card)card.style.display='none';return;}
+    card.style.display='block';
+    var tbody=document.getElementById('fcDeptBody');
+    if(!tbody)return;
+    var self=d.self||{};
+    var children=d.children||[];
+    var periods=d.periods||[];
+    // 获取上级部门
+    var myOrg=FC_ORGS.filter(function(o){return o.id===FC_DEPT_ID;})[0];
+    var parentId=myOrg?myOrg.parentId:0;
+    var html='';
+    periods.forEach(function(p){
+      var pd=(self.data&&self.data[p.code])||{};
+      var revFc=pd.forecast_revenue||0, revBd=pd.budget_revenue||0, revAc=pd.actual_revenue||0;
+      var profitFc=pd.forecast_profit||0, profitBd=pd.budget_profit||0, profitAc=pd.actual_profit||0;
+      var hasChild=children.length>0;
+      var isExp=FC_DEPT_EXPANDED.indexOf(p.code)>=0;
+      // 达成率计算
+      var revAch=revBd>0?(revAc>0?(revAc/revBd*100):(revFc/revBd*100)):0;
+      var profitAch=profitBd>0?(profitAc>0?(profitAc/profitBd*100):(profitFc/profitBd*100)):0;
+      var revAchColor=revAc>0?(revAch>=95?'var(--success)':(revAch>=70?'var(--warning)':'var(--danger)')):'var(--text-muted)';
+      var profitAchColor=profitAc>0?(profitAch>=95?'var(--success)':(profitAch>=70?'var(--warning)':'var(--danger)')):'var(--text-muted)';
+      html+='<tr>'+
+        '<td>'+(parentId>0?'<button class="btn-icon btn-sm" onclick="drillToForecastParent()" title="查看上级部门预算">↑</button>':'')+(hasChild?'<button class="btn-icon btn-sm" onclick="toggleForecastDeptPeriod(\''+p.code+'\')">'+(isExp?'−':'+')+'</button>':'')+'</td>'+
+        '<td><b>'+self.name+'</b> <span class="org-badge">'+self.level+'</span></td>'+
+        '<td>'+p.label+'</td>'+
+        '<td class="num">'+revFc.toLocaleString()+'</td>'+
+        '<td class="num">'+revBd.toLocaleString()+'</td>'+
+        '<td class="num">'+(revAc>0?revAc.toLocaleString():'—')+'</td>'+
+        '<td class="num" style="color:'+revAchColor+'">'+(revAc>0?revAch.toFixed(1)+'%':(revFc>0?(revFc/revBd*100).toFixed(1)+'%预测':'—'))+'</td>'+
+        '<td class="num">'+profitFc.toLocaleString()+'</td>'+
+        '<td class="num">'+profitBd.toLocaleString()+'</td>'+
+        '<td class="num">'+(profitAc>0?profitAc.toLocaleString():'—')+'</td>'+
+        '<td class="num" style="color:'+profitAchColor+'">'+(profitAc>0?profitAch.toFixed(1)+'%':(profitFc>0?(profitFc/profitBd*100).toFixed(1)+'%预测':'—'))+'</td>'+
+      '</tr>';
+      // 子部门行
+      if(hasChild&&isExp){
+        children.forEach(function(c){
+          var cd=(c.data&&c.data[p.code])||{};
+          var crevFc=cd.forecast_revenue||0, crevBd=cd.budget_revenue||0, crevAc=cd.actual_revenue||0;
+          var cprofitFc=cd.forecast_profit||0, cprofitBd=cd.budget_profit||0, cprofitAc=cd.actual_profit||0;
+          var crevAch=cprofitBd>0?(crevAc>0?(crevAc/crevBd*100):(crevFc/crevBd*100)):0;
+          var profitAchColor=crevAc>0?(crevAch>=95?'var(--success)':(crevAch>=70?'var(--warning)':'var(--danger)')):'var(--text-muted)';
+          html+='<tr class="child-row">'+
+            '<td></td>'+
+            '<td style="padding-left:30px"><span class="dept-drill" onclick="drillToForecastDept('+c.id+')" title="点击下钻查看该子部门预算">'+c.name+' <span class="org-badge">'+c.level+'</span> ↳</span></td>'+
+            '<td>'+p.label+'</td>'+
+            '<td class="num">'+crevFc.toLocaleString()+'</td>'+
+            '<td class="num">'+crevBd.toLocaleString()+'</td>'+
+            '<td class="num">'+(crevAc>0?crevAc.toLocaleString():'—')+'</td>'+
+            '<td class="num" style="color:var(--text-muted)">'+(crevAc>0?(crevAc/crevBd*100).toFixed(1)+'%':(crevFc>0?(crevFc/crevBd*100).toFixed(1)+'%预测':'—'))+'</td>'+
+            '<td class="num">'+cprofitFc.toLocaleString()+'</td>'+
+            '<td class="num">'+cprofitBd.toLocaleString()+'</td>'+
+            '<td class="num">'+(cprofitAc>0?cprofitAc.toLocaleString():'—')+'</td>'+
+            '<td class="num" style="color:'+profitAchColor+'">'+(cprofitAc>0?crevAch.toFixed(1)+'%':(cprofitFc>0?(cprofitFc/cprofitBd*100).toFixed(1)+'%预测':'—'))+'</td>'+
+          '</tr>';
+        });
+      }
+    });
+    tbody.innerHTML=html||'<tr><td colspan="11" style="text-align:center;color:var(--text-muted)">暂无数据</td></tr>';
+  }
+  // 切换周期展开状态
+  window.toggleForecastDeptPeriod=function(code){
+    var idx=FC_DEPT_EXPANDED.indexOf(code);
+    if(idx>=0)FC_DEPT_EXPANDED.splice(idx,1);else FC_DEPT_EXPANDED.push(code);
+    if(FC_DEPT_DATA)renderForecastDeptTable(FC_DEPT_DATA);
+  };
+  // 上钻到父部门
+  window.drillToForecastParent=function(){
+    var o=FC_ORGS.filter(function(x){return x.id===FC_DEPT_ID;})[0];
+    if(o&&o.parentId){
+      var sel=document.getElementById('fcDeptSel');
+      if(sel){
+        sel.value=String(o.parentId);
+        FC_DEPT_ID=o.parentId;
+        FC_DEPT_EXPANDED=[];
+        loadForecastDept();
+      }
+    }
+  };
+  // 下钻到子部门
+  window.drillToForecastDept=function(id){
+    var sel=document.getElementById('fcDeptSel');
+    if(sel&&sel.querySelector('option[value="'+id+'"]')){
+      sel.value=String(id);
+      FC_DEPT_ID=id;
+      FC_DEPT_EXPANDED=[];
+      loadForecastDept();
+    }
+  };
   window.switchForecastYear=function(){
     var y=parseInt(document.getElementById('forecastYear').value,10);
     if(!y||y===FC_YEAR)return;
     FC_YEAR=y;
     updateFcVerInfo();
-    loadForecast();
+    if(FC_DEPT_ID>0){
+      loadForecastDept();
+    }else{
+      loadForecast();
+    }
   };
   window.onFcBuChange=function(){
     FC_BU=document.getElementById('fcBuSel').value||'汇总';
@@ -2484,11 +2659,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   }
   window.onFcBatchChange=function(){
     FC_BATCH=parseInt(document.getElementById('fcBatchSel').value,10)||0;
-    fillFcVersionSel();fillFcYearSel();loadForecast();
+    fillFcVersionSel();fillFcYearSel();
+    if(FC_DEPT_ID>0){loadForecastDept();}else{loadForecast();}
   };
   window.onFcVersionChange=function(){
     FC_VERSION=document.getElementById('fcVerSel').value||'V1';
-    fillFcYearSel();loadForecast();
+    fillFcYearSel();
+    if(FC_DEPT_ID>0){loadForecastDept();}else{loadForecast();}
   };
   window.cloneForecastVersion=function(){
     var nv=fcNextVersion();
