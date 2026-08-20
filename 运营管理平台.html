@@ -927,7 +927,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       <div class="table-container" style="max-height:520px;overflow:auto">
         <table class="data-table budget-tree-table">
           <thead>
-            <tr><th>部门</th><th>周期</th><th>收入目标</th><th>贡献利润</th><th>贡献利润率</th><th>现金流</th><th></th></tr>
+            <tr><th></th><th>部门</th><th>周期</th><th>收入目标</th><th>贡献利润</th><th>贡献利润率</th><th>现金流</th></tr>
           </thead>
           <tbody id="bfDeptBody"></tbody>
         </table>
@@ -1737,7 +1737,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 
   /* ---------- 预算流程: BD→领域→BU 三级编制 ---------- */
   var BF_YEAR=2026,BF_VERSION='V1',BF_VERSION_TYPE='estimate',BF_PERIOD='Q1',BF_TREE=[],BF_EXPANDED=[];
-  var BF_DEPT_ID=0,BF_DEPT_DATA=null,BF_DEPT_EXPANDED=[];
+  var BF_DEPT_ID=0,BF_DEPT_DATA=null,BF_DEPT_EXPANDED=[],BF_ORGS=[];
   function initBudgetFlowPage(){
     var y=document.getElementById('bfYearSel');
     if(y && !y.options.length){
@@ -1896,6 +1896,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     fetch('/api/budget-flow/orgs',{method:'GET',headers:{'Authorization':'Bearer '+localStorage.getItem('wb_ops_token')}})
     .then(function(r){return r.json();})
     .then(function(orgs){
+      BF_ORGS=orgs;
       var sel=document.getElementById('bfDeptSel');
       if(!sel)return;
       var prev=sel.value?parseInt(sel.value,10):BF_DEPT_ID;
@@ -1960,6 +1961,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     if(!d||!tbody)return;
     var self=d.self||{};
     var children=d.children||[];
+    var myOrg=BF_ORGS.filter(function(o){return o.id===BF_DEPT_ID;})[0];
+    var parentId=myOrg?myOrg.parentId:0;
     var html='';
     (d.periods||[]).forEach(function(p){
       var pd=(self.data&&self.data[p.code])||{};
@@ -1967,26 +1970,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       var hasChild=children.length>0;
       var isExp=BF_DEPT_EXPANDED.indexOf(p.code)>=0;
       html+='<tr>'+
+        '<td>'+(parentId>0?'<button class="btn-icon btn-sm" onclick="drillToBudgetParent()" title="查看上级部门预算">↑</button>':'')+(hasChild?'<button class="btn-icon btn-sm" onclick="toggleBudgetDeptPeriod(\''+p.code+'\')">'+(isExp?'−':'+')+'</button>':'')+'</td>'+
         '<td><b>'+self.name+'</b> <span class="org-badge">'+self.level+'</span></td>'+
         '<td>'+p.label+'</td>'+
         '<td class="num">'+bfFmtNum(rev)+'</td>'+
         '<td class="num">'+bfFmtNum(profit)+'</td>'+
         '<td class="num">'+bfMargin(rev,profit).toFixed(1)+'%</td>'+
         '<td class="num">'+bfFmtNum(cash)+'</td>'+
-        '<td>'+(hasChild?'<button class="btn-icon btn-sm" onclick="toggleBudgetDeptPeriod(\''+p.code+'\')">'+(isExp?'−':'+')+'</button>':'')+'</td>'+
       '</tr>';
       if(hasChild&&isExp){
         children.forEach(function(c){
           var cd=(c.data&&c.data[p.code])||{};
           var crev=cd.budget_revenue||0,cprofit=cd.budget_profit||0,ccash=cd.budget_cash||0;
           html+='<tr class="child-row">'+
+            '<td></td>'+
             '<td style="padding-left:30px"><span class="dept-drill" onclick="drillToBudgetDept('+c.id+')" title="点击下钻查看该子部门预算">'+c.name+' <span class="org-badge">'+c.level+'</span> ↳</span></td>'+
             '<td>'+p.label+'</td>'+
             '<td class="num">'+bfFmtNum(crev)+'</td>'+
             '<td class="num">'+bfFmtNum(cprofit)+'</td>'+
             '<td class="num">'+bfMargin(crev,cprofit).toFixed(1)+'%</td>'+
             '<td class="num">'+bfFmtNum(ccash)+'</td>'+
-            '<td></td>'+
           '</tr>';
         });
       }
@@ -1999,6 +2002,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     if(BF_DEPT_DATA)renderBudgetDeptTable(BF_DEPT_DATA);
   };
   // 点击子部门下钻：等价于在顶部部门下拉重新选择该子部门，刷新看板
+  window.drillToBudgetParent=function(){
+    var o=BF_ORGS.filter(function(x){return x.id===BF_DEPT_ID;})[0];
+    if(o&&o.parentId)drillToBudgetDept(o.parentId);
+  };
   window.drillToBudgetDept=function(id){
     if(!id)return;
     var sel=document.getElementById('bfDeptSel');
