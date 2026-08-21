@@ -5,6 +5,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
+const { runMigrations } = require('./db/migrations');
 
 const ROOT = __dirname;
 const PORT = parseInt(process.env.PORT || '80', 10);
@@ -188,6 +189,9 @@ async function main() {
 
   // 初始化数据库
   await getPool();
+
+  // 运行迁移
+  await runMigrations();
 
   // 加载路由
   await loadRoutes();

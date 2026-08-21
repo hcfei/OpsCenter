@@ -705,6 +705,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
       <span class="nav-text">数据表管理</span>
     </button>
+    <!-- 费用管理 -->
+    <div class="nav-group" id="navg-expense">
+      <button class="nav-group-header" onclick="toggleNavGroup(this)" title="费用管理">
+        <svg class="nav-group-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        <span class="nav-group-label">费用管理</span>
+        <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="nav-sub">
+        <button class="nav-item" data-tab="expense-type" onclick="switchTab('expense-type')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+          <span class="nav-text">费用类型</span>
+        </button>
+        <button class="nav-item" data-tab="expense-budget" onclick="switchTab('expense-budget')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          <span class="nav-text">费用预算</span>
+        </button>
+        <button class="nav-item" data-tab="expense-forecast" onclick="switchTab('expense-forecast')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <span class="nav-text">费用预测</span>
+        </button>
+        <button class="nav-item" data-tab="expense-actual" onclick="switchTab('expense-actual')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          <span class="nav-text">费用实际</span>
+        </button>
+        <button class="nav-item" data-tab="expense-analysis" onclick="switchTab('expense-analysis')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span class="nav-text">费用分析</span>
+        </button>
+      </div>
+    </div>
     <!-- 数据工具 -->
     <div class="nav-group" id="navg-tools">
       <button class="nav-group-header" onclick="toggleNavGroup(this)" title="数据工具">
@@ -1232,6 +1262,101 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   </div>
 </section>
 
+<!-- 费用类型设置 -->
+<section id="tab-expense-type" class="tab-content">
+  <div class="page-title">费用类型设置</div>
+  <div class="page-subtitle">管理费用分类，支持二级分类</div>
+  <div class="filter-bar">
+    <button class="btn-primary" onclick="openExpenseTypeModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增类型
+    </button>
+  </div>
+  <div class="table-container">
+    <table class="data-table">
+      <thead><tr><th>类型编码</th><th>类型名称</th><th>状态</th><th>操作</th></tr></thead>
+      <tbody id="expenseTypeBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 费用预算 -->
+<section id="tab-expense-budget" class="tab-content">
+  <div class="page-title">费用预算</div>
+  <div class="page-subtitle">按组织/费用类型/月份编制预算</div>
+  <div class="filter-bar">
+    <select class="filter-select" id="ebOrgSel"><option value="">选择组织</option></select>
+    <select class="filter-select" id="ebYearSel"></select>
+    <select class="filter-select" id="ebTypeSel"><option value="">全部类型</option></select>
+    <button class="btn-primary" onclick="loadExpenseBudget()">查询</button>
+    <button class="btn-secondary" onclick="openExpenseBudgetModal()">录入预算</button>
+  </div>
+  <div class="table-container" style="max-height:400px;overflow:auto">
+    <table class="data-table">
+      <thead><tr><th>组织</th><th>费用类型</th><th>月份</th><th>预算金额(万元)</th><th>操作</th></tr></thead>
+      <tbody id="expenseBudgetBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 费用预测 -->
+<section id="tab-expense-forecast" class="tab-content">
+  <div class="page-title">费用预测</div>
+  <div class="page-subtitle">按组织/费用类型/月份编制费用预测</div>
+  <div class="filter-bar">
+    <select class="filter-select" id="efOrgSel"><option value="">选择组织</option></select>
+    <select class="filter-select" id="efYearSel"></select>
+    <select class="filter-select" id="efTypeSel"><option value="">全部类型</option></select>
+    <button class="btn-primary" onclick="loadExpenseForecast()">查询</button>
+    <button class="btn-secondary" onclick="openExpenseForecastModal()">录入预测</button>
+  </div>
+  <div class="table-container" style="max-height:400px;overflow:auto">
+    <table class="data-table">
+      <thead><tr><th>组织</th><th>费用类型</th><th>月份</th><th>预测金额(万元)</th><th>操作</th></tr></thead>
+      <tbody id="expenseForecastBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 费用实际 -->
+<section id="tab-expense-actual" class="tab-content">
+  <div class="page-title">费用实际</div>
+  <div class="page-subtitle">按组织/费用类型/月份录入实际费用</div>
+  <div class="filter-bar">
+    <select class="filter-select" id="eaOrgSel"><option value="">选择组织</option></select>
+    <select class="filter-select" id="eaYearSel"></select>
+    <select class="filter-select" id="eaTypeSel"><option value="">全部类型</option></select>
+    <button class="btn-primary" onclick="loadExpenseActual()">查询</button>
+    <button class="btn-secondary" onclick="openExpenseActualModal()">录入实际</button>
+  </div>
+  <div class="table-container" style="max-height:400px;overflow:auto">
+    <table class="data-table">
+      <thead><tr><th>组织</th><th>费用类型</th><th>月份</th><th>实际金额(万元)</th><th>备注</th><th>操作</th></tr></thead>
+      <tbody id="expenseActualBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 费用分析 -->
+<section id="tab-expense-analysis" class="tab-content">
+  <div class="page-title">费用分析</div>
+  <div class="page-subtitle">费用达成分析，超支预警</div>
+  <div class="filter-bar">
+    <select class="filter-select" id="eanOrgSel"><option value="">选择组织</option></select>
+    <select class="filter-select" id="eanYearSel"></select>
+    <button class="btn-primary" onclick="loadExpenseAnalysis()">分析</button>
+  </div>
+  <div class="kpi-row" id="expenseAnalysisKpi"></div>
+  <div class="dash-card full">
+    <div class="chart-section-title">费用类型达成明细</div>
+    <div class="table-container" style="max-height:350px;overflow:auto">
+      <table class="data-table">
+        <thead><tr><th>费用类型</th><th>预算金额(万元)</th><th>实际金额(万元)</th><th>达成率</th><th>状态</th></tr></thead>
+        <tbody id="expenseAnalysisBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
 </div>
 </main>
 </div>
@@ -1662,7 +1787,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   var TG_EDIT_ID=null;     // 编辑中的记录 _id
 
   // Tab titles for breadcrumb
-  var TAB_TITLES={dashboard:'运营看板',finance:'经营看板',target:'预算目标拆分',contract:'合同管理',project:'项目管理',acceptance:'验收管理',payment:'回款管理',budget:'预算管理',forecast:'预测管理',actual:'实际回填','table-mgmt':'数据表管理'};
+  var TAB_TITLES={dashboard:'运营看板',finance:'经营看板',target:'预算目标拆分',contract:'合同管理',project:'项目管理',acceptance:'验收管理',payment:'回款管理',budget:'预算管理',forecast:'预测管理',actual:'实际回填','table-mgmt':'数据表管理','expense-type':'费用类型','expense-budget':'费用预算','expense-forecast':'费用预测','expense-actual':'费用实际','expense-analysis':'费用分析'};
 
   SCHEMA_OPTIONS['合同状态']=[
     {id:'s1',text:'待签订'},{id:'s2',text:'已签订'},{id:'s3',text:'执行中'},{id:'s4',text:'已完成'},{id:'s5',text:'已终止'}
@@ -1751,6 +1876,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
     else if(tab==='forecast'){syncF2Controls();renderForecastPage();}
     else if(tab==='actual'){loadActualPage();}
     else if(tab==='table-mgmt'){tmLoadTree();}
+    else if(tab.startsWith('expense-')){initExpensePage(tab);}
   };
 
   /* ---------- 预算流程: BD→领域→BU 三级编制 ---------- */
@@ -4873,6 +4999,138 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   document.getElementById('tmNodeModalOverlay').addEventListener('click',function(e){if(e.target===this)tmCloseNodeModal();});
   document.getElementById('tmFieldModalOverlay').addEventListener('click',function(e){if(e.target===this)tmCloseFieldModal();});
   document.getElementById('tmApprovalModalOverlay').addEventListener('click',function(e){if(e.target===this)tmCloseApprovalModal();});
+
+  // ===== 费用管理 =====
+  var EXPENSE_TYPES=[];
+  var EXPENSE_ORGS=[];
+
+  function initExpensePage(tab){
+    loadExpenseTypes();
+    loadExpenseOrgs();
+    if(tab==='expense-type')loadExpenseTypeList();
+    else if(tab==='expense-budget')loadExpenseBudget();
+    else if(tab==='expense-forecast')loadExpenseForecast();
+    else if(tab==='expense-actual')loadExpenseActual();
+    else if(tab==='expense-analysis')loadExpenseAnalysis();
+  }
+
+  function loadExpenseTypes(){
+    fetch('/api/expense/types',apiAuth()).then(function(r){return r.json();}).then(function(types){
+      EXPENSE_TYPES=types;
+      var sel=document.getElementById('ebTypeSel');if(sel)sel.innerHTML='<option value="">全部类型</option>'+types.map(function(t){return'<option value="'+t.id+'">'+t.name+'</option>'}).join('');
+      var sel2=document.getElementById('efTypeSel');if(sel2)sel2.innerHTML='<option value="">全部类型</option>'+types.map(function(t){return'<option value="'+t.id+'">'+t.name+'</option>'}).join('');
+      var sel3=document.getElementById('eaTypeSel');if(sel3)sel3.innerHTML='<option value="">全部类型</option>'+types.map(function(t){return'<option value="'+t.id+'">'+t.name+'</option>'}).join('');
+    });
+  }
+
+  function loadExpenseOrgs(){
+    fetch('/api/orgs',apiAuth()).then(function(r){return r.json();}).then(function(orgs){
+      EXPENSE_ORGS=orgs;
+      var sel=document.getElementById('ebOrgSel');if(sel)sel.innerHTML='<option value="">选择组织</option>'+orgs.map(function(o){return'<option value="'+o.id+'">'+o.name+'</option>'}).join('');
+      var sel2=document.getElementById('efOrgSel');if(sel2)sel2.innerHTML='<option value="">选择组织</option>'+orgs.map(function(o){return'<option value="'+o.id+'">'+o.name+'</option>'}).join('');
+      var sel3=document.getElementById('eaOrgSel');if(sel3)sel3.innerHTML='<option value="">选择组织</option>'+orgs.map(function(o){return'<option value="'+o.id+'">'+o.name+'</option>'}).join('');
+      var sel4=document.getElementById('eanOrgSel');if(sel4)sel4.innerHTML='<option value="">选择组织</option>'+orgs.map(function(o){return'<option value="'+o.id+'">'+o.name+'</option>'}).join('');
+    });
+  }
+
+  function loadExpenseTypeList(){
+    fetch('/api/expense/types',apiAuth()).then(function(r){return r.json();}).then(function(types){
+      var html=types.map(function(t){return'<tr><td>'+t.code+'</td><td>'+t.name+'</td><td><span class="status-badge '+(t.status===1?'active':'inactive')+'">'+(t.status===1?'启用':'禁用')+'</span></td><td><button class="row-btn" onclick="deleteExpenseType('+t.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button></td></tr>'}).join('');
+      document.getElementById('expenseTypeBody').innerHTML=html;
+    });
+  }
+
+  function openExpenseTypeModal(){
+    var name=prompt('请输入类型名称:');if(!name)return;
+    var code=prompt('请输入类型编码:');if(!code)return;
+    fetch('/api/expense/types',apiAuthMerge({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,code:code})}));
+  }
+
+  function deleteExpenseType(id){
+    if(!confirm('确认删除?'))return;
+    fetch('/api/expense/types/'+id,apiMerge({method:'DELETE'})).then(function(){toast('删除成功','success');loadExpenseTypeList();});
+  }
+
+  function loadExpenseBudget(){
+    var orgId=document.getElementById('ebOrgSel').value;
+    var year=document.getElementById('ebYearSel').value;
+    var typeId=document.getElementById('ebTypeSel').value;
+    var url='/api/expense/budget?year='+(year||new Date().getFullYear());
+    if(orgId)url+='&orgId='+orgId;
+    if(typeId)url+='&expenseTypeId='+typeId;
+    fetch(url,apiAuth()).then(function(r){return r.json();}).then(function(rows){
+      var html=rows.map(function(r){return'<tr><td>'+(r.org_id===25?'软通动力':r.org_id)+'</td><td>'+(r.type_name||'')+'</td><td>'+r.month+'月</td><td>'+(r.budget_amount||0)+'</td><td><button class="row-btn">编辑</button></td></tr>'}).join('');
+      document.getElementById('expenseBudgetBody').innerHTML=html||'<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">暂无数据</td></tr>';
+    });
+  }
+
+  function openExpenseBudgetModal(){
+    var orgId=prompt('组织ID (25=软通动力):');if(!orgId)return;
+    var typeId=prompt('费用类型ID:');if(!typeId)return;
+    var year=document.getElementById('ebYearSel').value||new Date().getFullYear();
+    var month=prompt('月份 (1-12):');if(!month)return;
+    var amount=prompt('预算金额 (万元):');if(!amount)return;
+    fetch('/api/expense/budget',apiAuthMerge({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({records:[{orgId:parseInt(orgId),expenseTypeId:parseInt(typeId),year:parseInt(year),month:parseInt(month),budgetAmount:parseFloat(amount)}]})})).then(function(){toast('保存成功','success');loadExpenseBudget();});
+  }
+
+  function loadExpenseForecast(){
+    var orgId=document.getElementById('efOrgSel').value;
+    var year=document.getElementById('efYearSel').value;
+    var typeId=document.getElementById('efTypeSel').value;
+    var url='/api/expense/forecast?year='+(year||new Date().getFullYear());
+    if(orgId)url+='&orgId='+orgId;
+    if(typeId)url+='&expenseTypeId='+typeId;
+    fetch(url,apiAuth()).then(function(r){return r.json();}).then(function(rows){
+      var html=rows.map(function(r){return'<tr><td>'+r.org_id+'</td><td>'+(r.type_name||'')+'</td><td>'+r.month+'月</td><td>'+(r.forecast_amount||0)+'</td><td><button class="row-btn">编辑</button></td></tr>'}).join('');
+      document.getElementById('expenseForecastBody').innerHTML=html||'<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">暂无数据</td></tr>';
+    });
+  }
+
+  function openExpenseForecastModal(){
+    var orgId=prompt('组织ID:');if(!orgId)return;
+    var typeId=prompt('费用类型ID:');if(!typeId)return;
+    var year=document.getElementById('efYearSel').value||new Date().getFullYear();
+    var month=prompt('月份 (1-12):');if(!month)return;
+    var amount=prompt('预测金额 (万元):');if(!amount)return;
+    fetch('/api/expense/forecast',apiAuthMerge({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({records:[{orgId:parseInt(orgId),expenseTypeId:parseInt(typeId),year:parseInt(year),month:parseInt(month),forecastAmount:parseFloat(amount)}],fcMonth:String(year)+'00',version:'V1'})})).then(function(){toast('保存成功','success');loadExpenseForecast();});
+  }
+
+  function loadExpenseActual(){
+    var orgId=document.getElementById('eaOrgSel').value;
+    var year=document.getElementById('eaYearSel').value;
+    var typeId=document.getElementById('eaTypeSel').value;
+    var url='/api/expense/actual?year='+(year||new Date().getFullYear());
+    if(orgId)url+='&orgId='+orgId;
+    if(typeId)url+='&expenseTypeId='+typeId;
+    fetch(url,apiAuth()).then(function(r){return r.json();}).then(function(rows){
+      var html=rows.map(function(r){return'<tr><td>'+r.org_id+'</td><td>'+(r.type_name||'')+'</td><td>'+r.month+'月</td><td>'+(r.actual_amount||0)+'</td><td>'+(r.remark||'')+'</td><td><button class="row-btn">编辑</button></td></tr>'}).join('');
+      document.getElementById('expenseActualBody').innerHTML=html||'<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">暂无数据</td></tr>';
+    });
+  }
+
+  function openExpenseActualModal(){
+    var orgId=prompt('组织ID:');if(!orgId)return;
+    var typeId=prompt('费用类型ID:');if(!typeId)return;
+    var year=document.getElementById('eaYearSel').value||new Date().getFullYear();
+    var month=prompt('月份 (1-12):');if(!month)return;
+    var amount=prompt('实际金额 (万元):');if(!amount)return;
+    var remark=prompt('备注 (可选):')||'';
+    fetch('/api/expense/actual',apiAuthMerge({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({records:[{orgId:parseInt(orgId),expenseTypeId:parseInt(typeId),year:parseInt(year),month:parseInt(month),actualAmount:parseFloat(amount),remark:remark}]})})).then(function(){toast('保存成功','success');loadExpenseActual();});
+  }
+
+  function loadExpenseAnalysis(){
+    var orgId=document.getElementById('eanOrgSel').value;
+    var year=document.getElementById('eanYearSel').value||new Date().getFullYear();
+    if(!orgId){toast('请选择组织','error');return;}
+    fetch('/api/expense/analysis?orgId='+orgId+'&year='+year,apiAuth()).then(function(r){return r.json();}).then(function(d){
+      var kpi='<div class="kpi-card"><div class="kpi-label">预算总额</div><div class="kpi-value">'+(d.totalBudget||0).toFixed(2)+' 万元</div></div>';
+      kpi+='<div class="kpi-card"><div class="kpi-label">实际总额</div><div class="kpi-value">'+(d.totalActual||0).toFixed(2)+' 万元</div></div>';
+      kpi+='<div class="kpi-card"><div class="kpi-label">达成率</div><div class="kpi-value '+(parseFloat(d.totalRate)>100?'text-danger':'')+'">'+(d.totalRate||0)+'%</div></div>';
+      document.getElementById('expenseAnalysisKpi').innerHTML=kpi;
+      var html=d.byType.map(function(t){var rate=parseFloat(t.rate);return'<tr><td>'+t.typeName+'</td><td>'+t.budget.toFixed(2)+'</td><td>'+t.actual.toFixed(2)+'</td><td class="'+(rate>100?'text-danger':'')+'">'+rate+'%</td><td><span class="status-badge '+(rate>100?'over':'normal')+'">'+(rate>100?'超支':'正常')+'</span></td></tr>'}).join('');
+      document.getElementById('expenseAnalysisBody').innerHTML=html||'<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">暂无数据</td></tr>';
+    });
+  }
 
   populateSelects();
   setupFormCache();

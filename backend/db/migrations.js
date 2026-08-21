@@ -81,6 +81,74 @@ CREATE TABLE IF NOT EXISTS ops_actual (
   UNIQUE KEY uk_actual_org_bu_ym (org_id, bu, year, month)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
+/* 费用类型表 */
+const CREATE_EXPENSE_TYPE_SQL = `
+CREATE TABLE IF NOT EXISTS ops_expense_type (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL COMMENT '类型名称',
+  code VARCHAR(20) NOT NULL COMMENT '类型编码',
+  parent_id INT NULL COMMENT '父类型ID',
+  sort INT DEFAULT 0,
+  status TINYINT DEFAULT 1 COMMENT '状态：1启用/0禁用',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_code (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+/* 费用预算表 */
+const CREATE_EXPENSE_BUDGET_SQL = `
+CREATE TABLE IF NOT EXISTS ops_expense_budget (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  org_id INT NOT NULL COMMENT '组织ID',
+  expense_type_id INT NOT NULL COMMENT '费用类型ID',
+  year INT NOT NULL,
+  month INT NOT NULL DEFAULT 1,
+  budget_amount DECIMAL(14,2) DEFAULT 0 COMMENT '预算金额',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_expense_budget_ym (org_id, expense_type_id, year, month)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+/* 费用实际表 */
+const CREATE_EXPENSE_ACTUAL_SQL = `
+CREATE TABLE IF NOT EXISTS ops_expense_actual (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  org_id INT NOT NULL COMMENT '组织ID',
+  expense_type_id INT NOT NULL COMMENT '费用类型ID',
+  year INT NOT NULL,
+  month INT NOT NULL DEFAULT 1,
+  actual_amount DECIMAL(14,2) DEFAULT 0 COMMENT '实际金额',
+  remark VARCHAR(500),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_expense_actual_ym (org_id, expense_type_id, year, month)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+/* 费用预测表 */
+const CREATE_EXPENSE_FORECAST_SQL = `
+CREATE TABLE IF NOT EXISTS ops_expense_forecast (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  org_id INT NOT NULL COMMENT '组织ID',
+  expense_type_id INT NOT NULL COMMENT '费用类型ID',
+  year INT NOT NULL,
+  month INT NOT NULL DEFAULT 1,
+  forecast_amount DECIMAL(14,2) DEFAULT 0 COMMENT '预测金额',
+  fc_month INT NULL COMMENT '预测批次 YYYYMM',
+  version VARCHAR(10) NULL DEFAULT 'V1' COMMENT '版本号',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_expense_fc_ym (org_id, expense_type_id, year, month, fc_month, version)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+/* 种子数据：费用类型 */
+const SEED_EXPENSE_TYPES = [
+  { name: '人力成本', code: 'HR', parent_id: null, sort: 1 },
+  { name: '研发费用', code: 'RD', parent_id: null, sort: 2 },
+  { name: '销售费用', code: 'Sales', parent_id: null, sort: 3 },
+  { name: '管理费用', code: 'Admin', parent_id: null, sort: 4 },
+  { name: '运营费用', code: 'Ops', parent_id: null, sort: 5 }
+];
+
 /* 执行迁移 */
 async function runMigrations() {
   console.log('[migrate] 开始数据迁移...');
@@ -98,10 +166,43 @@ async function runMigrations() {
   await query(CREATE_ACTUAL_TABLE_SQL);
   console.log('[migrate] ops_actual 表已创建');
 
-  // TODO: 添加更多表结构迁移
-  // TODO: 添加数据迁移逻辑
+  // 费用管理表
+  await query(CREATE_EXPENSE_TYPE_SQL);
+  console.log('[migrate] ops_expense_type 表已创建');
+
+  await query(CREATE_EXPENSE_BUDGET_SQL);
+  console.log('[migrate] ops_expense_budget 表已创建');
+
+  await query(CREATE_EXPENSE_ACTUAL_SQL);
+  console.log('[migrate] ops_expense_actual 表已创建');
+
+  await query(CREATE_EXPENSE_FORECAST_SQL);
+  console.log('[migrate] ops_expense_forecast 表已创建');
+
+  // 种子数据
+  await seedExpenseTypes();
 
   console.log('[migrate] 数据迁移完成');
+}
+
+/* 种子数据：费用类型 */
+async function seedExpenseTypes() {
+  try {
+    const [[cnt]] = await query('SELECT COUNT(*) as c FROM ops_expense_type');
+    if (cnt.c > 0) {
+      console.log('[migrate] 费用类型已存在，跳过种子');
+      return;
+    }
+    for (const t of SEED_EXPENSE_TYPES) {
+      await query(
+        'INSERT INTO ops_expense_type (name, code, parent_id, sort, status) VALUES (?, ?, ?, ?, 1)',
+        [t.name, t.code, t.parent_id, t.sort]
+      );
+    }
+    console.log('[migrate] 费用类型种子数据已写入: ' + SEED_EXPENSE_TYPES.length + ' 条');
+  } catch (e) {
+    console.error('[migrate] 费用类型种子写入失败:', e.message);
+  }
 }
 
 module.exports = {
@@ -109,5 +210,9 @@ module.exports = {
   CREATE_FC_TABLE_SQL,
   CREATE_BUDGET_TABLE_SQL,
   CREATE_ACTUAL_TABLE_SQL,
+  CREATE_EXPENSE_TYPE_SQL,
+  CREATE_EXPENSE_BUDGET_SQL,
+  CREATE_EXPENSE_ACTUAL_SQL,
+  CREATE_EXPENSE_FORECAST_SQL,
   runMigrations
 };

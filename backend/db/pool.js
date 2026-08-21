@@ -1,17 +1,32 @@
 /* 数据库连接池模块 */
 
 const mysql = require('mysql2/promise');
+const fs = require('fs');
+const path = require('path');
 
-const DB_CONFIG = {
-  host: process.env.DB_HOST || 'localhost',
+// 尝试从 db_config.json 加载配置
+let DB_CONFIG = {
+  host: process.env.DB_HOST || '127.0.0.1',
   port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
+  user: process.env.DB_USER || 'ops_app',
+  password: process.env.DB_PASSWORD || 'ops_app',
   database: process.env.DB_NAME || 'ops_platform',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  charset: 'utf8mb4'
 };
+
+try {
+  const ROOT = path.join(__dirname, '..');
+  const cfgPath = path.join(ROOT, 'db_config.json');
+  if (fs.existsSync(cfgPath)) {
+    const fileCfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    DB_CONFIG = { ...DB_CONFIG, ...fileCfg };
+  }
+} catch (e) {
+  console.log('[db] 使用默认配置');
+}
 
 let pool = null;
 
@@ -39,7 +54,7 @@ async function closePool() {
 /* 执行查询 */
 async function query(sql, params) {
   const p = await getPool();
-  return p.query(sql, params);
+  return p.query(sql, params || []);
 }
 
 /* 执行单条查询 */
