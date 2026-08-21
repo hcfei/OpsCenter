@@ -140,6 +140,57 @@ CREATE TABLE IF NOT EXISTS ops_expense_forecast (
   UNIQUE KEY uk_expense_fc_ym (org_id, expense_type_id, year, month, fc_month, version)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
+/* 费用包表 */
+const CREATE_EXPENSE_PACKAGE_SQL = `
+CREATE TABLE IF NOT EXISTS ops_expense_package (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  org_id INT NOT NULL COMMENT '组织ID',
+  expense_type_id INT NOT NULL COMMENT '费用类型ID',
+  year INT NOT NULL,
+  quarter INT DEFAULT 0 COMMENT '季度(0=全年)',
+  budget_amount DECIMAL(14,2) DEFAULT 0 COMMENT '预算额度',
+  used_amount DECIMAL(14,2) DEFAULT 0 COMMENT '已使用金额',
+  warning_threshold DECIMAL(5,2) DEFAULT 80 COMMENT '预警阈值%',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_pkg_org_type_year (org_id, expense_type_id, year, quarter)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+/* 偏差记录表 */
+const CREATE_VARIANCE_SQL = `
+CREATE TABLE IF NOT EXISTS ops_variance (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  org_id INT COMMENT '组织ID',
+  bu VARCHAR(20) COMMENT 'BU维度',
+  year INT NOT NULL,
+  month INT NOT NULL DEFAULT 1,
+  metric VARCHAR(20) NOT NULL COMMENT '指标:revenue/profit/cost',
+  forecast_value DECIMAL(14,2) DEFAULT 0 COMMENT '预测值',
+  actual_value DECIMAL(14,2) DEFAULT 0 COMMENT '实际值',
+  variance_value DECIMAL(14,2) DEFAULT 0 COMMENT '偏差值',
+  variance_rate DECIMAL(5,2) DEFAULT 0 COMMENT '偏差率%',
+  reason VARCHAR(500) COMMENT '偏差原因',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_variance_ym (year, month)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+/* 风险措施表 */
+const CREATE_RISK_SQL = `
+CREATE TABLE IF NOT EXISTS ops_risk (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  org_id INT COMMENT '组织ID',
+  bu VARCHAR(20) COMMENT 'BU维度',
+  risk_desc VARCHAR(500) NOT NULL COMMENT '风险描述',
+  impact_level VARCHAR(10) DEFAULT '中' COMMENT '影响程度:高/中/低',
+  measure VARCHAR(500) COMMENT '应对措施',
+  owner VARCHAR(50) COMMENT '责任人',
+  status VARCHAR(20) DEFAULT 'open' COMMENT '状态:open/in_progress/resolved/closed',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_risk_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
 /* 种子数据：费用类型 */
 const SEED_EXPENSE_TYPES = [
   { name: '人力成本', code: 'HR', parent_id: null, sort: 1 },
@@ -179,6 +230,18 @@ async function runMigrations() {
   await query(CREATE_EXPENSE_FORECAST_SQL);
   console.log('[migrate] ops_expense_forecast 表已创建');
 
+  // 费用包表
+  await query(CREATE_EXPENSE_PACKAGE_SQL);
+  console.log('[migrate] ops_expense_package 表已创建');
+
+  // 偏差记录表
+  await query(CREATE_VARIANCE_SQL);
+  console.log('[migrate] ops_variance 表已创建');
+
+  // 风险措施表
+  await query(CREATE_RISK_SQL);
+  console.log('[migrate] ops_risk 表已创建');
+
   // 种子数据
   await seedExpenseTypes();
 
@@ -214,5 +277,8 @@ module.exports = {
   CREATE_EXPENSE_BUDGET_SQL,
   CREATE_EXPENSE_ACTUAL_SQL,
   CREATE_EXPENSE_FORECAST_SQL,
+  CREATE_EXPENSE_PACKAGE_SQL,
+  CREATE_VARIANCE_SQL,
+  CREATE_RISK_SQL,
   runMigrations
 };
