@@ -2697,6 +2697,212 @@ async function handleApi(req, res, pathname, method) {
         return send(res, 200, { ok: true });
       }
     }
+
+  /* ===== 费用类型 ===== */
+  if (pathname === '/api/expense/types' && method === 'GET') {
+    const [rows] = await pool.query('SELECT * FROM ops_expense_type ORDER BY sort, id');
+    return send(res, 200, rows);
+  }
+  if (pathname === '/api/expense/types' && method === 'POST') {
+    const body = await readBody(req);
+    const { name, code, parentId } = body;
+    if (!name || !code) return send(res, 400, { error: 'name 和 code 不能为空' });
+    const [r] = await pool.query('INSERT INTO ops_expense_type (name, code, parent_id) VALUES (?, ?, ?)', [name, code, parentId || null]);
+    return send(res, 201, { id: r.insertId });
+  }
+  const etm = pathname.match(/^\/api\/expense\/types\/(\d+)$/);
+  if (etm && method === 'DELETE') {
+    const id = parseInt(etm[1], 10);
+    await pool.query('DELETE FROM ops_expense_type WHERE id=?', [id]);
+    return send(res, 200, { ok: true });
+  }
+
+  /* ===== 费用预算 ===== */
+  if (pathname === '/api/expense/budget') {
+    const urlObj = new URL(req.url, 'http://x');
+    const year = urlObj.searchParams.get('year') || new Date().getFullYear();
+    if (method === 'GET') {
+      const [rows] = await pool.query(`SELECT b.*, t.name as type_name, t.code as type_code 
+        FROM ops_expense_budget b LEFT JOIN ops_expense_type t ON t.id=b.expense_type_id 
+        WHERE b.year=? ORDER BY b.month, t.sort`, [year]);
+      return send(res, 200, rows);
+    }
+    if (method === 'POST') {
+      const body = await readBody(req);
+      const { records } = body;
+      if (!Array.isArray(records)) return send(res, 400, { error: 'records 必须是数组' });
+      for (const r of records) {
+        await pool.query(`INSERT INTO ops_expense_budget (org_id, expense_type_id, year, month, budget_amount) 
+          VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE budget_amount=?`,
+          [r.orgId, r.expenseTypeId, r.year, r.month, r.budgetAmount, r.budgetAmount]);
+      }
+      return send(res, 200, { ok: true, count: records.length });
+    }
+  }
+
+  /* ===== 费用预测 ===== */
+  if (pathname === '/api/expense/forecast') {
+    const urlObj = new URL(req.url, 'http://x');
+    const year = urlObj.searchParams.get('year') || new Date().getFullYear();
+    if (method === 'GET') {
+      const [rows] = await pool.query(`SELECT f.*, t.name as type_name, t.code as type_code 
+        FROM ops_expense_forecast f LEFT JOIN ops_expense_type t ON t.id=f.expense_type_id 
+        WHERE f.year=? ORDER BY f.month, t.sort`, [year]);
+      return send(res, 200, rows);
+    }
+    if (method === 'POST') {
+      const body = await readBody(req);
+      const { records, fcMonth, version } = body;
+      if (!Array.isArray(records)) return send(res, 400, { error: 'records 必须是数组' });
+      for (const r of records) {
+        await pool.query(`INSERT INTO ops_expense_forecast (org_id, expense_type_id, year, month, forecast_amount, fc_month, version) 
+          VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE forecast_amount=?`,
+          [r.orgId, r.expenseTypeId, r.year, r.month, r.forecastAmount, fcMonth || (String(r.year) + '00'), version || 'V1', r.forecastAmount]);
+      }
+      return send(res, 200, { ok: true, count: records.length });
+    }
+  }
+
+  /* ===== 费用实际 ===== */
+  if (pathname === '/api/expense/actual') {
+    const urlObj = new URL(req.url, 'http://x');
+    const year = urlObj.searchParams.get('year') || new Date().getFullYear();
+    if (method === 'GET') {
+      const [rows] = await pool.query(`SELECT a.*, t.name as type_name, t.code as type_code 
+        FROM ops_expense_actual a LEFT JOIN ops_expense_type t ON t.id=a.expense_type_id 
+        WHERE a.year=? ORDER BY a.month, t.sort`, [year]);
+      return send(res, 200, rows);
+    }
+    if (method === 'POST') {
+      const body = await readBody(req);
+      const { records } = body;
+      if (!Array.isArray(records)) return send(res, 400, { error: 'records 必须是数组' });
+      for (const r of records) {
+        await pool.query(`INSERT INTO ops_expense_actual (org_id, expense_type_id, year, month, actual_amount, remark) 
+          VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE actual_amount=?, remark=?`,
+          [r.orgId, r.expenseTypeId, r.year, r.month, r.actualAmount, r.remark || '', r.actualAmount, r.remark || '']);
+      }
+      return send(res, 200, { ok: true, count: records.length });
+    }
+  }
+
+  /* ===== 费用分析 ===== */
+  if (pathname === '/api/expense/analysis' && method === 'GET') {
+    const urlObj = new URL(req.url, 'http://x');
+    const orgId = urlObj.searchParams.get('orgId');
+    const year = urlObj.searchParams.get('year') || new Date().getFullYear();
+    const [[budget]] = await pool.query(`SELECT SUM(budget_amount) as total FROM ops_expense_budget WHERE year=? ${orgId ? 'AND org_id=?' : ''}`, orgId ? [year, orgId] : [year]);
+    const [[actual]] = await pool.query(`SELECT SUM(actual_amount) as total FROM ops_expense_actual WHERE year=? ${orgId ? 'AND org_id=?' : ''}`, orgId ? [year, orgId] : [year]);
+    return send(res, 200, { budget: budget.total || 0, actual: actual.total || 0, variance: (budget.total || 0) - (actual.total || 0) });
+  }
+
+  /* ===== 费用包管理 ===== */
+  if (pathname === '/api/expense/package') {
+    const urlObj = new URL(req.url, 'http://x');
+    const year = urlObj.searchParams.get('year');
+    if (method === 'GET') {
+      let sql = `SELECT p.*, t.name as type_name, t.code as type_code FROM ops_expense_package p 
+        LEFT JOIN ops_expense_type t ON t.id=p.expense_type_id WHERE 1=1`;
+      const params = [];
+      if (year) { sql += ' AND p.year=?'; params.push(year); }
+      sql += ' ORDER BY p.year DESC, p.quarter, t.sort';
+      const [rows] = await pool.query(sql, params);
+      rows.forEach(r => {
+        r.usage_rate = r.budget_amount > 0 ? (r.used_amount / r.budget_amount * 100).toFixed(1) : '0.0';
+        r.is_warning = parseFloat(r.usage_rate) >= parseFloat(r.warning_threshold);
+      });
+      return send(res, 200, rows);
+    }
+    if (method === 'POST') {
+      const body = await readBody(req);
+      const { orgId, expenseTypeId, year, quarter, budgetAmount, warningThreshold } = body;
+      if (!orgId || !expenseTypeId || !year) return send(res, 400, { error: 'orgId, expenseTypeId, year 不能为空' });
+      await pool.query(`INSERT INTO ops_expense_package (org_id, expense_type_id, year, quarter, budget_amount, warning_threshold) 
+        VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE budget_amount=?, warning_threshold=?`,
+        [orgId, expenseTypeId, year, quarter || 0, budgetAmount || 0, warningThreshold || 80, budgetAmount || 0, warningThreshold || 80]);
+      return send(res, 200, { ok: true });
+    }
+  }
+
+  /* ===== 偏差分析 ===== */
+  if (pathname === '/api/variance') {
+    const urlObj = new URL(req.url, 'http://x');
+    const year = urlObj.searchParams.get('year');
+    if (method === 'GET') {
+      let sql = `SELECT v.* FROM ops_variance v WHERE 1=1`;
+      const params = [];
+      if (year) { sql += ' AND v.year=?'; params.push(year); }
+      sql += ' ORDER BY v.year DESC, v.month DESC';
+      const [rows] = await pool.query(sql, params);
+      return send(res, 200, rows);
+    }
+    if (method === 'POST') {
+      const body = await readBody(req);
+      const { records } = body;
+      if (!Array.isArray(records)) return send(res, 400, { error: 'records 必须是数组' });
+      for (const r of records) {
+        const varianceValue = (r.forecastValue || 0) - (r.actualValue || 0);
+        const varianceRate = r.forecastValue > 0 ? (varianceValue / r.forecastValue * 100).toFixed(1) : '0.0';
+        await pool.query(`INSERT INTO ops_variance (org_id, bu, year, month, metric, forecast_value, actual_value, variance_value, variance_rate, reason) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE forecast_value=?, actual_value=?, variance_value=?, variance_rate=?, reason=?`,
+          [r.orgId, r.bu, r.year, r.month, r.metric, r.forecastValue, r.actualValue, varianceValue, varianceRate, r.reason,
+           r.forecastValue, r.actualValue, varianceValue, varianceRate, r.reason]);
+      }
+      return send(res, 200, { ok: true, count: records.length });
+    }
+  }
+  if (pathname === '/api/variance/calculate' && method === 'POST') {
+    const body = await readBody(req);
+    const { orgId, year, month } = body;
+    if (!year || !month) return send(res, 400, { error: 'year 和 month 不能为空' });
+    const [[budget]] = await pool.query(`SELECT SUM(budget_revenue) as rev, SUM(budget_profit) as profit, SUM(budget_expense) as cost 
+      FROM ops_budget WHERE year=? AND month=? ${orgId ? 'AND org_id=?' : ''}`, orgId ? [year, month, orgId] : [year, month]);
+    const [[actual]] = await pool.query(`SELECT SUM(actual_revenue) as rev, SUM(actual_profit) as profit, SUM(actual_expense) as cost 
+      FROM ops_actual WHERE year=? AND month=? ${orgId ? 'AND org_id=?' : ''}`, orgId ? [year, month, orgId] : [year, month]);
+    const metrics = [
+      { key: 'revenue', budget: budget.rev || 0, actual: actual.rev || 0 },
+      { key: 'profit', budget: budget.profit || 0, actual: actual.profit || 0 },
+      { key: 'cost', budget: budget.cost || 0, actual: actual.cost || 0 }
+    ];
+    for (const m of metrics) {
+      const varianceValue = m.budget - m.actual;
+      const varianceRate = m.budget > 0 ? (varianceValue / m.budget * 100).toFixed(1) : '0.0';
+      await pool.query(`INSERT INTO ops_variance (org_id, bu, year, month, metric, forecast_value, actual_value, variance_value, variance_rate) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE forecast_value=?, actual_value=?, variance_value=?, variance_rate=?`,
+        [orgId || null, null, year, month, m.key, m.budget, m.actual, varianceValue, varianceRate,
+         m.budget, m.actual, varianceValue, varianceRate]);
+    }
+    return send(res, 200, { ok: true });
+  }
+
+  /* ===== 风险管理 ===== */
+  if (pathname === '/api/risk') {
+    if (method === 'GET') {
+      const [rows] = await pool.query('SELECT * FROM ops_risk ORDER BY impact_level DESC, created_at DESC');
+      return send(res, 200, rows);
+    }
+    if (method === 'POST') {
+      const body = await readBody(req);
+      const { orgId, bu, riskDesc, impactLevel, measure, owner, status } = body;
+      if (!riskDesc) return send(res, 400, { error: 'riskDesc 不能为空' });
+      const [r] = await pool.query(`INSERT INTO ops_risk (org_id, bu, risk_desc, impact_level, measure, owner, status) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [orgId || null, bu || null, riskDesc, impactLevel || '中', measure || '', owner || '', status || 'open']);
+      return send(res, 201, { id: r.insertId });
+    }
+  }
+  const riskm = pathname.match(/^\/api\/risk\/(\d+)$/);
+  if (riskm) {
+    const id = parseInt(riskm[1], 10);
+    if (method === 'PUT') {
+      const body = await readBody(req);
+      await pool.query(`UPDATE ops_risk SET risk_desc=?, impact_level=?, measure=?, owner=?, status=? WHERE id=?`,
+        [body.riskDesc, body.impactLevel, body.measure, body.owner, body.status, id]);
+      return send(res, 200, { ok: true });
+    }
+    if (method === 'DELETE') {
+      await pool.query('DELETE FROM ops_risk WHERE id=?', [id]);
+      return send(res, 200, { ok: true });
+    }
   }
 
   return send(res, 404, { error: 'api not found' });
@@ -2958,6 +3164,144 @@ async function seedSysDataIfEmpty() {
   }
 }
 
+/* ---------- 费用包管理: 迁移 + 种子 ---------- */
+async function migrateExpensePackageTable() {
+  // 费用类型表
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS ops_expense_type (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(50) NOT NULL COMMENT '类型名称',
+      code VARCHAR(20) NOT NULL COMMENT '类型编码',
+      parent_id INT NULL COMMENT '父类型ID',
+      sort INT DEFAULT 0,
+      status TINYINT DEFAULT 1 COMMENT '状态：1启用/0禁用',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_code (code)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+    console.log('[migrate] ops_expense_type 表已创建');
+  } catch (e) { if (e.code !== 'ER_TABLE_EXISTS_ERROR') console.error('[migrate] ops_expense_type:', e.message); }
+
+  // 费用预算表
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS ops_expense_budget (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      org_id INT NOT NULL COMMENT '组织ID',
+      expense_type_id INT NOT NULL COMMENT '费用类型ID',
+      year INT NOT NULL,
+      month INT NOT NULL DEFAULT 1,
+      budget_amount DECIMAL(14,2) DEFAULT 0 COMMENT '预算金额',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_expense_budget_ym (org_id, expense_type_id, year, month)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+    console.log('[migrate] ops_expense_budget 表已创建');
+  } catch (e) { if (e.code !== 'ER_TABLE_EXISTS_ERROR') console.error('[migrate] ops_expense_budget:', e.message); }
+
+  // 费用实际表
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS ops_expense_actual (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      org_id INT NOT NULL COMMENT '组织ID',
+      expense_type_id INT NOT NULL COMMENT '费用类型ID',
+      year INT NOT NULL,
+      month INT NOT NULL DEFAULT 1,
+      actual_amount DECIMAL(14,2) DEFAULT 0 COMMENT '实际金额',
+      remark VARCHAR(500),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_expense_actual_ym (org_id, expense_type_id, year, month)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+    console.log('[migrate] ops_expense_actual 表已创建');
+  } catch (e) { if (e.code !== 'ER_TABLE_EXISTS_ERROR') console.error('[migrate] ops_expense_actual:', e.message); }
+
+  // 费用预测表
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS ops_expense_forecast (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      org_id INT NOT NULL COMMENT '组织ID',
+      expense_type_id INT NOT NULL COMMENT '费用类型ID',
+      year INT NOT NULL,
+      month INT NOT NULL DEFAULT 1,
+      forecast_amount DECIMAL(14,2) DEFAULT 0 COMMENT '预测金额',
+      fc_month INT NULL COMMENT '预测批次 YYYYMM',
+      version VARCHAR(10) NULL DEFAULT 'V1' COMMENT '版本号',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_expense_fc_ym (org_id, expense_type_id, year, month, fc_month, version)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+    console.log('[migrate] ops_expense_forecast 表已创建');
+  } catch (e) { if (e.code !== 'ER_TABLE_EXISTS_ERROR') console.error('[migrate] ops_expense_forecast:', e.message); }
+
+  // 费用包表
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS ops_expense_package (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      org_id INT NOT NULL COMMENT '组织ID',
+      expense_type_id INT NOT NULL COMMENT '费用类型ID',
+      year INT NOT NULL,
+      quarter INT DEFAULT 0 COMMENT '季度(0=全年)',
+      budget_amount DECIMAL(14,2) DEFAULT 0 COMMENT '预算额度',
+      used_amount DECIMAL(14,2) DEFAULT 0 COMMENT '已使用金额',
+      warning_threshold DECIMAL(5,2) DEFAULT 80 COMMENT '预警阈值%',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_pkg_org_type_year (org_id, expense_type_id, year, quarter)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+    console.log('[migrate] ops_expense_package 表已创建');
+  } catch (e) { if (e.code !== 'ER_TABLE_EXISTS_ERROR') console.error('[migrate] ops_expense_package:', e.message); }
+
+  // 种子数据
+  const [[cnt]] = await pool.query('SELECT COUNT(*) as c FROM ops_expense_type');
+  if (cnt.c === 0) {
+    await pool.query("INSERT INTO ops_expense_type (name, code, parent_id, sort) VALUES ('人力成本', 'HR', NULL, 1), ('研发费用', 'RD', NULL, 2), ('市场费用', 'MKT', NULL, 3), ('管理费用', 'ADMIN', NULL, 4), ('其他费用', 'OTHER', NULL, 5)");
+    console.log('[migrate] 费用类型种子数据已插入: 5条');
+  }
+}
+
+/* ---------- 偏差分析: 迁移 ---------- */
+async function migrateVarianceTable() {
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS ops_variance (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      org_id INT COMMENT '组织ID',
+      bu VARCHAR(20) COMMENT 'BU维度',
+      year INT NOT NULL,
+      month INT NOT NULL DEFAULT 1,
+      metric VARCHAR(20) NOT NULL COMMENT '指标:revenue/profit/cost',
+      forecast_value DECIMAL(14,2) DEFAULT 0 COMMENT '预测值',
+      actual_value DECIMAL(14,2) DEFAULT 0 COMMENT '实际值',
+      variance_value DECIMAL(14,2) DEFAULT 0 COMMENT '偏差值',
+      variance_rate DECIMAL(5,2) DEFAULT 0 COMMENT '偏差率%',
+      reason VARCHAR(500) COMMENT '偏差原因',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_variance_ym (year, month)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+    console.log('[migrate] ops_variance 表已创建');
+  } catch (e) { if (e.code !== 'ER_TABLE_EXISTS_ERROR') console.error('[migrate] ops_variance:', e.message); }
+}
+
+/* ---------- 风险管理: 迁移 ---------- */
+async function migrateRiskTable() {
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS ops_risk (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      org_id INT COMMENT '组织ID',
+      bu VARCHAR(20) COMMENT 'BU维度',
+      risk_desc VARCHAR(500) NOT NULL COMMENT '风险描述',
+      impact_level VARCHAR(10) DEFAULT '中' COMMENT '影响程度:高/中/低',
+      measure VARCHAR(500) COMMENT '应对措施',
+      owner VARCHAR(50) COMMENT '责任人',
+      status VARCHAR(20) DEFAULT 'open' COMMENT '状态:open/in_progress/resolved/closed',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_risk_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+    console.log('[migrate] ops_risk 表已创建');
+  } catch (e) { if (e.code !== 'ER_TABLE_EXISTS_ERROR') console.error('[migrate] ops_risk:', e.message); }
+}
+
 /* ---------- 组织模型: 迁移 + 种子 (固定层配置 / 分支模板 / 存量BD挂模板) ---------- */
 async function migrateOrgTable() {
   const [c1] = await pool.query("SHOW COLUMNS FROM sys_org LIKE 'template_id'");
@@ -3115,6 +3459,9 @@ async function init() {
     const s = String(stmt).trim();
     if (s) await pool.query(s);
   }
+  await migrateExpensePackageTable();
+  await migrateVarianceTable();
+  await migrateRiskTable();
   await migrateOrgTable();
   await seedSysDataIfEmpty();
   await seedOrgTemplateIfEmpty();
